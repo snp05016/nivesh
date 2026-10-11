@@ -53,6 +53,14 @@ NIFTY50_SYMBOLS: Final[list[str]] = [
     "HINDALCO", "BPCL", "SHRIRAMFIN", "BAJAJ-AUTO", "HAL",
 ]
 
+# Point-in-time constituents are not available offline, so the bias is
+# disclosed (in every model's training metadata) rather than fixed.
+SURVIVORSHIP_NOTE: Final[str] = (
+    "static NIFTY 50 list as of 2024-12 applied to all history; survivorship-biased "
+    "(past index exits are missing, later entrants are included); TATAMOTORS has 0 "
+    "rows in nifty50_data.csv"
+)
+
 
 # ---------------------------------------------------------------------------
 # CSV / Parquet loaders
@@ -235,6 +243,10 @@ def validate_ohlcv(df: pd.DataFrame) -> pd.DataFrame:
         _LOG.warning("Dropped %d rows with NaN in OHLCV columns", dropped)
 
     df = df.sort_values(["symbol", "date"]).reset_index(drop=True)
+
+    if df.empty:
+        _LOG.warning("validate_ohlcv: no valid rows after cleaning")
+        return df
 
     n_symbols = df["symbol"].nunique()
     date_min = df["date"].min().strftime("%Y-%m-%d")

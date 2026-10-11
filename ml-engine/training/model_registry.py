@@ -85,6 +85,7 @@ def save_model_artifact(
     model_version: str | None = None,
     status: str = "candidate",
     calibrator: Any | None = None,
+    oof_predictions: Any | None = None,
 ) -> Path:
     """Save a trained LightGBM model and all associated artifacts.
 
@@ -107,6 +108,9 @@ def save_model_artifact(
         Model status: 'candidate', 'stable', 'deprecated', 'latest'. Default is 'candidate'.
     calibrator : Any or None
         Fitted calibration object (e.g. IsotonicRegression or LogisticRegression) to save via joblib.
+    oof_predictions : pandas.DataFrame or None
+        Out-of-fold (and holdout) predictions, written to oof_predictions.csv
+        as the input of the promotion gate.
 
     Returns
     -------
@@ -172,6 +176,9 @@ def save_model_artifact(
             joblib.dump(calibrator, artifact_dir / "calibrator.joblib")
         except ImportError:
             _LOG.warning("joblib not installed; could not save calibrator object.")
+
+    if oof_predictions is not None:
+        oof_predictions.to_csv(artifact_dir / "oof_predictions.csv", index=False)
 
     # ── Save VERSION file ────────────────────────────────────────────────
     (artifact_dir / "VERSION").write_text(model_version, encoding="utf-8")

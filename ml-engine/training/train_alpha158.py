@@ -7,10 +7,13 @@ Runnable as:
 Flow:
     1. Load OHLCV data (CSV or Parquet)
     2. Build feature matrix but isolate ONLY Alpha158 features
-    3. Walk-forward temporal validation (no future leakage)
-    4. Fit Isotonic & Platt Calibration methods on OOF val sets and select best
-    5. Train final model on all available data
-    6. Save versioned artifact to registry
+    3. Walk-forward temporal validation: embargo of the label horizon before
+       each validation year, early stopping on an inner slice of the training
+       dates, and a final holdout year that no fold sees
+    4. Cross-fitted calibration: fold k is calibrated by Isotonic/Platt fitted
+       on folds < k; method chosen on the middle folds, reported on the last
+    5. Train final model on all non-holdout data; score it once on the holdout
+    6. Save versioned artifact (with out-of-fold predictions) to registry
     7. Optionally deploy to production path
 """
 
@@ -87,8 +90,9 @@ _CLASSIFICATION_OVERRIDES: dict[str, Any] = {
 class _WalkForwardModelAdapter:
     """Wraps LGBEnsembleModel to match the interface run_walk_forward expects.
 
-    run_walk_forward calls:
-        model.fit(X_train, y_train, eval_set=[(X_val, y_val)])
+    run_walk_forward calls (eval_set is the inner early-stopping slice of
+    the training dates, never the reported fold):
+        model.fit(X_inner_train, y_inner_train, eval_set=[(X_inner_val, y_inner_val)])
         model.predict_proba(X)  or  model.predict(X)
         model.feature_importances_
         model.best_iteration_
@@ -136,6 +140,9 @@ def fold_result_to_dict(res: Any) -> dict[str, Any]:
     """Convert a validation.FoldResult dataclass to the dict format
     that metrics.aggregate_fold_results expects."""
     d = asdict(res)
+    # Per-row predictions go to oof_predictions.csv, not the metrics JSON.
+    d.pop("y_true", None)
+    d.pop("y_prob", None)
     # aggregate_fold_results expects 'train_samples' / 'val_samples'
     d["train_samples"] = d.pop("n_train", 0)
     d["val_samples"] = d.pop("n_val", 0)
@@ -147,6 +154,80 @@ def fold_result_to_dict(res: Any) -> dict[str, Any]:
             {"feature": name, "importance": imp} for name, imp in fi
         ]
     return d
+
+
+# ---------------------------------------------------------------------------
+# Cross-fitted calibration
+# ---------------------------------------------------------------------------
+
+def cross_fit_calibration(
+    y_probs: list[np.ndarray],
+    y_trues: list[np.ndarray],
+) -> tuple[dict[str, Any], list[np.ndarray | None], Any]:
+    """Calibrate each fold with calibrators fitted on earlier folds only.
+
+    Fold k (k >= 1) is calibrated by Isotonic and Platt fitted on the
+    out-of-fold predictions of folds < k. The method is chosen by Brier on
+    folds 1..K-2 and its ECE/Brier are reported on fold K-1 alone, so no
+    reported number comes from data the calibrator or the choice saw. The first fold
+    stays uncalibrated.
+
+    Returns (report, calibrated probabilities per fold with None for fold 0,
+    the chosen calibrator refitted on every fold for deployment).
+    """
+    from sklearn.metrics import brier_score_loss
+
+    from training.calibration import (
+        IsotonicCalibration,
+        PlattScalingCalibration,
+        compute_calibration_report,
+    )
+
+    calibrators: dict[str, Any] = {"isotonic": IsotonicCalibration, "platt": PlattScalingCalibration}
+    k_folds = len(y_probs)
+    if k_folds < 3:  # callers guarantee >= 1 fold
+        report: dict[str, Any] = compute_calibration_report(y_trues[-1], y_probs[-1])
+        report.update(
+            best_method="none",
+            brier_score=round(float(brier_score_loss(y_trues[-1], y_probs[-1])), 4),
+            protocol=f"uncalibrated: cross-fitting needs >= 3 folds, got {k_folds}",
+        )
+        return report, [None] * k_folds, None
+
+    def _fit(name: str, upto: int) -> Any:
+        cal = calibrators[name]()
+        cal.fit(np.concatenate(y_probs[:upto]), np.concatenate(y_trues[:upto]))
+        return cal
+
+    preds: dict[str, list[np.ndarray | None]] = {
+        name: [_fit(name, k).predict_proba(y_probs[k]) if k else None for k in range(k_folds)]
+        for name in calibrators
+    }
+    sel_true = np.concatenate(y_trues[1:-1])
+    sel_brier = {
+        name: float(brier_score_loss(sel_true, np.concatenate([p for p in fold_preds[1:-1] if p is not None])))
+        for name, fold_preds in preds.items()
+    }
+    best = min(sel_brier, key=lambda name: sel_brier[name])  # ties -> isotonic (first)
+    last_pred = preds[best][-1]
+    assert last_pred is not None
+
+    report = compute_calibration_report(y_trues[-1], last_pred)
+    report.update(
+        best_method=best,
+        brier_score=round(float(brier_score_loss(y_trues[-1], last_pred)), 4),
+        raw_brier_score=round(float(brier_score_loss(y_trues[-1], y_probs[-1])), 4),
+        selection_brier={name: round(b, 4) for name, b in sel_brier.items()},
+        protocol=(
+            "cross-fitted: fold k calibrated on folds < k; method chosen on folds "
+            f"1..{k_folds - 2}; ece/mce/brier_score measured on fold {k_folds - 1} only"
+        ),
+    )
+    logger.info(
+        "Calibration (cross-fitted): selection Brier %s -> %s; reporting fold Brier raw=%.4f, %s=%.4f",
+        sel_brier, best, report["raw_brier_score"], best, report["brier_score"],
+    )
+    return report, preds[best], _fit(best, k_folds)
 
 
 # ---------------------------------------------------------------------------
@@ -184,6 +265,15 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         default=False,
         help="Deploy trained model to production path after training.",
+    )
+    parser.add_argument(
+        "--holdout-year",
+        type=int,
+        default=None,
+        help=(
+            "Final holdout year, never used for selection (default: the last year "
+            "in the data when it is after every fold's validation year)."
+        ),
     )
     parser.add_argument(
         "--min-train-samples",
@@ -357,19 +447,34 @@ def main(argv: list[str] | None = None) -> None:
     logger.info("STEP 3: Configuring walk-forward validation")
     logger.info("=" * 60)
 
-    from training.validation import WalkForwardConfig, generate_splits, run_walk_forward
+    from training.validation import (
+        WalkForwardConfig,
+        generate_holdout_split,
+        generate_splits,
+        run_walk_forward,
+    )
 
     if args.folds:
         folds = _parse_folds(args.folds)
     else:
         folds = [(2021, 2022), (2022, 2023), (2023, 2024), (2024, 2025)]
 
+    holdout_year = args.holdout_year
+    if holdout_year is None:
+        last_year = int(pd.to_datetime(feature_df["date"]).dt.year.max())
+        if last_year > max(vy for _, vy in folds):
+            holdout_year = last_year
+
     wf_config = WalkForwardConfig(
         folds=folds,
         target_col=target_col,
         min_train_samples=args.min_train_samples,
+        holdout_year=holdout_year,
     )
-    logger.info("Walk-forward folds: %s", wf_config.folds)
+    logger.info(
+        "Walk-forward folds: %s | embargo %d trading days | holdout year %s",
+        wf_config.folds, wf_config.embargo_days, wf_config.holdout_year,
+    )
     logger.info("Target: %s | Min train samples: %d", target_col, wf_config.min_train_samples)
 
     # -- 4. Generate splits --
@@ -402,15 +507,10 @@ def main(argv: list[str] | None = None) -> None:
     return_col = "forward_return_20d" if "20d" in target_col else "forward_return_60d"
     val_returns: list[np.ndarray] | None = None
     if return_col in feature_df.columns:
-        val_returns = []
-        for split in splits:
-            # Extract returns aligned with validation dates
-            val_mask = pd.to_datetime(feature_df["date"]).dt.year == split.val_year
-            val_df = feature_df.loc[val_mask].dropna(subset=[wf_config.target_col])
-            if return_col in val_df.columns:
-                val_returns.append(val_df[return_col].values.astype(np.float64))
-            else:
-                val_returns.append(np.zeros(split.y_val.shape[0]))
+        val_returns = [
+            feature_df.loc[split.val_index, return_col].to_numpy(dtype=np.float64)
+            for split in splits
+        ]
 
     fold_results = run_walk_forward(
         model_factory=model_factory,
@@ -425,16 +525,21 @@ def main(argv: list[str] | None = None) -> None:
 
     logger.info("Walk-forward complete: %d folds evaluated", len(fold_results))
 
-    # -- 6. Train final model on ALL data --
+    # -- 6. Train final model on all non-holdout data --
     logger.info("=" * 60)
-    logger.info("STEP 6: Training final model on ALL available data")
+    logger.info("STEP 6: Training final model on all non-holdout data")
     logger.info("=" * 60)
 
     from models.lgb_model import LGBEnsembleModel
 
-    final_df = feature_df.dropna(subset=[target_col])
-    X_all = final_df[feature_cols].values.astype(np.float32)
-    y_all = final_df[target_col].values.astype(np.float32)
+    holdout_split = generate_holdout_split(feature_df, wf_config, feature_cols)
+    if holdout_split is not None:
+        # Every row before the holdout year, embargoed like a fold.
+        X_all, y_all = holdout_split.X_train, holdout_split.y_train
+    else:
+        final_df = feature_df.dropna(subset=[target_col])
+        X_all = final_df[feature_cols].values.astype(np.float32)
+        y_all = final_df[target_col].values.astype(np.float32)
 
     logger.info("Final training set: %d samples, %d features", X_all.shape[0], X_all.shape[1])
 
@@ -478,56 +583,56 @@ def main(argv: list[str] | None = None) -> None:
     fold_dicts = [fold_result_to_dict(fr) for fr in fold_results]
     aggregate = aggregate_fold_results(fold_dicts)
 
-    # Compute calibration from all validation predictions pooled together
-    all_y_true: list[np.ndarray] = []
-    all_y_prob: list[np.ndarray] = []
+    # Out-of-fold predictions straight from the walk-forward (no refit).
+    y_probs = [np.asarray(fr.y_prob, dtype=np.float64) for fr in fold_results]
+    y_trues = [np.asarray(fr.y_true, dtype=int) for fr in fold_results]
+    calibration, calibrated, best_calibrator = cross_fit_calibration(y_probs, y_trues)
 
-    for split in splits:
-        adapter = model_factory()
-        adapter.fit(split.X_train, split.y_train, eval_set=[(split.X_val, split.y_val)])
-        y_prob = np.clip(adapter.predict(split.X_val), 0.0, 1.0)
-        all_y_true.append(split.y_val.astype(int))
-        all_y_prob.append(y_prob)
+    extra_cols = [c for c in (return_col, "momentum_20d") if c in feature_df.columns]
 
-    if all_y_true:
-        pooled_y_true = np.concatenate(all_y_true)
-        pooled_y_prob = np.concatenate(all_y_prob)
+    def _prediction_frame(sp: Any, kind: str, p_up: Any, p_raw: np.ndarray) -> pd.DataFrame:
+        frame = feature_df.loc[sp.val_index, ["date", "symbol", *extra_cols]].reset_index(drop=True)
+        frame.insert(2, "fold", sp.fold_id)
+        frame.insert(3, "split", kind)
+        frame["p_up"] = p_up
+        frame["p_raw"] = p_raw
+        frame["y"] = sp.y_val.astype(int)
+        frame["train_base_rate"] = sp.train_base_rate
+        return frame
 
-        from sklearn.metrics import brier_score_loss
-        from training.calibration import IsotonicCalibration, PlattScalingCalibration, compute_calibration_report
-        
-        iso_cal = IsotonicCalibration()
-        iso_cal.fit(pooled_y_prob, pooled_y_true)
-        iso_pred = iso_cal.predict_proba(pooled_y_prob)
-        iso_brier = brier_score_loss(pooled_y_true, iso_pred)
-        
-        platt_cal = PlattScalingCalibration()
-        platt_cal.fit(pooled_y_prob, pooled_y_true)
-        platt_pred = platt_cal.predict_proba(pooled_y_prob)
-        platt_brier = brier_score_loss(pooled_y_true, platt_pred)
-        
-        raw_brier = brier_score_loss(pooled_y_true, pooled_y_prob)
-        
-        if iso_brier <= platt_brier:
-            best_calibrator = iso_cal
-            best_calibrator_name = "isotonic"
-            best_pred = iso_pred
-            best_brier = iso_brier
-        else:
-            best_calibrator = platt_cal
-            best_calibrator_name = "platt"
-            best_pred = platt_pred
-            best_brier = platt_brier
-            
-        logger.info("Calibration Brier scores: raw=%.4f, isotonic=%.4f, platt=%.4f. Selected %s.", 
-                    raw_brier, iso_brier, platt_brier, best_calibrator_name)
-        
-        calibration = compute_calibration_report(pooled_y_true, best_pred)
-        calibration["best_method"] = best_calibrator_name
-        calibration["brier_score"] = round(best_brier, 4)
-    else:
-        calibration = {"buckets": [], "ece": 0.0, "mce": 0.0, "best_method": "none", "brier_score": 0.0}
-        best_calibrator = None
+    split_by_fold = {sp.fold_id: sp for sp in splits}
+    oof_frames = [
+        # the first fold has no earlier fold to calibrate on: p_up is NaN there
+        _prediction_frame(split_by_fold[fr.fold_id], "oof", np.nan if p_cal is None else p_cal, p_raw)
+        for fr, p_raw, p_cal in zip(fold_results, y_probs, calibrated)
+    ]
+
+    # -- Holdout: scored once, for the report only (never used for selection) --
+    if holdout_split is not None:
+        from sklearn.metrics import brier_score_loss, roc_auc_score
+
+        from training.calibration import compute_calibration_report
+
+        h_raw = np.clip(final_model.predict(holdout_split.X_val), 0.0, 1.0)
+        h_p = best_calibrator.predict_proba(h_raw) if best_calibrator is not None else h_raw
+        h_true = holdout_split.y_val.astype(int)
+        holdout_report = compute_calibration_report(h_true, h_p)
+        holdout_report.update(
+            year=holdout_split.val_year,
+            n=int(len(h_true)),
+            brier_score=round(float(brier_score_loss(h_true, h_p)), 4),
+            roc_auc=round(float(roc_auc_score(h_true, h_p)), 4) if len(np.unique(h_true)) > 1 else None,
+        )
+        calibration["holdout"] = holdout_report
+        logger.info("Holdout %d: %s", holdout_split.val_year, {
+            k: holdout_report[k] for k in ("n", "roc_auc", "brier_score", "ece")
+        })
+
+        oof_frames.append(_prediction_frame(holdout_split, "holdout", h_p, h_raw))
+
+    oof_predictions = pd.concat(oof_frames, ignore_index=True).rename(
+        columns={return_col: "fwd_ret_20d" if "20d" in return_col else "fwd_ret_60d"}
+    )
 
     logger.info(
         "Aggregate: mean_hit_rate=%.2f%%, mean_auc=%s, ece=%.4f",
@@ -541,7 +646,9 @@ def main(argv: list[str] | None = None) -> None:
     logger.info("STEP 8: Saving model artifact")
     logger.info("=" * 60)
 
+    from training.dataset_builder import SURVIVORSHIP_NOTE
     from training.model_registry import save_model_artifact, deploy_to_production
+    from training.validation import INNER_VAL_FRAC
 
     datestamp = datetime.now(timezone.utc).strftime("%Y%m%d")
     model_version = f"lightgbm_alpha158_candidate_v1_{datestamp}"
@@ -559,6 +666,10 @@ def main(argv: list[str] | None = None) -> None:
             "max": feature_df["date"].max().strftime("%Y-%m-%d"),
         },
         "n_symbols": int(feature_df["symbol"].nunique()),
+        "universe": SURVIVORSHIP_NOTE,
+        "embargo_days": wf_config.embargo_days,
+        "early_stopping": f"inner slice: last {INNER_VAL_FRAC:.0%} of each fold's training dates",
+        "holdout_year": holdout_split.val_year if holdout_split is not None else None,
     }
 
     artifact_dir = save_model_artifact(
@@ -569,6 +680,7 @@ def main(argv: list[str] | None = None) -> None:
         calibration_report=calibration,
         model_version=model_version,
         calibrator=best_calibrator,
+        oof_predictions=oof_predictions,
     )
     logger.info("Artifact saved: %s", artifact_dir)
 

@@ -12,3 +12,6 @@ __pycache__/
 data/research/
 # ...but keep the reviewed reference tables in git
 !research/ref/*.csv
+
+# Test runner cache
+.pytest_cache/

@@ -3,10 +3,19 @@ Walk-forward temporal validation for LightGBM direction prediction.
 
 NO random train/test split. Every fold uses strictly past data for training
 and a single future year for validation, preserving temporal causality.
+
+Leakage controls (ML-06):
+  * Purge/embargo: training rows stop ``embargo_days`` trading days before the
+    validation start, so no training label window (t, t+20] reaches into it.
+  * Nested early stopping: the stopping set is the last ``INNER_VAL_FRAC`` of
+    the *training* dates (with the same embargo), never the reported fold.
+  * Holdout: ``holdout_year`` rows appear in no fold; use
+    :func:`generate_holdout_split` once, for reporting only.
 """
 
 from __future__ import annotations
 
+import inspect
 import logging
 from dataclasses import dataclass, field
 from typing import Any, Callable, Protocol
@@ -78,6 +87,15 @@ class WalkForwardConfig:
     folds: list[tuple[int, int]] = field(default_factory=lambda: list(DEFAULT_FOLDS))
     target_col: str = "direction_20d"
     min_train_samples: int = 500
+    # Trading days purged between train end and validation start; must be at
+    # least the label horizon (direction_20d looks 20 trading days ahead).
+    embargo_days: int = 20
+    # Final holdout year: excluded from every fold, never used for selection.
+    holdout_year: int | None = None
+
+
+# Share of the training dates (the latest ones) used for early stopping.
+INNER_VAL_FRAC = 0.1
 
 
 # ---------------------------------------------------------------------------
@@ -99,6 +117,10 @@ class WalkForwardSplit:
     train_dates: np.ndarray
     val_dates: np.ndarray
     feature_names: list[str]
+    train_base_rate: float = float("nan")
+    embargo_days: int = 0
+    # df index labels of the validation rows (to join dates, symbols, returns).
+    val_index: np.ndarray | None = None
 
 
 @dataclass
@@ -120,6 +142,9 @@ class FoldResult:
     n_train: int
     n_val: int
     best_iteration: int | None
+    # Out-of-fold predictions, aligned with the split's validation rows.
+    y_true: np.ndarray | None = field(default=None, repr=False)
+    y_prob: np.ndarray | None = field(default=None, repr=False)
 
 
 # ---------------------------------------------------------------------------
@@ -127,20 +152,21 @@ class FoldResult:
 # ---------------------------------------------------------------------------
 
 
-def generate_splits(
-    df: pd.DataFrame,
-    config: WalkForwardConfig,
-    feature_cols: list[str],
-) -> list[WalkForwardSplit]:
-    """Build temporal train/val splits — no future data leaks into training.
+def _embargo_cutoff(unique_dates: np.ndarray, start: Any, embargo_days: int) -> Any:
+    """Last trading date whose (t, t+embargo_days] label window ends before *start*.
 
-    For each fold ``(train_end_year, val_year)``:
-      - train = all rows where ``date.dt.year <= train_end_year``
-      - val   = all rows where ``date.dt.year == val_year``
-
-    Rows with NaN targets are dropped. Folds with fewer than
-    ``config.min_train_samples`` rows in either set are skipped.
+    ``unique_dates`` is the sorted array of trading dates. Returns None when
+    there is no such date.
     """
+    pos = int(np.searchsorted(unique_dates, np.datetime64(start), side="left"))
+    cut = pos - embargo_days - 1
+    # ponytail: trading days are the panel's union of dates; a symbol with
+    # missing days can have a label reaching a few days further. Raise
+    # embargo_days if the panel is ragged.
+    return unique_dates[cut] if cut >= 0 else None
+
+
+def _check_columns(df: pd.DataFrame, config: WalkForwardConfig, feature_cols: list[str]) -> None:
     if "date" not in df.columns:
         raise ValueError("DataFrame must contain a 'date' column")
     if config.target_col not in df.columns:
@@ -153,64 +179,139 @@ def generate_splits(
             + (" ..." if len(missing_features) > 10 else "")
         )
 
+
+def _make_split(
+    df: pd.DataFrame,
+    train_mask: pd.Series,
+    val_mask: pd.Series,
+    fold_id: int,
+    train_end_year: int,
+    val_year: int,
+    config: WalkForwardConfig,
+    feature_cols: list[str],
+) -> WalkForwardSplit | None:
+    """Materialise one split; None when either side is below min_train_samples."""
+    # Drop rows with NaN targets
+    train_df = df.loc[train_mask].dropna(subset=[config.target_col])
+    val_df = df.loc[val_mask].dropna(subset=[config.target_col])
+
+    for side, n in (("train", len(train_df)), ("val", len(val_df))):
+        if n < config.min_train_samples:
+            logger.warning(
+                "Fold %d (train<=%.0f, val=%.0f): skipped — only %d %s samples "
+                "(need %d)",
+                fold_id, train_end_year, val_year, n, side, config.min_train_samples,
+            )
+            return None
+
+    y_train = train_df[config.target_col].values.astype(np.float32)
+    return WalkForwardSplit(
+        fold_id=fold_id,
+        train_end_year=train_end_year,
+        val_year=val_year,
+        X_train=train_df[feature_cols].values.astype(np.float32),
+        y_train=y_train,
+        X_val=val_df[feature_cols].values.astype(np.float32),
+        y_val=val_df[config.target_col].values.astype(np.float32),
+        train_dates=pd.to_datetime(train_df["date"]).values,
+        val_dates=pd.to_datetime(val_df["date"]).values,
+        feature_names=list(feature_cols),
+        train_base_rate=float(np.mean(y_train)),
+        embargo_days=config.embargo_days,
+        val_index=val_df.index.to_numpy(),
+    )
+
+
+def generate_splits(
+    df: pd.DataFrame,
+    config: WalkForwardConfig,
+    feature_cols: list[str],
+) -> list[WalkForwardSplit]:
+    """Build temporal train/val splits — no future data leaks into training.
+
+    For each fold ``(train_end_year, val_year)``:
+      - val   = all rows where ``date.dt.year == val_year``
+      - train = rows where ``date.dt.year <= train_end_year`` AND the date is at
+        least ``embargo_days + 1`` trading days before the first validation
+        date (purge/embargo of the label horizon)
+
+    Rows from ``config.holdout_year`` are in no fold. Rows with NaN targets are
+    dropped. Folds with fewer than ``config.min_train_samples`` rows in either
+    set are skipped.
+    """
+    _check_columns(df, config, feature_cols)
+
     dates = pd.to_datetime(df["date"])
     years = dates.dt.year
+    not_holdout = pd.Series(True, index=df.index)
+    if config.holdout_year is not None:
+        not_holdout = years != config.holdout_year
+    unique_dates = dates.drop_duplicates().sort_values().to_numpy()
 
     splits: list[WalkForwardSplit] = []
 
     for fold_id, (train_end_year, val_year) in enumerate(config.folds):
-        train_mask = years <= train_end_year
-        val_mask = years == val_year
-
-        train_df = df.loc[train_mask].copy()
-        val_df = df.loc[val_mask].copy()
-
-        # Drop rows with NaN targets
-        train_df = train_df.dropna(subset=[config.target_col])
-        val_df = val_df.dropna(subset=[config.target_col])
-
-        n_train = len(train_df)
-        n_val = len(val_df)
-
-        if n_train < config.min_train_samples:
-            logger.warning(
-                "Fold %d (train<=%.0f, val=%.0f): skipped — only %d train samples "
-                "(need %d)",
-                fold_id, train_end_year, val_year, n_train, config.min_train_samples,
-            )
+        if val_year == config.holdout_year:
+            logger.warning("Fold %d: val year %d is the holdout year — skipped", fold_id, val_year)
             continue
 
-        if n_val < config.min_train_samples:
-            logger.warning(
-                "Fold %d (train<=%.0f, val=%.0f): skipped — only %d val samples "
-                "(need %d)",
-                fold_id, train_end_year, val_year, n_val, config.min_train_samples,
-            )
+        val_mask = (years == val_year) & not_holdout
+        if not val_mask.any():
+            logger.warning("Fold %d: no rows in val year %d — skipped", fold_id, val_year)
             continue
+        cutoff = _embargo_cutoff(unique_dates, dates[val_mask].min(), config.embargo_days)
+        if cutoff is None:
+            logger.warning("Fold %d: no training dates before the embargo — skipped", fold_id)
+            continue
+        train_mask = (years <= train_end_year) & (dates <= cutoff) & not_holdout
 
-        splits.append(
-            WalkForwardSplit(
-                fold_id=fold_id,
-                train_end_year=train_end_year,
-                val_year=val_year,
-                X_train=train_df[feature_cols].values.astype(np.float32),
-                y_train=train_df[config.target_col].values.astype(np.float32),
-                X_val=val_df[feature_cols].values.astype(np.float32),
-                y_val=val_df[config.target_col].values.astype(np.float32),
-                train_dates=pd.to_datetime(train_df["date"]).values,
-                val_dates=pd.to_datetime(val_df["date"]).values,
-                feature_names=list(feature_cols),
-            )
+        split = _make_split(
+            df, train_mask, val_mask, fold_id, train_end_year, val_year, config, feature_cols,
         )
+        if split is None:
+            continue
+        splits.append(split)
         logger.info(
-            "Fold %d: train<=%.0f (%d rows) | val=%.0f (%d rows)",
-            fold_id, train_end_year, n_train, val_year, n_val,
+            "Fold %d: train<=%s (%d rows, embargo %d days) | val=%.0f (%d rows)",
+            fold_id, pd.Timestamp(cutoff).date(), len(split.y_train), config.embargo_days,
+            val_year, len(split.y_val),
         )
 
     if not splits:
         logger.warning("No valid walk-forward splits generated")
 
     return splits
+
+
+def generate_holdout_split(
+    df: pd.DataFrame,
+    config: WalkForwardConfig,
+    feature_cols: list[str],
+) -> WalkForwardSplit | None:
+    """Train on every embargoed row before the holdout year; validate on it.
+
+    For the single, report-only evaluation of the final model. Returns None
+    when ``config.holdout_year`` is unset or has too few rows.
+    """
+    if config.holdout_year is None:
+        return None
+    _check_columns(df, config, feature_cols)
+
+    dates = pd.to_datetime(df["date"])
+    years = dates.dt.year
+    val_mask = years == config.holdout_year
+    if not val_mask.any():
+        logger.warning("Holdout year %d has no rows", config.holdout_year)
+        return None
+    unique_dates = dates.drop_duplicates().sort_values().to_numpy()
+    cutoff = _embargo_cutoff(unique_dates, dates[val_mask].min(), config.embargo_days)
+    if cutoff is None:
+        return None
+    train_mask = (years < config.holdout_year) & (dates <= cutoff)
+    return _make_split(
+        df, train_mask, val_mask, -1, config.holdout_year - 1, config.holdout_year,
+        config, feature_cols,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -252,6 +353,24 @@ def _compute_calibration(
 # ---------------------------------------------------------------------------
 
 
+def _inner_split(train_dates: np.ndarray, embargo_days: int) -> tuple[np.ndarray, np.ndarray]:
+    """Boolean masks (inner_train, inner_val) over the training rows.
+
+    inner_val is the latest INNER_VAL_FRAC of the training dates; inner_train
+    ends ``embargo_days`` trading days before it.
+    """
+    unique_dates = np.sort(np.unique(train_dates))
+    n_inner = max(1, int(len(unique_dates) * INNER_VAL_FRAC))
+    if len(unique_dates) <= n_inner + embargo_days:
+        raise ValueError(
+            f"Too few training dates ({len(unique_dates)}) for an inner early-stopping "
+            f"slice of {n_inner} dates plus a {embargo_days}-day embargo"
+        )
+    inner_val_start = unique_dates[-n_inner]
+    cutoff = _embargo_cutoff(unique_dates, inner_val_start, embargo_days)
+    return train_dates <= cutoff, train_dates >= inner_val_start
+
+
 def run_walk_forward(
     model_factory: Callable[[], Any],
     splits: list[WalkForwardSplit],
@@ -265,7 +384,9 @@ def run_walk_forward(
     model_factory:
         Callable that returns a fresh, untrained model with a scikit-learn-like
         interface: ``fit(X, y, ...)`` and ``predict_proba(X)`` (or ``predict(X)``
-        for models that output probabilities directly).
+        for models that output probabilities directly). When ``fit`` takes an
+        ``eval_set`` it is trained on the inner slice of the training dates and
+        stopped on the embargoed latest ``INNER_VAL_FRAC`` of them.
     splits:
         Output of :func:`generate_splits`.
     return_col:
@@ -294,17 +415,18 @@ def run_walk_forward(
 
         # ── Train ─────────────────────────────────────────────────────────
         best_iteration: int | None = None
-        try:
-            # LightGBM-style fit with eval_set for early stopping
+        if "eval_set" in inspect.signature(model.fit).parameters:
+            # Early stopping on an inner, embargoed slice of the training
+            # dates — never on split.X_val, whose metrics are reported.
+            inner_train, inner_val = _inner_split(split.train_dates, split.embargo_days)
             model.fit(
-                split.X_train,
-                split.y_train,
-                eval_set=[(split.X_val, split.y_val)],
+                split.X_train[inner_train],
+                split.y_train[inner_train],
+                eval_set=[(split.X_train[inner_val], split.y_train[inner_val])],
             )
-            if hasattr(model, "best_iteration_"):
+            if getattr(model, "best_iteration_", None) is not None:
                 best_iteration = int(model.best_iteration_)
-        except TypeError:
-            # Fallback: model.fit does not accept eval_set
+        else:
             model.fit(split.X_train, split.y_train)
 
         # ── Predict probabilities ─────────────────────────────────────────
@@ -380,6 +502,8 @@ def run_walk_forward(
             n_train=len(split.y_train),
             n_val=len(split.y_val),
             best_iteration=best_iteration,
+            y_true=y_true,
+            y_prob=y_prob,
         )
         results.append(fold_result)
 

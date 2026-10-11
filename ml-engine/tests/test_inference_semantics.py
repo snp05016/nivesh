@@ -34,7 +34,7 @@ def _ohlcv(drift: float, seed: int, n: int = 120) -> pl.DataFrame:
     high = np.maximum(open_, close) * (1 + 0.005 * rng.random(n))
     low = np.minimum(open_, close) * (1 - 0.005 * rng.random(n))
     return pl.DataFrame({
-        "date": [f"d{i}" for i in range(n)],
+        "date": [f"d{i:03d}" for i in range(n)],  # zero-padded: sorts as dates
         "open": open_,
         "high": high,
         "low": low,

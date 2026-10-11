@@ -109,7 +109,7 @@ class TestFeatureNoLookahead:
         Features computed at T must be identical whether or not the
         post-T spike exists, proving no future data leaks into features.
         """
-        from training.feature_builder import (
+        from training.feature_pipeline import (
             _compute_extra_features,
             _compute_rsi,
             _safe_pct,
@@ -147,7 +147,7 @@ class TestFeatureNoLookahead:
 
     def test_rsi_no_future_data(self):
         """RSI computed at T must not change when future data is appended."""
-        from training.feature_builder import _compute_rsi
+        from training.feature_pipeline import _compute_rsi
 
         rng = np.random.default_rng(99)
         closes = np.cumsum(rng.normal(0, 1, 100)) + 200.0
@@ -171,7 +171,7 @@ class TestTargetGeneration:
 
     def test_forward_return_20d(self):
         """forward_return_20d = (close[t+20] - close[t]) / close[t]."""
-        from training.feature_builder import _safe_pct
+        from training.feature_pipeline import _safe_pct
 
         closes = np.arange(100, 200, dtype=np.float64)  # 100..199
         t = 10
@@ -181,7 +181,7 @@ class TestTargetGeneration:
 
     def test_forward_return_direction(self):
         """direction_20d = forward_return_20d > 0."""
-        from training.feature_builder import _safe_pct
+        from training.feature_pipeline import _safe_pct
 
         # Upward case: close rises
         closes_up = np.linspace(100, 150, 50)
@@ -198,13 +198,13 @@ class TestTargetGeneration:
 
     def test_safe_pct_zero_denominator(self):
         """_safe_pct guards against zero division."""
-        from training.feature_builder import _safe_pct
+        from training.feature_pipeline import _safe_pct
 
         assert _safe_pct(100.0, 0.0) == 0.0
 
     def test_known_return_values(self):
         """Verify exact return values with known close prices."""
-        from training.feature_builder import _safe_pct
+        from training.feature_pipeline import _safe_pct
 
         # close[0]=100, close[20]=120 => return = 0.20
         assert _safe_pct(120.0, 100.0) == pytest.approx(0.20)
@@ -221,7 +221,7 @@ class TestWalkForwardFoldBoundaries:
     """Temporal splits must enforce strict train <= year, val == year."""
 
     def test_fold_boundaries(self):
-        from training.walk_forward import WalkForwardConfig, generate_splits
+        from training.validation import WalkForwardConfig, generate_splits
 
         df = _make_multiyear_ohlcv(years=range(2019, 2026), days_per_year=252)
 
@@ -265,7 +265,7 @@ class TestWalkForwardFoldBoundaries:
 
     def test_nan_targets_dropped(self):
         """Rows with NaN targets must be excluded from splits."""
-        from training.walk_forward import WalkForwardConfig, generate_splits
+        from training.validation import WalkForwardConfig, generate_splits
 
         df = _make_multiyear_ohlcv(years=range(2019, 2024), days_per_year=100)
         df["direction_20d"] = 1.0
@@ -284,7 +284,7 @@ class TestWalkForwardFoldBoundaries:
 
     def test_missing_target_column_raises(self):
         """generate_splits must raise if target column is absent."""
-        from training.walk_forward import WalkForwardConfig, generate_splits
+        from training.validation import WalkForwardConfig, generate_splits
 
         df = _make_ohlcv(n_days=50)
         config = WalkForwardConfig(target_col="nonexistent_col")
@@ -563,7 +563,7 @@ class TestInvalidOHLCVInput:
     """Feature builder must reject bad input gracefully."""
 
     def test_missing_required_columns(self):
-        from training.feature_builder import build_feature_matrix
+        from training.feature_pipeline import build_feature_matrix
 
         # Missing 'close' column
         df = pd.DataFrame({
@@ -579,7 +579,7 @@ class TestInvalidOHLCVInput:
             build_feature_matrix(df)
 
     def test_empty_dataframe(self):
-        from training.feature_builder import build_feature_matrix
+        from training.feature_pipeline import build_feature_matrix
 
         df = pd.DataFrame(columns=["symbol", "date", "open", "high", "low", "close", "volume"])
         with pytest.raises(ValueError, match="empty"):
@@ -587,7 +587,7 @@ class TestInvalidOHLCVInput:
 
     def test_all_nan_handled(self):
         """DataFrame with NaN in OHLCV should be handled by validate_ohlcv."""
-        from training.data_adapter import validate_ohlcv
+        from training.dataset_builder import validate_ohlcv
 
         df = pd.DataFrame({
             "symbol": ["A"] * 5,
@@ -608,10 +608,10 @@ class TestInvalidOHLCVInput:
 
 
 class TestValidateOHLCV:
-    """Test data_adapter.validate_ohlcv with good and bad data."""
+    """Test dataset_builder.validate_ohlcv with good and bad data."""
 
     def test_valid_data_passes(self):
-        from training.data_adapter import validate_ohlcv
+        from training.dataset_builder import validate_ohlcv
 
         df = _make_ohlcv(n_days=50)
         result = validate_ohlcv(df)
@@ -623,7 +623,7 @@ class TestValidateOHLCV:
         assert result["date"].is_monotonic_increasing
 
     def test_missing_columns_raises(self):
-        from training.data_adapter import validate_ohlcv
+        from training.dataset_builder import validate_ohlcv
 
         df = pd.DataFrame({"symbol": ["A"], "date": ["2020-01-01"]})
         with pytest.raises(ValueError, match="Missing required columns"):
@@ -631,7 +631,7 @@ class TestValidateOHLCV:
 
     def test_non_numeric_coerced_and_dropped(self):
         """Non-numeric values in OHLCV columns get coerced to NaN then dropped."""
-        from training.data_adapter import validate_ohlcv
+        from training.dataset_builder import validate_ohlcv
 
         df = pd.DataFrame({
             "symbol": ["A", "A", "A"],
@@ -648,7 +648,7 @@ class TestValidateOHLCV:
 
     def test_date_coercion(self):
         """String dates should be coerced to datetime."""
-        from training.data_adapter import validate_ohlcv
+        from training.dataset_builder import validate_ohlcv
 
         df = pd.DataFrame({
             "symbol": ["A"],
@@ -664,7 +664,7 @@ class TestValidateOHLCV:
 
     def test_sorting_order(self):
         """Output must be sorted by (symbol, date)."""
-        from training.data_adapter import validate_ohlcv
+        from training.dataset_builder import validate_ohlcv
 
         df_a = _make_ohlcv(n_days=10, symbol="ZZZ", start_date="2020-01-01", seed=1)
         df_b = _make_ohlcv(n_days=10, symbol="AAA", start_date="2020-01-01", seed=2)
@@ -687,7 +687,7 @@ class TestEvaluationEmptyInput:
     """Edge cases for evaluation functions with empty/missing data."""
 
     def test_aggregate_fold_results_empty(self):
-        from training.evaluation import aggregate_fold_results
+        from training.metrics import aggregate_fold_results
 
         result = aggregate_fold_results([])
         assert result["mean_hit_rate"] is None
@@ -697,7 +697,7 @@ class TestEvaluationEmptyInput:
         assert result["per_fold_summary"] == []
 
     def test_aggregate_fold_results_single_fold(self):
-        from training.evaluation import aggregate_fold_results
+        from training.metrics import aggregate_fold_results
 
         fold = {
             "fold_id": 0,
@@ -721,7 +721,7 @@ class TestEvaluationEmptyInput:
         assert result["total_val_samples"] == 250
 
     def test_compute_calibration_report_empty_arrays(self):
-        from training.evaluation import compute_calibration_report
+        from training.calibration import compute_calibration_report
 
         result = compute_calibration_report(np.array([]), np.array([]))
         assert result["buckets"] == []
@@ -729,7 +729,7 @@ class TestEvaluationEmptyInput:
         assert result["mce"] == 0.0
 
     def test_compute_calibration_report_none_inputs(self):
-        from training.evaluation import compute_calibration_report
+        from training.calibration import compute_calibration_report
 
         result = compute_calibration_report(None, None)
         assert result["buckets"] == []
@@ -737,7 +737,7 @@ class TestEvaluationEmptyInput:
 
     def test_compute_calibration_report_valid(self):
         """Calibration report with known data should produce correct buckets."""
-        from training.evaluation import compute_calibration_report
+        from training.calibration import compute_calibration_report
 
         rng = np.random.default_rng(_SEED)
         y_true = rng.choice([0, 1], size=200)
@@ -773,8 +773,8 @@ class TestModelRegistryVersioning:
 
             # Create version dirs out of order
             for datestamp in ["20260101", "20260315", "20260210"]:
-                d = tmp_path / f"lightgbm_baseline_alpha158_v1_{datestamp}"
-                d.mkdir()
+                d = tmp_path / "stable" / f"lightgbm_baseline_alpha158_v1_{datestamp}"
+                d.mkdir(parents=True)
                 (d / "model.txt").write_text("mock")
 
             versions = model_registry.list_model_versions()
@@ -794,8 +794,8 @@ class TestModelRegistryVersioning:
             model_registry.REGISTRY_DIR = tmp_path
 
             for datestamp in ["20260101", "20260620"]:
-                d = tmp_path / f"lightgbm_baseline_alpha158_v1_{datestamp}"
-                d.mkdir()
+                d = tmp_path / "stable" / f"lightgbm_baseline_alpha158_v1_{datestamp}"
+                d.mkdir(parents=True)
                 (d / "model.txt").write_text("mock")
 
             result = model_registry.get_latest_model_path()
@@ -814,7 +814,7 @@ class TestGenerateSampleCSV:
     """Synthetic CSV generator produces valid, loadable data."""
 
     def test_generate_and_load(self, tmp_path: Path):
-        from training.data_adapter import generate_sample_csv, load_csv
+        from training.dataset_builder import generate_sample_csv, load_csv
 
         csv_path = str(tmp_path / "test_data.csv")
         generate_sample_csv(csv_path, n_symbols=3, n_days=100, seed=_SEED)
@@ -826,7 +826,7 @@ class TestGenerateSampleCSV:
 
     def test_reproducibility(self, tmp_path: Path):
         """Same seed produces identical CSV output."""
-        from training.data_adapter import generate_sample_csv
+        from training.dataset_builder import generate_sample_csv
 
         p1 = str(tmp_path / "a.csv")
         p2 = str(tmp_path / "b.csv")
@@ -845,7 +845,7 @@ class TestWalkForwardSplitShapes:
     """X_train / X_val array shapes must be consistent with feature count."""
 
     def test_array_shapes(self):
-        from training.walk_forward import WalkForwardConfig, generate_splits
+        from training.validation import WalkForwardConfig, generate_splits
 
         df = _make_multiyear_ohlcv(years=range(2019, 2026), days_per_year=252)
         rng = np.random.default_rng(_SEED)

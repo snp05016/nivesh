@@ -54,6 +54,10 @@ TARGET_COLUMNS: Final[list[str]] = [
 # Minimum rows the FeatureComputer needs (largest Alpha158 window is 60)
 _MIN_ALPHA158_ROWS: Final[int] = 60
 
+# Abort when more than this share of eligible rows fails feature computation:
+# silently dropping them would bias the training set.
+MAX_DROP_RATE: Final[float] = 0.02
+
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
@@ -145,12 +149,15 @@ def _build_for_symbol(
     sym_df: pd.DataFrame,
     fc: FeatureComputer,
     min_history: int,
-) -> list[dict]:
+) -> tuple[list[dict], int, int]:
     """Build feature rows for a single symbol (already sorted by date asc).
 
-    Returns a list of dicts, one per valid date.
+    Returns (rows, attempts, failures): one dict per valid date, the number of
+    rows sent to the FeatureComputer and how many of those it rejected.
     """
     rows: list[dict] = []
+    attempts = 0
+    failures = 0
     n = len(sym_df)
     symbol = sym_df.iloc[0]["symbol"]
 
@@ -185,9 +192,11 @@ def _build_for_symbol(
         fc_input = ohlcv_slice[cols_for_fc].tail(lookback)
         pl_df = pl.from_pandas(fc_input)
 
+        attempts += 1
         try:
             alpha_row = fc.compute_all(pl_df)
-        except (ValueError, Exception) as exc:
+        except Exception as exc:
+            failures += 1
             _LOG.debug("FeatureComputer failed for %s @ idx %d: %s", symbol, i, exc)
             continue
 
@@ -215,7 +224,12 @@ def _build_for_symbol(
 
         rows.append(record)
 
-    return rows
+    if failures:
+        _LOG.warning(
+            "FeatureComputer failed on %d of %d rows for %s (rows dropped)",
+            failures, attempts, symbol,
+        )
+    return rows, attempts, failures
 
 
 def build_feature_matrix(
@@ -266,6 +280,8 @@ def build_feature_matrix(
 
     # ── Process each symbol ───────────────────────────────────────────────
     all_rows: list[dict] = []
+    total_attempts = 0
+    total_failures = 0
     symbols = df["symbol"].unique()
 
     for idx, sym in enumerate(symbols):
@@ -277,11 +293,24 @@ def build_feature_matrix(
             )
             continue
 
-        rows = _build_for_symbol(sym_df, fc, min_history)
+        rows, attempts, failures = _build_for_symbol(sym_df, fc, min_history)
         all_rows.extend(rows)
+        total_attempts += attempts
+        total_failures += failures
 
         if (idx + 1) % 50 == 0:
             _LOG.info("Processed %d / %d symbols", idx + 1, len(symbols))
+
+    if total_attempts and total_failures / total_attempts > MAX_DROP_RATE:
+        raise RuntimeError(
+            f"FeatureComputer failed on {total_failures} of {total_attempts} rows "
+            f"({total_failures / total_attempts:.1%} > {MAX_DROP_RATE:.0%}); "
+            "fix the input data instead of training on a biased subset"
+        )
+    if total_failures:
+        _LOG.warning(
+            "Dropped %d of %d rows on FeatureComputer failures", total_failures, total_attempts,
+        )
 
     if not all_rows:
         _LOG.warning("No valid training rows produced")
