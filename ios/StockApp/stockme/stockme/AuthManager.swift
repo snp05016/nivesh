@@ -3,8 +3,6 @@ import Combine
 
 @MainActor
 class AuthManager: ObservableObject {
-    static let shared = AuthManager()
-    
     @Published var currentUser: LoggedInUser? = nil
     @Published var isLoggingIn = false
     @Published var loginError: String? = nil

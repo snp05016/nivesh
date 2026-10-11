@@ -31,6 +31,9 @@ fail_if_any swift_grep '\{ *HapticManager\.[A-Za-z]+\([^)]*\); *[A-Za-z_][A-Za-z
 fail_if_any swift_grep '-> some View *\{ *HapticManager'
 fail_if_any swift_grep '\.toolbar *\{ *HapticManager'
 fail_if_any swift_grep 'Button\([^()]*action: *[^(){}]*\) *\{ *HapticManager'
+# Auth state has one owner: the @StateObject in stockmeApp, injected as an environment
+# object. A static instance would be a second, stale source of truth (audit WIP-12).
+fail_if_any swift_grep 'AuthManager\.shared\b|static +(let|var) +[A-Za-z_]+ *(: *AuthManager)? *= *AuthManager\('
 
 if [ "$status" -ne 0 ]; then
   echo "ios_static_checks: FAILED"
