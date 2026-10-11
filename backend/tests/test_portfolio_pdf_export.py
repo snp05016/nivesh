@@ -15,7 +15,7 @@ _UNPRICED = "PDFNOPRICE"
 
 @pytest.fixture
 def pdf_holding(test_user_id, monkeypatch):
-    from database import get_session, Portfolio
+    from database import get_session, Portfolio  # pyright: ignore[reportAttributeAccessIssue]  (checker resolves `models` to ml-engine/models)
 
     with get_session() as session:
         session.add(Portfolio(
@@ -68,7 +68,7 @@ def test_export_unavailable_returns_503(client, auth_headers, test_user_id, monk
 
 @pytest.mark.skipif(not FPDF_INSTALLED, reason="fpdf2 not installed")
 def test_export_with_unpriced_holding_still_returns_pdf(client, auth_headers, pdf_holding, monkeypatch):
-    from database import get_session, Portfolio
+    from database import get_session, Portfolio  # pyright: ignore[reportAttributeAccessIssue]  (checker resolves `models` to ml-engine/models)
 
     with get_session() as session:
         session.add(Portfolio(
