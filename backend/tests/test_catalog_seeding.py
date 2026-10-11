@@ -49,7 +49,10 @@ def _counts() -> dict:
 
 
 def test_get_does_not_seed(client, monkeypatch):
-    monkeypatch.setattr(config.settings, "DEMO_MODE", False)
+    # Startup seeding already ran when the session client started; DEMO_MODE
+    # is switched on here only so the demo-gated loan/FD routes (FAKE-23)
+    # reach their handlers, which must not seed on GET.
+    monkeypatch.setattr(config.settings, "DEMO_MODE", True)
     before = _counts()
     for path in _GETS:
         assert client.get(path).status_code == 200, path

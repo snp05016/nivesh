@@ -37,6 +37,15 @@ class TestQuantEngineMath:
         assert targets["lower_3m"] < 1000.0
         assert targets["upper_3m"] > targets["lower_3m"]
 
+    def test_vol_range_symmetric(self):
+        """FAKE-17: the 3M range has no hardcoded drift, so it is centred on price."""
+        from services.quant_engine import QuantitativeEngine
+        targets = QuantitativeEngine._compute_conformal_targets({
+            "current_price": 100.0,
+            "daily_volatility": 0.01,
+        })
+        assert targets["upper_3m"] - 100.0 == pytest.approx(100.0 - targets["lower_3m"], abs=1e-6)
+
     def test_calibrated_confidence_bounds(self):
         from services.quant_engine import QuantitativeEngine
         engine = QuantitativeEngine("TEST")

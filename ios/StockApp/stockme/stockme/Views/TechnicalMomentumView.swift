@@ -4,7 +4,6 @@ import Charts
 // MARK: - Technical Momentum View (Section 9)
 
 struct TechnicalMomentumView: View {
-    @State private var selectedIndex: String = "NIFTY 500"
     @State private var selectedSubTab: Int = 0      // 9.2 nav sub-bar
     @State private var selectedMomentum: String = "Bullish"  // 9.3 radio group
     @State private var dashboard: MarketDashboardResponse? = nil
@@ -12,8 +11,7 @@ struct TechnicalMomentumView: View {
     @State private var topMovers: TopMoversResponse? = nil
     @State private var isLoadingMovers = false
 
-    let indices = ["NIFTY 50", "NIFTY 500", "NIFTY BANK", "NIFTY IT", "MIDCAP 100"]
-    let subTabs = ["Technical Trends", "OI Trends", "Sectors", "Top Gainers", "Top Losers", "Active by Value", "Active by Volume"]
+    let subTabs = ["Technical Trends", "Sectors", "Top Gainers", "Top Losers", "Active by Value", "Active by Volume"]
     let momentumFilters = ["Bullish", "Turning Bullish", "Bearish", "Turning Bearish"]
 
     var body: some View {
@@ -21,8 +19,6 @@ struct TechnicalMomentumView: View {
             Theme.canvas.ignoresSafeArea()
             VStack(spacing: Theme.Spacing.none) {
                 pageHeader
-                // 9.1 Dropdown Index Selector
-                indexDropdown
                 // 9.2 Horizontal Analytics Sub-Bar
                 subTabBar
                 Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(height: 0.5)
@@ -57,29 +53,6 @@ struct TechnicalMomentumView: View {
         .background(Theme.canvasDeep)
     }
 
-    // MARK: 9.1 Dropdown Index Selector
-
-    private var indexDropdown: some View {
-        Menu {
-            ForEach(indices, id: \.self) { idx in
-                Button(idx) { selectedIndex = idx }.buttonStyle(EKPressStyle())
-            }
-        } label: {
-            HStack(spacing: Theme.Spacing.medium) {
-                Text(selectedIndex)
-                    .font(Theme.serialNumberFont(size: 12))
-                    .foregroundStyle(Theme.inkPrimary)
-                Image(systemName: "chevron.down")
-                    .font(Theme.officialStampFont(size: 10))
-                    .foregroundStyle(Theme.inkTertiary)
-                Spacer()
-            }
-            .padding(.horizontal, Theme.screenPadding)
-            .padding(.vertical, Theme.Spacing.medium)
-            .background(Theme.canvasDeep)
-        }
-    }
-
     // MARK: 9.2 Horizontal Analytics Sub-Bar
 
     private var subTabBar: some View {
@@ -109,12 +82,11 @@ struct TechnicalMomentumView: View {
     private var subTabContent: some View {
         switch selectedSubTab {
         case 0: technicalTrendsTab
-        case 1: oiTrendsTab
-        case 2: sectorsTab
-        case 3: topGainersTab
-        case 4: topLosersTab
-        case 5: activeByValueTab
-        case 6: activeByVolumeTab
+        case 1: sectorsTab
+        case 2: topGainersTab
+        case 3: topLosersTab
+        case 4: activeByValueTab
+        case 5: activeByVolumeTab
         default: comingSoonTab(subTabs[selectedSubTab])
         }
     }
@@ -132,7 +104,7 @@ struct TechnicalMomentumView: View {
                 } else {
                     let tickers = momentumTickers(for: selectedMomentum)
                     if tickers.isEmpty {
-                        Text("No \(selectedMomentum.lowercased()) signals detected for \(selectedIndex).")
+                        Text("No \(selectedMomentum.lowercased()) signals detected.")
                             .font(Theme.officialStampFont(size: 12))
                             .foregroundStyle(Theme.inkTertiary)
                             .padding(Theme.Spacing.xLarge)
@@ -233,110 +205,25 @@ struct TechnicalMomentumView: View {
         .background(Theme.canvas)
     }
 
-    // MARK: OI Trends Tab (tab 1) — uses pulse breadth data as proxy
-
-    private var oiTrendsTab: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: Theme.Spacing.card) {
-                // Header note
-                Text("OPEN INTEREST SNAPSHOT")
-                    .font(Theme.officialStampFont(size: 10))
-                    .tracking(1.5)
-                    .foregroundStyle(Theme.inkSecondary)
-                    .padding(.horizontal, Theme.screenPadding)
-                    .padding(.top, Theme.Spacing.card)
-
-                if let pulse = dashboard?.pulse {
-                    let total = max(1, pulse.advances + pulse.declines + pulse.unchanged)
-                    let advPct = Double(pulse.advances) / Double(total) * 100
-                    let decPct = Double(pulse.declines) / Double(total) * 100
-
-                    // Bullish OI bar
-                    OIBreadthRow(label: "Bullish OI (Advances)",
-                                 value: pulse.advances,
-                                 pct: advPct,
-                                 color: Theme.bullGreen)
-                    // Bearish OI bar
-                    OIBreadthRow(label: "Bearish OI (Declines)",
-                                 value: pulse.declines,
-                                 pct: decPct,
-                                 color: Theme.bearRed)
-                    // Unchanged
-                    OIBreadthRow(label: "Neutral (Unchanged)",
-                                 value: pulse.unchanged,
-                                 pct: Double(pulse.unchanged) / Double(total) * 100,
-                                 color: Theme.holdAmber)
-
-                    GuillocheDivider()
-                        .padding(.horizontal, Theme.screenPadding)
-
-                    // Breadth ratio card
-                    if let ratio = pulse.breadthRatio {
-                        HStack {
-                            VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
-                                Text("A/D RATIO")
-                                    .font(Theme.officialStampFont(size: 9))
-                                    .tracking(1.5)
-                                    .foregroundStyle(Theme.inkTertiary)
-                                Text(String(format: "%.2f", ratio))
-                                    .font(Theme.serialNumberFont(size: 28))
-                                    .foregroundStyle(ratio >= 1.0 ? Theme.bullGreen : Theme.bearRed)
-                            }
-                            Spacer()
-                            VStack(alignment: .trailing, spacing: Theme.Spacing.xSmall) {
-                                Text(ratio >= 1.5 ? "BROAD RALLY" : ratio >= 1.0 ? "POSITIVE BREADTH" : ratio >= 0.7 ? "NARROW BREADTH" : "BROAD DECLINE")
-                                    .font(Theme.officialStampFont(size: 10))
-                                    .tracking(1)
-                                    .foregroundStyle(ratio >= 1.0 ? Theme.bullGreen : Theme.bearRed)
-                                Text("Advance/Decline Ratio")
-                                    .font(Theme.officialStampFont(size: 9))
-                                    .foregroundStyle(Theme.inkTertiary)
-                            }
-                        }
-                        .padding(Theme.Spacing.card)
-                        .banknoteCard()
-                        .padding(.horizontal, Theme.screenPadding)
-                    }
-                } else if isLoading {
-                    ForEach(0..<3, id: \.self) { _ in
-                        RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
-                            .fill(Theme.inkTertiary.opacity(0.08))
-                            .frame(height: UIScreen.main.bounds.height * 0.09)
-                            .shimmerPlaceholder(isLoading: true)
-                            .padding(.horizontal, Theme.screenPadding)
-                    }
-                } else {
-                    Text("Market breadth data unavailable.")
-                        .font(Theme.officialStampFont(size: 12))
-                        .foregroundStyle(Theme.inkTertiary)
-                        .padding(Theme.Spacing.xLarge)
-                        .frame(maxWidth: .infinity)
-                }
-            }
-            .padding(.bottom, Theme.Spacing.xLarge)
-        }
-        .background(Theme.canvas)
-    }
-
-    // MARK: Top Gainers Tab (tab 3)
+    // MARK: Top Gainers Tab (tab 2)
 
     private var topGainersTab: some View {
         topMoversListTab(title: "TOP GAINERS", items: topMovers?.gainers, isLoading: isLoadingMovers, positive: true)
     }
 
-    // MARK: Top Losers Tab (tab 4)
+    // MARK: Top Losers Tab (tab 3)
 
     private var topLosersTab: some View {
         topMoversListTab(title: "TOP LOSERS", items: topMovers?.losers, isLoading: isLoadingMovers, positive: false)
     }
 
-    // MARK: Active by Value Tab (tab 5)
+    // MARK: Active by Value Tab (tab 4)
 
     private var activeByValueTab: some View {
         topMoversListTab(title: "ACTIVE BY VALUE", items: topMovers?.activeByValue, isLoading: isLoadingMovers, valueMode: true)
     }
 
-    // MARK: Active by Volume Tab (tab 6)
+    // MARK: Active by Volume Tab (tab 5)
 
     private var activeByVolumeTab: some View {
         topMoversListTab(title: "ACTIVE BY VOLUME", items: topMovers?.activeByVolume, isLoading: isLoadingMovers, volumeMode: true)
@@ -425,10 +312,6 @@ struct TechnicalMomentumView: View {
             Text(label)
                 .font(Theme.officialStampFont(size: 14))
                 .foregroundStyle(Theme.inkTertiary)
-            Text("Data loading from \(selectedIndex)")
-                .font(Theme.officialStampFont(size: 11))
-                .foregroundStyle(Theme.inkTertiary)
-                .padding(.top, Theme.Spacing.small)
             Spacer()
         }
     }
@@ -594,45 +477,6 @@ struct SectorHeatBlock: View {
             RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
                 .stroke(isPositive ? Theme.bullGreen.opacity(0.2) : Theme.bearRed.opacity(0.2), lineWidth: 0.5)
         )
-    }
-}
-
-// MARK: - OI Breadth Row (Section 9 — OI Trends tab)
-
-struct OIBreadthRow: View {
-    let label: String
-    let value: Int
-    let pct: Double
-    let color: Color
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
-            HStack {
-                Text(label)
-                    .font(Theme.officialStampFont(size: 11))
-                    .foregroundStyle(Theme.inkSecondary)
-                Spacer()
-                Text("\(value)")
-                    .font(Theme.serialNumberFont(size: 12))
-                    .foregroundStyle(color)
-                Text(String(format: "(%.1f%%)", pct))
-                    .font(Theme.officialStampFont(size: 10))
-                    .foregroundStyle(Theme.inkTertiary)
-            }
-            let barWidth = UIScreen.main.bounds.width - 2 * Theme.screenPadding - 2 * Theme.Spacing.card
-            ZStack(alignment: .leading) {
-                RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
-                    .fill(color.opacity(0.12))
-                    .frame(height: 6)
-                RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
-                    .fill(color.opacity(0.7))
-                    .frame(width: barWidth * min(pct / 100.0, 1.0), height: 6)
-            }
-            .frame(height: 6)
-        }
-        .padding(Theme.Spacing.card)
-        .banknoteCard()
-        .padding(.horizontal, Theme.screenPadding)
     }
 }
 

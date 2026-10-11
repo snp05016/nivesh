@@ -83,9 +83,11 @@ def test_net_balance_can_be_negative_and_income_floors_at_zero():
         _clear_accounts(user_id)
 
 
-def test_demo_account_cap(client, auth_headers, test_user_id):
+def test_demo_account_cap(client, auth_headers, test_user_id, monkeypatch):
+    import config.settings
     from services.finance_tracker_service import MAX_DEMO_ACCOUNTS_PER_USER
 
+    monkeypatch.setattr(config.settings, "DEMO_MODE", True)  # /api/finance is demo-gated (FAKE-23)
     _clear_accounts(test_user_id)
     try:
         payload = {"bank_name": "HDFC Bank", "account_type": "savings"}

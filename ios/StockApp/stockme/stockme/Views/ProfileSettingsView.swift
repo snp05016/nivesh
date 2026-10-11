@@ -2,20 +2,21 @@ import SwiftUI
 
 // MARK: - ProfileSettingsView
 //
-// Editable user profile — display name, email, phone, avatar placeholder.
+// User profile — display name, email, phone, avatar placeholder.
 // The backend `User` model (backend/models/db_models.py) currently only
 // stores username/display_name; email and phone have no backend column,
-// so they are persisted locally (AppStorage, keyed per-user) for this demo,
-// same treatment as SettingsScreen's other locally-persisted preferences.
-// Display name + username come from AuthManager.currentUser (server-backed).
+// so they are persisted locally (AppStorage) on this device only.
+// Display name + username come from AuthManager.currentUser (server-backed)
+// and are read-only: there is no backend profile-update route yet.
 
 struct ProfileSettingsView: View {
     @EnvironmentObject var authManager: AuthManager
 
     @AppStorage("nivesh_profileEmail") private var email = ""
     @AppStorage("nivesh_profilePhone") private var phone = ""
-    @State private var displayName = ""
     @State private var showSavedToast = false
+
+    private var displayName: String { authManager.currentUser?.displayName ?? "" }
 
     var body: some View {
         ZStack {
@@ -32,7 +33,6 @@ struct ProfileSettingsView: View {
         }
         .navigationTitle("Profile")
         .navigationBarTitleDisplayMode(.large)
-        .onAppear { displayName = authManager.currentUser?.displayName ?? "" }
         .overlay(alignment: .bottom) { savedToast }
     }
 
@@ -59,7 +59,7 @@ struct ProfileSettingsView: View {
 
     private var detailsSection: some View {
         VStack(spacing: Theme.Spacing.none) {
-            ProfileFieldRow(icon: "person.text.rectangle", title: "Display Name", text: $displayName)
+            ProfileReadOnlyRow(icon: "person.text.rectangle", title: "Display Name", value: displayName)
             GuillocheDivider()
             ProfileFieldRow(icon: "at", title: "Email", text: $email, keyboard: .emailAddress)
             GuillocheDivider()
@@ -91,10 +91,10 @@ struct ProfileSettingsView: View {
     }
 
     private func saveProfile() {
-        // Display name is only persisted locally in this demo — there is no
-        // PATCH /user/profile endpoint on the backend to push it to yet.
+        // Email/phone are AppStorage-backed (already written on edit); nothing
+        // is sent to the server, so the confirmation says so.
         withAnimation { showSavedToast = true }
-        A11y.announce("Profile saved")
+        A11y.announce("Saved on this device")
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) {
             withAnimation { showSavedToast = false }
         }
@@ -103,7 +103,7 @@ struct ProfileSettingsView: View {
     @ViewBuilder
     private var savedToast: some View {
         if showSavedToast {
-            Text("PROFILE SAVED")
+            Text("SAVED ON THIS DEVICE")
                 .font(Theme.officialStampFont(size: 10))
                 .foregroundStyle(Theme.canvas)
                 .padding(.horizontal, Theme.Spacing.card)

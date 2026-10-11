@@ -14,6 +14,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
+from core.demo_mode import require_demo_mode
 from core.security import require_auth
 from services.fixed_deposit_service import (
     book_fixed_deposit,
@@ -24,7 +25,8 @@ from services.fixed_deposit_service import (
 )
 from services.product_bounds import ProductBoundsError
 
-router = APIRouter(prefix="/api/fixed-deposits", tags=["Fixed Deposits"])
+# Demo-only money flows: 404 unless DEMO_MODE=true (FAKE-23).
+router = APIRouter(prefix="/api/fixed-deposits", tags=["Fixed Deposits"], dependencies=[Depends(require_demo_mode)])
 
 VALID_PAYMENT_METHODS = {"upi", "net_banking"}
 

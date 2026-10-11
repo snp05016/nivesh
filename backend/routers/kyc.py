@@ -11,6 +11,7 @@ full disclosure and the KYC-gate invariant this endpoint set makes reachable.
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
+from core.demo_mode import require_demo_mode
 from core.security import require_auth
 from services.kyc_consent_service import (
     bind_device,
@@ -94,7 +95,9 @@ def check_device_binding(
 # Fraud signals (MOCK — see kyc_consent_service.get_fraud_signals_for_user)
 # ---------------------------------------------------------------------------
 
-@router.get("/fraud-signals")
+# Mock summary: 404 unless DEMO_MODE=true (FAKE-23). Consents and device
+# binding stay ungated because they are compliance records.
+@router.get("/fraud-signals", dependencies=[Depends(require_demo_mode)])
 def read_fraud_signals(user_id: int = Depends(require_auth)):
     """MOCK DATA - simulated for demo purposes, not a real integration.
 

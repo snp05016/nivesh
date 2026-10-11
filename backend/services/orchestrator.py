@@ -1081,14 +1081,14 @@ def _normalize_response(result: dict, scan_type: str = "standard", quant_payload
     tp = result["target_price_bounds"]
     for horizon in ("short_term_3m", "medium_term_12m", "long_term_36m"):
         if not isinstance(tp.get(horizon), dict):
-            tp[horizon] = {"lower": 0.0, "mid": 0.0, "upper": 0.0, "coverage_pct": 90}
+            tp[horizon] = {"lower": 0.0, "mid": 0.0, "upper": 0.0, "coverage_pct": None}
         else:
             for k in ("lower", "mid", "upper"):
                 try:
                     tp[horizon][k] = float(tp[horizon].get(k, 0.0))
                 except (ValueError, TypeError):
                     tp[horizon][k] = 0.0
-            tp[horizon].setdefault("coverage_pct", 90)
+            tp[horizon].setdefault("coverage_pct", None)
 
     # 19. historical_analogues — KNN analogue search results
     if not isinstance(result.get("historical_analogues"), dict):

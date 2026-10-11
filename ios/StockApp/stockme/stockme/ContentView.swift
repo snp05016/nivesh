@@ -369,7 +369,7 @@ enum MarketSection: String, Hashable, CaseIterable {
     var description: String {
         switch self {
         case .earnings:  return "YoY growth tracking, earnings calendar, beat/miss analysis and post-result movers"
-        case .technical: return "OI trends, sector rotation, golden/death cross signals and momentum scanner"
+        case .technical: return "Moving-average crossover signals, sector moves, top gainers/losers and most-active stocks"
         case .unlisted:  return "OTC price discovery for pre-IPO, SME board and upcoming listing advisory"
         case .screener:  return "Search any NSE or BSE stock by name or ticker, preset screens, quick compare"
         case .alerts:    return "Target price triggers and surveillance flags for your entire watchlist"

@@ -13,6 +13,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
+from core.demo_mode import require_demo_mode
 from core.security import require_auth
 from services.credit_bureau_mock_service import get_mock_credit_report_summary
 from services.finance_tracker_service import (
@@ -33,7 +34,8 @@ from services.loan_marketplace_service import (
 )
 from services.product_bounds import ProductBoundsError
 
-router = APIRouter(prefix="/api/finance", tags=["Loan Marketplace"])
+# Demo-only money flows: 404 unless DEMO_MODE=true (FAKE-23).
+router = APIRouter(prefix="/api/finance", tags=["Loan Marketplace"], dependencies=[Depends(require_demo_mode)])
 
 VALID_LOAN_TYPES = {"personal", "home", "car", "gold", "education"}
 

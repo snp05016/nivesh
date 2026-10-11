@@ -260,10 +260,13 @@ class QuantitativeEngine:
 
     @staticmethod
     def _compute_conformal_targets(market_data: dict) -> Dict[str, float]:
-        """Compute 3-month conformal prediction bounds.
+        """Compute an approximate 3-month volatility range.
 
-        Uses: projected_vol_3m = daily_vol * sqrt(63) * 1.645 (95% VaR z-score)
-        Upper/lower bounds around a 1.5% expected drift.
+        Bounds are current_price * (1 +/- daily_vol * sqrt(63) * 1.645): a
+        ~90% two-sided range under a normal-returns assumption, centred on the
+        current price with no assumed drift. This is NOT a conformal interval
+        (no calibration set or nonconformity scores); the ``*_3m`` key names are
+        kept only for the API contract.
 
         Args:
             market_data (dict): Dictionary containing current price and daily volatility.
@@ -277,13 +280,11 @@ class QuantitativeEngine:
         if current_price <= 0:
             return {"upper_3m": 0.0, "lower_3m": 0.0}
 
-        # 63 trading days in 3 months, 1.645 = 95% confidence z-score
+        # 63 trading days in 3 months; 1.645 = two-sided 90% normal z-score
         projected_vol_3m = daily_vol * math.sqrt(63) * 1.645
-        drift = 0.015  # 1.5% expected drift over 3 months
 
-        expected_price = current_price * (1 + drift)
-        upper_bound = expected_price * (1 + projected_vol_3m)
-        lower_bound = expected_price * (1 - projected_vol_3m)
+        upper_bound = current_price * (1 + projected_vol_3m)
+        lower_bound = current_price * (1 - projected_vol_3m)
 
         return {
             "upper_3m": round(upper_bound, 2),

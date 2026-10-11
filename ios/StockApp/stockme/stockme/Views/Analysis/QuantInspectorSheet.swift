@@ -158,7 +158,7 @@ private struct QuantBoundsContext: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.small) {
-            Text("CONFORMAL 90% BOUNDS")
+            Text("3M VOLATILITY RANGE (≈90%)")
                 .font(Theme.officialStampFont(size: 9, relativeTo: .caption2))
                 .tracking(1.5)
                 .foregroundStyle(Theme.inkTertiary)

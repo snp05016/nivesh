@@ -565,7 +565,7 @@ struct ConformalBoundsRow: View {
         HStack(spacing: Theme.Spacing.standard) {
             VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                 HStack(spacing: Theme.Spacing.small) {
-                    Text("3M CONFORMAL BOUNDS")
+                    Text("3M VOLATILITY RANGE")
                         .font(Theme.officialStampFont(size: 9))
                         .tracking(1.5)
                         .foregroundStyle(Theme.inkTertiary)
@@ -590,7 +590,7 @@ struct ConformalBoundsRow: View {
                 }
             }
             Spacer()
-            Text("90% CI")
+            Text("≈90% RANGE")
                 .font(Theme.officialStampFont(size: 9))
                 .tracking(1.5)
                 .foregroundStyle(Theme.inkTertiary)
