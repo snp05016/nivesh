@@ -172,6 +172,17 @@ init_db()
 import main as _main_module
 _main_module._check_rate_limit = lambda _ip: True
 
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limiter():
+    """The security middleware calls core.rate_limiter directly (the main.py
+    bypass above does not reach it), so clear its store per test: tests share
+    one client IP and /login is capped at 5/minute."""
+    from core.rate_limiter import _rate_limit_store
+    _rate_limit_store.clear()
+    yield
+
+
 # ---------------------------------------------------------------------------
 # TEST USER CONSTANTS
 # ---------------------------------------------------------------------------

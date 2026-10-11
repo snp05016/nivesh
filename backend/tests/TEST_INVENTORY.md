@@ -87,7 +87,7 @@
 | 77 | GET | /watchlist/{user_id} | No | `user_id` | — | — | ✅ Tested |
 | 78 | POST | /notifications/register-device | No | — | — | `{user_id, token, platform}` | ✅ Tested |
 | 79 | POST | /notifications/test | No | — | — | `{user_id}` | ✅ Tested |
-| 80 | POST | /notifications/morning-summary-push | No | — | — | `{user_id}` | ✅ Tested |
+| 80 | POST | /notifications/morning-summary-push | Yes (own user) | — | — | `{user_id}` | ✅ Tested |
 | 81 | GET | /api/v1/experts | No | — | — | — | ✅ Tested |
 | 82 | GET | /api/v1/expert-posts | No | — | `ticker?` | — | ✅ Tested |
 | 83 | GET | /api/v1/dashboard/stream | No | — | — | — | ✅ Tested |

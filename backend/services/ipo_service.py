@@ -4,6 +4,7 @@ Controller-Service-Repository: routers/ipo.py must only validate HTTP input
 and call functions here. All session.query() calls for IPOListing live in
 this module.
 """
+from datetime import date
 from typing import Optional
 
 from database import get_session
@@ -69,6 +70,47 @@ _MOCK_IPOS = [
 ]
 
 
+# Fictional seed rows; the router flags these as is_sample so clients can label them.
+SAMPLE_SYMBOLS = frozenset(r["symbol"] for r in _MOCK_IPOS)
+
+
+def _today() -> date:
+    return date.today()
+
+
+def derive_ipo_status(
+    open_date: Optional[str],
+    close_date: Optional[str],
+    listing_date: Optional[str],
+    today: date,
+) -> Optional[str]:
+    """Status from ISO dates relative to today; None (keep stored) without an open date."""
+    if not open_date:
+        return None
+    t = today.isoformat()  # ISO strings compare chronologically
+    if t < open_date:
+        return "upcoming"
+    if not close_date or t <= close_date:
+        return "open"
+    if listing_date and t >= listing_date:
+        return "listed"
+    return "closed"
+
+
+def _sync_statuses(session) -> None:
+    """Persist date-derived statuses so the status filter sees current values."""
+    today = _today()
+    changed = False
+    for row in session.query(IPOListing).all():
+        derived = derive_ipo_status(row.open_date, row.close_date, row.listing_date, today)
+        if derived and (row.status != derived or row.subscription_status != derived):
+            row.status = derived
+            row.subscription_status = derived
+            changed = True
+    if changed:
+        session.commit()
+
+
 def seed_mock_ipos_if_empty() -> int:
     """Populate ipo_listings with mock data when the table is empty.
 
@@ -112,6 +154,7 @@ def list_ipos(status: Optional[str] = None) -> list[IPOListing]:
     if status is not None and status not in VALID_STATUSES:
         raise ValueError(f"Invalid status '{status}'. Must be one of {sorted(VALID_STATUSES)}")
     with get_session() as session:
+        _sync_statuses(session)
         query = session.query(IPOListing)
         if status:
             query = query.filter(IPOListing.status == status)
@@ -120,11 +163,13 @@ def list_ipos(status: Optional[str] = None) -> list[IPOListing]:
 
 def get_ipo_by_id(ipo_id: int) -> Optional[IPOListing]:
     with get_session() as session:
+        _sync_statuses(session)
         return session.query(IPOListing).filter(IPOListing.id == ipo_id).first()
 
 
 def get_ipo_by_symbol(symbol: str) -> Optional[IPOListing]:
     with get_session() as session:
+        _sync_statuses(session)
         return (
             session.query(IPOListing)
             .filter(IPOListing.symbol == symbol.upper())

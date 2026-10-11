@@ -473,10 +473,14 @@ class TestUserEndpoints:
         assert response.status_code in [200, 500]
     
     def test_notifications_morning_summary_push(self):
-        """Test morning summary push notification."""
-        response = client.post("/notifications/morning-summary-push", json={
-            "user_id": 1
-        })
+        """Morning summary push requires the caller's own token (401 without, 403 for another user)."""
+        from database import create_access_token
+        url = "/notifications/morning-summary-push"
+        assert client.post(url, json={"user_id": 1}).status_code == 401
+        other = {"Authorization": f"Bearer {create_access_token(2)}"}
+        assert client.post(url, json={"user_id": 1}, headers=other).status_code == 403
+        own = {"Authorization": f"Bearer {create_access_token(1)}"}
+        response = client.post(url, json={"user_id": 1}, headers=own)
         assert response.status_code in [200, 404, 500]
     
     def test_get_experts(self):

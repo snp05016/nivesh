@@ -41,6 +41,8 @@ struct IPOListing: Codable, Identifiable, Equatable {
     let status: IPOStatus?
     /// Grey Market Premium, in Rupees per share. Nil when no GMP feed is available for this IPO.
     let gmp: Double?
+    /// True for the backend's fictional seed rows; the UI must label these as sample data.
+    let isSample: Bool?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -55,6 +57,7 @@ struct IPOListing: Codable, Identifiable, Equatable {
         case listingDate = "listing_date"
         case status
         case gmp
+        case isSample = "is_sample"
     }
 
     var priceBandDisplay: String {
@@ -110,11 +113,6 @@ struct IPOSubscriptionDetail: Codable, Equatable {
     /// Backend does not report an employee category or a refresh timestamp yet.
     var employeeTimes: Double? { nil }
     var asOf: String? { nil }
-
-    /// Simple average across whichever categories the backend has reported so far.
-    var totalTimes: Double {
-        let reported = [subscriptionQib, subscriptionNii, subscriptionRetail].compactMap { $0 }
-        guard !reported.isEmpty else { return 0 }
-        return reported.reduce(0, +) / Double(reported.count)
-    }
+    // No "overall" figure: it must be weighted by category reservation, which the
+    // backend does not report, so only per-category multiples are shown.
 }

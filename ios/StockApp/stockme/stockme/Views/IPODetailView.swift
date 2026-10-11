@@ -79,6 +79,10 @@ private struct IPODetailHeader: View {
             }
 
             Spacer()
+
+            if listing.isSample == true {
+                IPOSampleDataStamp()
+            }
         }
         .padding(.horizontal, Theme.screenPadding)
     }
@@ -194,9 +198,6 @@ private struct IPOSubscriptionSection: View {
                     .tracking(1.5)
                     .foregroundColor(Theme.inkSecondary)
                 Spacer()
-                Text(String(format: "%.2fx overall", subscription.totalTimes))
-                    .font(Theme.serialNumberFont(size: 12, relativeTo: .caption))
-                    .foregroundColor(subscription.totalTimes >= 1 ? Theme.bullGreen : Theme.holdAmber)
             }
 
             IPOSubscriptionRow(label: "QIB", times: subscription.qibTimes)

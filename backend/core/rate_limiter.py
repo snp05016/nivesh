@@ -14,14 +14,16 @@ _rate_limit_lock = threading.Lock()
 _RATE_LIMITS = {
     "/analyze": {"window": 3600, "max_requests": 10},
     "/market/quick-info": {"window": 60, "max_requests": 60},
-    "/auth/login": {"window": 60, "max_requests": 5},
+    # Keys must match request.url.path (auth router is mounted at root).
+    "/login": {"window": 60, "max_requests": 5},
+    "/register": {"window": 3600, "max_requests": 10},
     "default": {"window": 60, "max_requests": 120}
 }
 
 def _check_rate_limit(client_id: str, endpoint: str = "default") -> bool:
     """
     Checks the sliding window rate limit for the given client_id and endpoint.
-    Limits: /analyze 10/hour, /market/quick-info 60/minute, /auth/login 5/minute.
+    Limits: /analyze 10/hour, /market/quick-info 60/minute, /login 5/minute, /register 10/hour.
     Raises HTTPException 429 with Retry-After header if exceeded.
     Returns True if allowed.
     """

@@ -10,6 +10,7 @@ from helpers import (
 )
 from database import MarketErrorLog
 from services.harvester_reformatter import strip_emoji
+from services.notifications_inbox import create_notification
 
 _watchlist_price_cache: dict = {}
 _WATCHLIST_CACHE_TTL = 120
@@ -203,6 +204,7 @@ def push_morning_summary(user_id: int) -> Optional[dict]:
         "data": {"type": "morning_summary"},
     }
 
+    create_notification(user_id, "morning_brief", payload["title"], body)
     _deliver_apns(user_id, payload)
     return {"success": True, "payload": payload}
 

@@ -19,7 +19,7 @@ def login_endpoint(req: LoginRequest):
 def register_endpoint(req: RegisterRequest, request: Request):
     client_ip = request.client.host if request.client else "unknown"
     reg_key = f"reg_{client_ip}"
-    _check_rate_limit(reg_key, "/auth/register")
+    _check_rate_limit(reg_key, "/register")
     
     try:
         return register_user(req.username, req.password, req.display_name)

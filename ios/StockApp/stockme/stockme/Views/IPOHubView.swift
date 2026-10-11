@@ -9,7 +9,7 @@ struct IPOHubView: View {
     var body: some View {
         ScrollView {
             LazyVStack(spacing: Theme.sectionSpacing) {
-                IPOHubHeader()
+                IPOHubHeader(showsSampleStamp: vm.allIPOs.contains { $0.isSample == true })
 
                 GuillocheDivider().padding(.horizontal, Theme.screenPadding)
 
@@ -45,11 +45,19 @@ struct IPOHubView: View {
 // MARK: - Header
 
 struct IPOHubHeader: View {
+    var showsSampleStamp = false
+
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
-            Text("IPO Central")
-                .font(Theme.engravedSerif(size: 28, weight: .bold, relativeTo: .title))
-                .foregroundColor(Theme.inkPrimary)
+            HStack {
+                Text("IPO Central")
+                    .font(Theme.engravedSerif(size: 28, weight: .bold, relativeTo: .title))
+                    .foregroundColor(Theme.inkPrimary)
+                Spacer()
+                if showsSampleStamp {
+                    IPOSampleDataStamp()
+                }
+            }
 
             Text("Track, analyze, and apply for the latest Initial Public Offerings.")
                 .font(Theme.engravedSerif(size: 16, weight: .regular, relativeTo: .body))
@@ -323,23 +331,19 @@ private struct IPOStatColumn: View {
     }
 }
 
-/// Compact "times subscribed" bar shown on open-IPO cards — full breakdown lives on the detail screen.
-struct IPOSubscriptionMiniBar: View {
-    let subscription: IPOSubscriptionDetail
-
+/// Marks the backend's fictional seed IPOs so they are never mistaken for live listings.
+struct IPOSampleDataStamp: View {
     var body: some View {
-        HStack(spacing: Theme.Spacing.small) {
-            Text("SUBSCRIBED")
-                .font(Theme.officialStampFont(size: 9, relativeTo: .caption2))
-                .tracking(1.2)
-                .foregroundColor(Theme.inkTertiary)
-
-            Text(String(format: "%.2fx", subscription.totalTimes))
-                .font(Theme.serialNumberFont(size: 13, relativeTo: .subheadline))
-                .foregroundColor(subscription.totalTimes >= 1 ? Theme.bullGreen : Theme.holdAmber)
-
-            Spacer()
-        }
+        Text("SAMPLE DATA")
+            .font(Theme.officialStampFont(size: 10, relativeTo: .caption2))
+            .tracking(1.5)
+            .foregroundColor(Theme.holdAmber)
+            .padding(.horizontal, Theme.Spacing.small)
+            .padding(.vertical, Theme.Spacing.xSmall)
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
+                    .stroke(Theme.holdAmber, lineWidth: 1)
+            )
     }
 }
 

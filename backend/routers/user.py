@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from typing import Optional
 
 from helpers import verify_access_token, WatchlistAddRequest, WatchlistRemoveRequest, upsert_device_token
-from core.security import require_admin
+from core.security import require_admin, require_auth
 import services.user_service as user_service
 
 router = APIRouter(tags=["User"])
@@ -93,7 +93,10 @@ def notifications_test(req: TestNotificationRequest):
 
 
 @router.post("/notifications/morning-summary-push")
-def notifications_morning_summary_push(req: MorningSummaryPushRequest):
+def notifications_morning_summary_push(req: MorningSummaryPushRequest, token_user: int = Depends(require_auth)):
+    # Writes an inbox row + sends a push for req.user_id: only that user may trigger it.
+    if req.user_id != token_user:
+        raise HTTPException(status_code=403, detail="Forbidden")
     try:
         result = user_service.push_morning_summary(req.user_id)
         if result is None:

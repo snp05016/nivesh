@@ -1,7 +1,30 @@
 """Notification inbox service — CRUD for in_app_notifications table."""
 from datetime import datetime, timezone, timedelta
+from typing import Optional
 from database import get_session
 from models.db_models import InAppNotification
+
+
+def create_notification(
+    user_id: int,
+    type: str,
+    title: str,
+    body: str,
+    action_url: Optional[str] = None,
+    session=None,
+) -> int:
+    """Write an inbox row. With a caller session it only flushes (caller commits)."""
+    notif = InAppNotification(
+        user_id=user_id, type=type, title=title[:200], body=body, action_url=action_url
+    )
+    if session is not None:
+        session.add(notif)
+        session.flush()
+        return notif.id
+    with get_session() as own:
+        own.add(notif)
+        own.commit()
+        return notif.id
 
 
 def get_notifications(user_id: int, limit: int = 50) -> list[dict]:

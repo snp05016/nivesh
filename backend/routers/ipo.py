@@ -6,9 +6,10 @@ logic live in services/ipo_service.py (Controller-Service-Repository).
 from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 from services.ipo_service import (
+    SAMPLE_SYMBOLS,
     VALID_STATUSES,
     get_ipo_by_id,
     get_ipo_by_symbol,
@@ -33,6 +34,12 @@ class IPOResponse(BaseModel):
     listing_date: Optional[str] = None
     status: Optional[str] = None
     gmp: Optional[float] = None
+    is_sample: bool = False
+
+    @model_validator(mode="after")
+    def _flag_sample(self):
+        self.is_sample = self.symbol in SAMPLE_SYMBOLS
+        return self
 
     class Config:
         orm_mode = True
@@ -47,6 +54,12 @@ class IPOSubscriptionResponse(BaseModel):
     subscription_qib: Optional[float] = None
     subscription_nii: Optional[float] = None
     subscription_retail: Optional[float] = None
+    is_sample: bool = False
+
+    @model_validator(mode="after")
+    def _flag_sample(self):
+        self.is_sample = self.symbol in SAMPLE_SYMBOLS
+        return self
 
     class Config:
         orm_mode = True

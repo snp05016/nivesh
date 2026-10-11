@@ -8,6 +8,8 @@ from urllib.parse import quote as _url_quote
 
 from helpers import _yf_price, _to_ns, get_session, PriceTarget
 from models.db_models import DeviceToken
+from services.notifications_inbox import create_notification
+from services.preferences import get_preferences
 
 logger = logging.getLogger(__name__)
 
@@ -169,51 +171,68 @@ async def _send_apns_push(user_id: int, ticker: str, target_price: float, curren
             logger.warning("APNs dispatch error for user %d (%s)", user_id, type(e).__name__)
     return any_success or not tokens
 
+async def _poll_once() -> None:
+    """One poller pass: trigger crossed alerts, write the inbox row, push best-effort."""
+    with get_session() as session:
+        pending = session.query(PriceTarget).filter_by(triggered=False).all()
+        if not pending:
+            return
+
+        unique_tickers = {a.ticker for a in pending}
+        prices = {}
+        for t in unique_tickers:
+            ns_ticker = _to_ns(t)
+            price, _ = await asyncio.to_thread(_yf_price, ns_ticker)
+            if price is not None:
+                prices[t] = price
+
+        for alert in pending:
+            current_price = prices.get(alert.ticker)
+            if current_price is None:
+                continue
+
+            triggered = False
+            if alert.direction == "above" and current_price >= alert.target_price:
+                triggered = True
+            elif alert.direction == "below" and current_price <= alert.target_price:
+                triggered = True
+
+            if not triggered:
+                continue
+
+            # The inbox row is the durable delivery; APNs is best-effort on top.
+            create_notification(
+                alert.user_id,
+                "price_alert",
+                f"{alert.ticker} alert triggered",
+                f"{alert.ticker} is now {alert.direction} ₹{alert.target_price:,.2f} "
+                f"(current ₹{current_price:,.2f})",
+                action_url=f"nivesh://analyze/{alert.ticker}",
+                session=session,
+            )
+            alert.triggered = True
+            session.commit()
+
+            prefs = get_preferences(alert.user_id)
+            if prefs is not None and prefs.get("alerts_enabled") is False:
+                continue
+            push_ok = await _send_apns_push(
+                user_id=alert.user_id,
+                ticker=alert.ticker,
+                target_price=alert.target_price,
+                current_price=current_price,
+                direction=alert.direction
+            )
+            if not push_ok:
+                logger.warning("APNs push failed for alert %d (inbox row written)", alert.id)
+
+
 async def price_alert_poller():
-    """Background task that polls every 5 minutes and sends APNs push notifications."""
+    """Background task that polls every 5 minutes; inbox row always, APNs push best-effort."""
     while True:
         try:
-            with get_session() as session:
-                pending = session.query(PriceTarget).filter_by(triggered=False).all()
-                if not pending:
-                    await asyncio.sleep(300)
-                    continue
-                
-                unique_tickers = {a.ticker for a in pending}
-                prices = {}
-                for t in unique_tickers:
-                    ns_ticker = _to_ns(t)
-                    price, _ = await asyncio.to_thread(_yf_price, ns_ticker)
-                    if price is not None:
-                        prices[t] = price
-                
-                for alert in pending:
-                    current_price = prices.get(alert.ticker)
-                    if current_price is None:
-                        continue
-                        
-                    triggered = False
-                    if alert.direction == "above" and current_price >= alert.target_price:
-                        triggered = True
-                    elif alert.direction == "below" and current_price <= alert.target_price:
-                        triggered = True
-                        
-                    if triggered:
-                        alert.triggered = True
-
-                        push_ok = await _send_apns_push(
-                            user_id=alert.user_id,
-                            ticker=alert.ticker,
-                            target_price=alert.target_price,
-                            current_price=current_price,
-                            direction=alert.direction
-                        )
-                        if not push_ok:
-                            logger.warning("APNs push failed for alert %d — not marking triggered", alert.id)
-                            continue
-
-                        session.commit()
+            await _poll_once()
         except Exception as e:
             logger.error(f"Error in price alert poller: {e}")
-            
+
         await asyncio.sleep(300)
