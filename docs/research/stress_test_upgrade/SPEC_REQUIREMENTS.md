@@ -1,6 +1,6 @@
 # SPECIFICATION REQUIREMENTS MATRIX
 
-Extracted directly from `Indian_Equity_Stress_Test_Engine.md`.
+Extracted directly from `docs/backend-notes/Indian_Equity_Stress_Test_Engine.md`.
 
 ## 1. Core Mathematical Paradigm
 - **REQ-MATH-01:** Implement a Tier 2.5 Hybrid Architecture (combining Predictive Stress Models with Econometric techniques).

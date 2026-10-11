@@ -15,7 +15,7 @@ flowchart LR
   Services --> LLM[DeepSeek / Claude]
   Services --> NSE[NSE / yfinance / SEBI / YouTube / news]
   Services --> ML[ML microservice :8001]
-  API --> Schedulers[APScheduler / Celery / background tasks]
+  API --> Schedulers[APScheduler / background tasks]
   Schedulers --> DB
   Services --> Vector[(Chroma vector store)]
 ```
@@ -58,8 +58,8 @@ flowchart LR
 | Dependencies | FastAPI, Starlette middleware, database.py, routers package, services.harvest_worker, services.error_telemetry. |
 | Inputs | HTTP requests, environment variables, process startup/shutdown events. |
 | Outputs | Mounted routes, JSON/HTML responses, static chart files, background scheduler lifecycle. |
-| Failure modes | Bad env config, DB init failure, scheduler import failure, middleware exceptions, startup RAG ingestion failure. |
-| Related files | `backend/main.py:17, backend/main.py:280, backend/main.py:365, backend/main.py:403` |
+| Failure modes | Bad env config, DB init failure, scheduler import failure, middleware exceptions. |
+| Related files | `backend/main.py` (app factory, middleware, `include_router` block, `_on_startup`/`_on_shutdown`) |
 | Related database tables | All tables indirectly; startup checks analysis_jobs and seeds users/portfolio. |
 | Related API endpoints | /ping, /health, /health/live, /, /dashboard-data, /dashboard-user-data plus all included routers. |
 
@@ -137,14 +137,14 @@ flowchart LR
 
 | Field | Details |
 |---|---|
-| Purpose | Runs recurring harvest, snapshots, RAG ingestion, outcome backfill, Alpha158 materialization, and alert polling. |
-| Responsibilities | Start APScheduler on app startup via harvest worker, Celery task definitions, stale job sweep, alert poller. |
-| Dependencies | APScheduler, Celery, services.nightly_jobs/nightly_pipeline/celery_tasks/outcome_tracker/tasks.alpha158_task, database. |
-| Inputs | Startup event, cron schedules, Celery worker invocation, env flags. |
+| Purpose | Runs recurring harvests, snapshots, screens, outcome evaluation, RAG ingestion, backups, stale-job sweep, and price-alert polling. |
+| Responsibilities | `start_scheduler()` in `services/harvest_worker.py` registers every APScheduler job; it runs only in the leader worker (fcntl lock `/tmp/nivesh_scheduler.lock`). The leader also starts `routers.alerts._price_alert_poller`. |
+| Dependencies | APScheduler, services.harvest_worker, routers.alerts, database. Not scheduled anywhere: `services/nightly_jobs.py`, `services/celery_tasks.py`, `services/outcome_backfill.py`, `services/outcome_tracker.py` (Celery is not installed; see `requirements.txt`). |
+| Inputs | Startup event, cron/interval schedules, env flags. |
 | Outputs | Updated DB tables, logs, jobs, materialized features, push alerts. |
-| Failure modes | Scheduler not installed, duplicate scheduler jobs, local vs remote backend confusion, worker crash, stale heartbeat, broker unavailable. |
-| Related files | `backend/main.py:403; backend/services/harvest_worker.py; backend/services/nightly_jobs.py; backend/services/nightly_pipeline.py; backend/services/celery_tasks.py; backend/tasks/alpha158_task.py` |
-| Related database tables | analysis_jobs, portfolio_valuation_history, alpha158_features, alpha158_features_normalized, analysis_predictions, price_targets, content tables. |
+| Failure modes | Scheduler not installed, duplicate scheduler jobs, local vs remote backend confusion, worker crash, stale heartbeat. |
+| Related files | `backend/main.py (_on_startup); backend/services/harvest_worker.py (start_scheduler); backend/routers/alerts.py (_price_alert_poller)` |
+| Related database tables | analysis_jobs, portfolio_valuation_history, analysis_predictions, price_targets, content tables. |
 | Related API endpoints | No direct public endpoint except admin harvest and dashboard job views. |
 
 ### ML microservice and Qlib integration
@@ -171,20 +171,20 @@ flowchart LR
 | Inputs | Every HTTP request, exception records, token log JSONL, job records. |
 | Outputs | Dashboard HTML/JSON, SSE dashboard stream, admin error payloads, telemetry tables. |
 | Failure modes | In-memory request log lost on restart, token log parse failures, admin auth failure, malformed job checkpoints. |
-| Related files | `backend/main.py:299; backend/routers/dashboard.py; backend/services/error_telemetry.py; backend/services/ai_engine_monitor.py` |
+| Related files | `backend/main.py (request-logging middleware); backend/routers/dashboard.py; backend/services/error_telemetry.py; backend/services/ai_engine_monitor.py` |
 | Related database tables | analysis_jobs, market_error_logs, earnings_error_logs, notification_error_logs, ideas_error_logs. |
 | Related API endpoints | GET /dashboard-data; /dashboard-user-data; /api/v1/dashboard/*; /api/v1/admin/*. |
 
 ## Router Registration
 
-`backend/main.py` imports and includes routers at `backend/main.py:361-385`; `harvest_worker` admin routes are included at `backend/main.py:398-400`. Most routers are mounted without a global `/api/v1` prefix. `sector_rotation.router` is mounted with `prefix="/api/v1"`, while several routers define their own `/api/v1` prefixes internally.
+`backend/main.py` imports and includes routers in its `app.include_router(...)` block, followed by the `harvest_worker` admin routes (search for `include_router` rather than relying on line numbers). Most routers are mounted without a global `/api/v1` prefix. `sector_rotation.router` is mounted with `prefix="/api/v1"`, while several routers define their own `/api/v1` prefixes internally.
 
 ## Current Architecture Tensions
 
 - Intended rule: routers handle HTTP validation/process spawning, services hold business logic, repositories hold DB access. Current source still contains direct `session.query(...)` and business logic in several routers, especially `analysis.py`, `portfolio.py`, `market.py`, and dashboard code.
 - API naming is mixed: `/analyze`, `/portfolio/{user_id}`, `/market-indices`, `/search`, `/api/v1/market/*`, `/api/v1/portfolio/*`, and `/harvester/*` coexist.
 - `database.init_db()` still calls `Base.metadata.create_all()` for table creation (no seed data); AGENTS.md requires Alembic for schema changes.
-- Background schedulers exist in multiple places (`harvest_worker.py`, `nightly_jobs.py`, `celery_tasks.py`, `nivesh-harvester/`), so operational ownership must be verified before changing schedules.
+- Only `harvest_worker.start_scheduler()` registers jobs. `nightly_jobs.py`, `celery_tasks.py`, `outcome_backfill.py` and `outcome_tracker.py` define jobs that nothing schedules, so outcome tracking/calibration data they would produce is not generated.
 
 ## Undocumented Components Identified During This Pass
 

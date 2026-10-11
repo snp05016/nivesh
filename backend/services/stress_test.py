@@ -1,6 +1,6 @@
 """Indian Equity Stress Test Engine — Tier 2.5 Hybrid Architecture.
 
-Implements: §5-12 of Indian_Equity_Stress_Test_Engine.md.
+Implements: §5-12 of docs/backend-notes/Indian_Equity_Stress_Test_Engine.md.
 Core workflow: Beta Estimation → Shock Propagation → Portfolio Aggregation → 
 Liquidity Penalty → Concentration Analysis → Scoring.
 """
