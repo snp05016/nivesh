@@ -293,27 +293,7 @@ GOVERNANCE_ANALYST_PERSONA = (
 # ═════════════════════════════════════════════════════════════════════════════
 
 
-def _extract_json_from_text(text: str) -> str:
-    """Extract primary JSON envelope from LLM output.
-    Uses regex to isolate the outermost JSON object, ignoring any JSON
-    blocks embedded inside markdown explanations or conversational text.
-    """
-    import re as _re
-    text = text.strip()
-    # Priority 1: ```json ... ``` fenced block (lazy match for outermost)
-    m = _re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, _re.DOTALL)
-    if m:
-        return m.group(1).strip()
-    # Priority 2: outermost { ... } via regex
-    m = _re.search(r"\{.*\}", text, _re.DOTALL)
-    if m:
-        return m.group(0).strip()
-    # Priority 3: legacy split-based fallback
-    if "```" in text:
-        parts = text.split("```")
-        if len(parts) >= 2:
-            return parts[1].strip()
-    return text
+from services.llm_utils import extract_json_from_text as _extract_json_from_text  # noqa: E402
 
 
 # ═════════════════════════════════════════════════════════════════════════════

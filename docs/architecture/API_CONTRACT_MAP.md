@@ -83,7 +83,7 @@ These may be admin, diagnostics, legacy, or screen-local calls. Verify before de
 - Market data routes: `/dividends/{ticker}`, `/mf/{scheme_code}`, `/block-deals/{ticker}`, `/fii-dii-flow`, `/macro-context/{ticker}`, `/ipo-calendar`, `/sector-weekly`, `/api/v1/options/chain/{ticker}`
 - Admin diagnostics: `/api/v1/admin/error-logs`, `/api/v1/admin/earnings-errors`, `/api/v1/admin/ideas-errors`, `/api/v1/admin/notification-errors`, `/api/v1/admin/error-telemetry`
 - Harvester admin/search: `/harvester/search`, `/harvester/trigger/scrape`, `/harvester/stats`
-- Legacy/alternate endpoints: `/batch`, `/portfolio/add`, `/portfolio/history/{user_id}`, `/portfolio/stress-test`, `/market/screener`, `/market/sentiment-trend/{ticker}`
+- Legacy/alternate endpoints: `/batch`, `/portfolio/add`, `/portfolio/history/{user_id}`, `/market/screener`, `/market/sentiment-trend/{ticker}`
 
 ## Known Stale Names To Avoid
 

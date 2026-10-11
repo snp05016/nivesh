@@ -108,7 +108,6 @@
 | `POST` | `/api/v1/options/payoff` | `compute_strategy_payoff` | `backend/routers/options_strategy.py:82` |
 | `POST` | `/portfolio/sip-calculator` | `sip_calculator` | `backend/routers/portfolio.py:217` |
 | `GET` | `/portfolio/benchmark` | `portfolio_benchmark` | `backend/routers/portfolio.py:255` |
-| `GET` | `/portfolio/stress-test` | `portfolio_stress_test` | `backend/routers/portfolio.py:324` |
 | `GET` | `/portfolio/signal-warnings` | `portfolio_signal_warnings` | `backend/routers/portfolio.py:492` |
 | `GET` | `/portfolio/{user_id}` | `portfolio_endpoint` | `backend/routers/portfolio.py:515` |
 | `GET` | `/portfolio/history/{user_id}` | `portfolio_history_endpoint` | `backend/routers/portfolio.py:624` |

@@ -316,20 +316,7 @@ def _resolve_ticker(ticker: str, exchange: str) -> str:
 # ---------------------------------------------------------------------------
 # JSON extraction utility
 # ---------------------------------------------------------------------------
-def _extract_json_from_text(text: str) -> str:
-    """Extracts JSON content from a text block, handling markdown code blocks.
-
-    Args:
-        text (str): The text potentially containing a markdown JSON block.
-
-    Returns:
-        str: The extracted raw JSON string.
-    """
-    if "```json" in text:
-        return text.split("```json")[1].split("```")[0].strip()
-    elif "```" in text:
-        return text.split("```")[1].strip()
-    return text.strip()
+from services.llm_utils import extract_json_from_text as _extract_json_from_text  # noqa: E402,F401  (re-exported via helpers)
 
 # ---------------------------------------------------------------------------
 # L1 in-memory cache (quick info)

@@ -73,12 +73,9 @@ from services.portfolio_service import (
     _get_asm_gsm_lists,
     _risk_label,
     compute_sip,
-    get_stress_sector,
-    compute_stress_test_results,
     compute_pearson_correlation,
     compute_trade_journal_stats,
     compute_holding_pnl,
-    STRESS_TEST_SCENARIOS,
     _INDICES_TICKERS,
 )
 
@@ -195,35 +192,6 @@ def portfolio_benchmark(user_id: int, _caller: int = Depends(require_user_match)
         "current_portfolio_value": total_current,
         "unpriced_tickers": unpriced,
     }
-
-# ── Item 50: Portfolio Stress Test ────────────────────────────────────
-@router.get("/portfolio/stress-test")
-def portfolio_stress_test(user_id: int, _caller: int = Depends(require_user_match)):
-    with get_session() as db:
-        holdings = db.query(Portfolio).filter(
-            Portfolio.user_id == user_id, Portfolio.group_name != "watchlist"
-        ).all()
-
-    if not holdings:
-        return []
-
-    holding_data = []
-    for h in holdings:
-        cp = _yf_price(_to_ns(str(h.ticker)))[0]
-        if not cp:
-            logging.warning(f"[stress-test] no price for {h.ticker}; excluded instead of valued at cost")
-            continue
-
-        val = cp * float(h.shares)  # type: ignore[arg-type]
-        holding_data.append({
-            "ticker": h.ticker,
-            "sector": get_stress_sector(h.company_name),
-            "value": val,
-        })
-    if not holding_data:
-        raise HTTPException(status_code=503, detail="Price data unavailable")
-
-    return compute_stress_test_results(holding_data)
 
 # ---------------------------------------------------------------------------
 # Local caches & helpers needed by endpoints

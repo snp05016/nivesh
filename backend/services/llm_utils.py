@@ -11,6 +11,7 @@ Usage:
     from services.llm_utils import deepseek_chat, claude_messages, DEEPSEEK_MODEL
 """
 
+import json
 import os
 import re
 import time as _time
@@ -138,6 +139,42 @@ def deepseek_chat(
     raise RuntimeError(
         f"DeepSeek call failed after 3 retries: {last_exc}"
     ) from last_exc
+
+
+_FENCED_JSON_RE = re.compile(r"```(?:json)?\s*([\[{].*?[\]}])\s*```", re.DOTALL)
+
+
+def extract_json_from_text(text: str) -> str:
+    """Extract the primary JSON object or array from LLM output.
+
+    Priority: a ```json fenced block, then the outermost {...} or [...] span
+    (the earliest one that parses, so prose brackets before the payload are
+    skipped), then the legacy ``` split. Returns the input stripped if nothing
+    matches. Single implementation for orchestrator, helpers and routers.
+    """
+    text = text.strip()
+    m = _FENCED_JSON_RE.search(text)
+    if m:
+        return m.group(1).strip()
+    spans = []
+    for opener, closer in (("{", "}"), ("[", "]")):
+        start, end = text.find(opener), text.rfind(closer)
+        if start != -1 and end > start:
+            spans.append((start, text[start:end + 1]))
+    spans.sort()
+    for _, candidate in spans:
+        try:
+            json.loads(candidate)
+            return candidate
+        except ValueError:
+            continue
+    if spans:
+        return spans[0][1]
+    if "```" in text:
+        parts = text.split("```")
+        if len(parts) >= 2:
+            return parts[1].strip().removeprefix("json").strip()
+    return text
 
 
 # ═════════════════════════════════════════════════════════════════════════════

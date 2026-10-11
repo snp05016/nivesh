@@ -291,6 +291,29 @@ def verify_device_binding(user_id: int, device_id: str) -> dict:
         }
 
 
+def check_kyc_gate(user_id: int, device_id: Optional[str], consent_type: str, action: str) -> tuple[bool, str]:
+    """Enforce the KYC/Security invariant above for any gated product:
+    an active (granted, not revoked) consent_type consent must exist AND
+    verify_device_binding(user_id, device_id)["verified"] must be True.
+    Fails closed. `action` ("application", "booking") only labels the reason.
+
+    Returns (passed, reason). MOCK DATA — device_id/consent checks are
+    simulated for demo purposes, not a real KYC/SIM-binding integration.
+    """
+    active_consents = get_active_consents(user_id)
+    if not any(c["consent_type"] == consent_type for c in active_consents):
+        return False, f"no active '{consent_type}' KYC consent on file for this user (mock KYC gate)"
+
+    if not device_id:
+        return False, f"no device_id supplied with {action}; device binding could not be verified (mock KYC gate)"
+
+    binding_result = verify_device_binding(user_id, device_id)
+    if not binding_result["verified"]:
+        return False, f"device binding check failed: {binding_result['reason']} (mock KYC gate)"
+
+    return True, "KYC consent + device binding verified (mock KYC gate)"
+
+
 def _log_bind_attempt(session, user_id: int, device_id: str, outcome: str, reason: Optional[str]) -> None:
     """MOCK DATA — simulated for demo purposes, not a real integration.
 

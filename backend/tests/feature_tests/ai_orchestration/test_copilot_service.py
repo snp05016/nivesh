@@ -5,8 +5,9 @@ from unittest.mock import patch, MagicMock
 from backend.services.copilot_service import process_copilot_request, strip_emoji, _manage_tokens
 
 def test_strip_emoji():
-    assert strip_emoji("Hello 👋") == "Hello "
-    assert strip_emoji("Bullish 🚀") == "Bullish "
+    assert strip_emoji("Hello 👋") == "Hello"
+    assert strip_emoji("Bullish 🚀") == "Bullish"
+    assert strip_emoji("₹1,200 – up 📈") == "₹1,200 – up"
 
 def test_manage_tokens_no_summary():
     history = [{"role": "user", "content": "hello"}]

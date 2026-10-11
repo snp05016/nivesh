@@ -18,7 +18,7 @@ from sqlalchemy.exc import IntegrityError
 from database import get_session
 from models.db_models import LinkedBankAccount, LoanApplication, LoanDisbursement, LoanOffer
 from services.credit_bureau_mock_service import get_mock_credit_score
-from services.kyc_consent_service import get_active_consents, verify_device_binding
+from services.kyc_consent_service import check_kyc_gate
 from services.product_bounds import check_product_bounds
 
 # Consent type that MUST be active before a loan application can be
@@ -145,31 +145,6 @@ def _evaluate_demo_underwriting(score: int, offer: LoanOffer) -> tuple[str, str]
     )
 
 
-def _check_kyc_gate(user_id: int, device_id: Optional[str]) -> tuple[bool, str]:
-    """Enforce the KYC/Security invariant documented in kyc_consent_service.py:
-
-        A loan application MUST NOT be approved unless BOTH hold:
-          1. an active (granted, not revoked) "credit_check" consent exists, AND
-          2. verify_device_binding(user_id, device_id)["verified"] is True.
-
-    Returns (passed, reason). MOCK DATA — device_id/consent checks are
-    simulated for demo purposes, not a real KYC/SIM-binding integration.
-    """
-    active_consents = get_active_consents(user_id)
-    has_consent = any(c["consent_type"] == REQUIRED_CONSENT_TYPE for c in active_consents)
-    if not has_consent:
-        return False, "no active 'credit_check' KYC consent on file for this user (mock KYC gate)"
-
-    if not device_id:
-        return False, "no device_id supplied with application; device binding could not be verified (mock KYC gate)"
-
-    binding_result = verify_device_binding(user_id, device_id)
-    if not binding_result["verified"]:
-        return False, f"device binding check failed: {binding_result['reason']} (mock KYC gate)"
-
-    return True, "KYC consent + device binding verified (mock KYC gate)"
-
-
 def submit_loan_application(
     user_id: int,
     loan_offer_id: int,
@@ -212,7 +187,7 @@ def submit_loan_application(
         status, reason = _evaluate_demo_underwriting(score, offer)
 
         if status == "approved":
-            kyc_ok, kyc_reason = _check_kyc_gate(user_id, device_id)
+            kyc_ok, kyc_reason = check_kyc_gate(user_id, device_id, REQUIRED_CONSENT_TYPE, "application")
             if not kyc_ok:
                 status = "rejected"
                 reason = f"MOCK DECISION: application rejected — KYC gate failed: {kyc_reason}"

@@ -5,6 +5,8 @@ from typing import List, Dict, Any, Optional
 from database import get_session
 from services.llm_utils import deepseek_chat, claude_messages, HAIKU_MODEL
 from services.kyc_consent_service import AI_PROCESSING_CONSENT, has_active_consent
+# Single strip_emoji: the old local copy's U+2000-2BFF range also ate ₹, dashes and bullets.
+from services.harvester_reformatter import strip_emoji
 
 def claude_haiku(messages: List[Dict[str, Any]]) -> str:
     # Anthropic doesn't allow 'system' in the messages array, we have to extract it
@@ -27,20 +29,6 @@ def claude_haiku(messages: List[Dict[str, Any]]) -> str:
         feature="copilot_haiku",
     )
     return response.content[0].text
-
-def strip_emoji(text: str) -> str:
-    """Strip emojis from text — covers BMP + supplementary plane emoji."""
-    # BMP emoji (U+2000–U+2BFF: symbols, dingbats, misc) + supplementary planes
-    return re.sub(
-        r'[\U00010000-\U0010ffff'
-        r' -⯿'
-        r'　-〿'
-        r'︀-️'
-        r'\U0001F300-\U0001F9FF'
-        r']',
-        '',
-        text,
-    )
 
 _TICKER_RE = re.compile(r"[A-Z0-9][A-Z0-9&.\-]{0,29}")
 

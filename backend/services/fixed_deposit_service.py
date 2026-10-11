@@ -20,7 +20,7 @@ from sqlalchemy.exc import IntegrityError
 
 from database import get_session
 from models.db_models import FixedDepositBooking, FixedDepositScheme
-from services.kyc_consent_service import get_active_consents, verify_device_binding
+from services.kyc_consent_service import check_kyc_gate
 from services.product_bounds import check_product_bounds
 
 # Consent type that MUST be active before an FD booking can be confirmed.
@@ -204,35 +204,6 @@ def calculate_fd_maturity(
     }
 
 
-def _check_kyc_gate(user_id: int, device_id: Optional[str]) -> tuple[bool, str]:
-    """Enforce the MOCK KYC/Security gate for FD bookings, mirroring the
-    pattern in services/loan_marketplace_service.py:_check_kyc_gate() but
-    using the "sim_binding" consent type instead of "credit_check":
-
-        A fixed-deposit booking MUST NOT be confirmed unless BOTH hold:
-          1. an active (granted, not revoked) "sim_binding" consent exists, AND
-          2. verify_device_binding(user_id, device_id)["verified"] is True.
-
-    Fails closed — returns (False, reason) if either check fails.
-
-    Returns (passed, reason). MOCK DATA — device_id/consent checks are
-    simulated for demo purposes, not a real KYC/SIM-binding integration.
-    """
-    active_consents = get_active_consents(user_id)
-    has_consent = any(c["consent_type"] == REQUIRED_CONSENT_TYPE for c in active_consents)
-    if not has_consent:
-        return False, "no active 'sim_binding' KYC consent on file for this user (mock KYC gate)"
-
-    if not device_id:
-        return False, "no device_id supplied with booking; device binding could not be verified (mock KYC gate)"
-
-    binding_result = verify_device_binding(user_id, device_id)
-    if not binding_result["verified"]:
-        return False, f"device binding check failed: {binding_result['reason']} (mock KYC gate)"
-
-    return True, "KYC consent + device binding verified (mock KYC gate)"
-
-
 def book_fixed_deposit(
     user_id: int,
     scheme_id: int,
@@ -278,7 +249,7 @@ def book_fixed_deposit(
         # Also caps tenure, so the matures_at date below cannot overflow.
         check_product_bounds(scheme, principal_amount, tenure_months, "FD scheme")
 
-        kyc_ok, kyc_reason = _check_kyc_gate(user_id, device_id)
+        kyc_ok, kyc_reason = check_kyc_gate(user_id, device_id, REQUIRED_CONSENT_TYPE, "booking")
 
         if kyc_ok:
             status = "confirmed"
