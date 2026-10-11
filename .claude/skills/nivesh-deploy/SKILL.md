@@ -1,6 +1,6 @@
 ---
 name: nivesh-deploy
-description: "Full server deploy + health check + endpoint audit + test suite. Use when user says 'deploy', 'redeploy', 'check server', 'verify everything', 'is everything working', 'nivesh deploy'. Runs pull, process kill, uvicorn restart, API health checks, endpoint audit, and pytest on the remote server. Returns ALL GOOD or FAILED with specifics."
+description: "Full server deploy + health check + endpoint audit + test suite. Use when user says 'deploy', 'redeploy', 'check server', 'verify everything', 'is everything working', 'nivesh deploy'. Runs exact-SHA checkout, systemd restart (nivesh.service), API health checks, endpoint audit, and pytest on the remote server. Returns ALL GOOD or FAILED with specifics."
 ---
 
 # Nivesh Deploy & Verify Skill
@@ -17,42 +17,41 @@ Complete remote server deployment and verification pipeline. Executes in strict 
 - Only then sync local main: `git fetch origin && git checkout main && git pull --ff-only origin main`
 - Record full SHA: `SHA=$(git rev-parse HEAD)`
 
-### Step 1 — Server Sync
+### Step 1 — Server Sync (exact SHA)
 ```bash
 ssh -o ConnectTimeout=5 saumyapatel@192.168.1.122 "
   cd /home/saumyapatel/Desktop/nivesh &&
+  test -z \"\$(git status --porcelain)\" &&
   git fetch origin &&
-  git checkout main &&
-  git reset --hard origin/main &&
+  git checkout --detach $SHA &&
   git rev-parse HEAD
 "
 ```
+- `$SHA` is the full SHA recorded in Step 0. Never `git reset --hard origin/main`: it deploys whatever main points to now and wipes server-side changes.
+- If the server tree is dirty (the `test -z` fails) → ABORT "Server tree dirty" and report `git status` to the owner
 - Verify returned SHA matches local SHA
 - If SHA mismatch → ABORT "Server SHA mismatch"
 
-### Step 2 — Kill & Restart
+### Step 2 — Restart under systemd
+systemd (`nivesh.service`) is the only supervisor of the production API. Never kill port 8000 (`fuser`/`pkill`) or start uvicorn with `nohup` or `--reload`: systemd would race the stray process for the port, and that process neither survives a reboot nor keeps its logs.
 ```bash
 ssh -o ConnectTimeout=5 saumyapatel@192.168.1.122 "
-  sudo fuser -k 8000/tcp 2>/dev/null
-  sleep 2
-  cd /home/saumyapatel/Desktop/nivesh/backend &&
-  nohup /home/saumyapatel/Desktop/nivesh/venv/bin/uvicorn main:app \
-    --host 0.0.0.0 --port 8000 --reload \
-    > /tmp/uvicorn.log 2>&1 &
-  sleep 5
-  curl -s http://localhost:8000/ping
+  sudo systemctl restart nivesh &&
+  sleep 5 &&
+  systemctl is-active --quiet nivesh &&
+  curl -fsS --max-time 5 http://localhost:8000/ping
 "
 ```
-- Must return `{"pong":true}`
-- If not → ABORT "Server failed to start"
+- Must exit 0 and return `{"pong":true}`
+- If not → ABORT "Server failed to start" and include `journalctl -u nivesh -n 50 --no-pager`
 
 ### Step 3 — Health Checks
 ```bash
-curl -s --max-time 5 https://api.nivesh.qzz.io/ping     # expect {"pong":true}
-curl -s --max-time 5 https://api.nivesh.qzz.io/health    # expect {"status":"ok"}
-curl -s --max-time 10 https://api.nivesh.qzz.io/health/live  # expect 200
+curl -fsS --max-time 5 https://api.nivesh.qzz.io/ping         # expect {"pong":true}
+curl -fsS --max-time 5 https://api.nivesh.qzz.io/health       # expect 200
+curl -fsS --max-time 10 https://api.nivesh.qzz.io/health/live # expect 200
 ```
-- All 3 must return 200
+- All 3 must return 200 (`-f` makes curl exit non-zero on any 4xx/5xx)
 - If not → ABORT "Health check failed"
 
 ### Step 4 — Critical Endpoint Audit
@@ -106,7 +105,7 @@ ssh -o ConnectTimeout=5 saumyapatel@192.168.1.122 "
 ### Step 6 — Check for 5xx in Logs
 ```bash
 ssh -o ConnectTimeout=5 saumyapatel@192.168.1.122 "
-  tail -50 /tmp/uvicorn.log | grep -c '500\|Error\|Traceback'
+  journalctl -u nivesh --since '-10 min' --no-pager | grep -cE 'Traceback| 500 '
 "
 ```
 - If > 0 recent errors → ABORT "Server logs show errors"

@@ -590,25 +590,22 @@ Every backend deployment MUST use the intended branch and verify the exact commi
    ```bash
    ssh saumyapatel@192.168.1.122 "cd /home/saumyapatel/Desktop/nivesh && test -z \"\$(git status --porcelain)\""
    ```
-3. Kill every stale backend process before pulling or restarting:
-   ```bash
-   ssh saumyapatel@192.168.1.122 "pkill -f 'uvicorn' || true; pkill -f 'python.*main' || true; sleep 2"
-   ```
+3. systemd (`backend/nivesh.service`) is the only supervisor of the production backend. Never kill port 8000 or uvicorn (`fuser`, `pkill`) and never start uvicorn with `nohup` or `--reload` on the server: a stray process races systemd for the port, does not survive a reboot, and `--reload` restarts mid-analysis whenever a file in the checkout changes.
 4. Fetch, switch, fast-forward, and verify the deployed commit:
    ```bash
    ssh saumyapatel@192.168.1.122 "cd /home/saumyapatel/Desktop/nivesh && git fetch origin '$BRANCH' && git switch '$BRANCH' && git pull --ff-only origin '$BRANCH' && test \"\$(git rev-parse HEAD)\" = '$SHA'"
    ```
-5. Restart the backend in the background:
+5. Restart the backend under systemd and confirm it is up. Stop if this command fails:
    ```bash
-   ssh saumyapatel@192.168.1.122 "cd /home/saumyapatel/Desktop/nivesh/backend && nohup ../venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000 --reload > /tmp/uvicorn.log 2>&1 &"
+   ssh saumyapatel@192.168.1.122 "sudo systemctl restart nivesh && sleep 5 && systemctl is-active --quiet nivesh && curl -fsS --max-time 5 http://localhost:8000/ping"
    ```
 6. Run the relevant tests remotely:
    ```bash
    ssh saumyapatel@192.168.1.122 "cd /home/saumyapatel/Desktop/nivesh && python3 -m pytest"
    ```
-7. Run the required health checks, inspect `/tmp/uvicorn.log`, and record the branch, full SHA, commands, and results in the pull request.
+7. Run the required health checks, inspect the service log (`ssh saumyapatel@192.168.1.122 "journalctl -u nivesh --since '-10 min' --no-pager"`), and record the branch, full SHA, commands, and results in the pull request.
 
-**NEVER skip the clean-check, kill, exact-SHA verification, restart, or health-check steps.** If deployment fails after the kill step, restore the last verified commit and record the rollback in the issue and pull request.
+**NEVER skip the clean-check, exact-SHA verification, restart, or health-check steps.** If deployment fails after the restart step, restore the last verified commit and record the rollback in the issue and pull request.
 
 ---
 

@@ -21,11 +21,9 @@ flowchart TB
 
 | File | Purpose | Failure modes |
 |---|---|---|
-| `backend/nivesh.service` | Deployment/runtime helper discovered in repository. | Env mismatch, missing dependencies, port conflict, stale checkout, failed health check. |
+| `backend/nivesh.service` | systemd unit: the only production supervisor of the backend (journald logs, restart on failure). | Unit not enabled (no reboot survival), installed copy drifts from the repo file, stray non-systemd uvicorn holding :8000. |
 | `backend/Dockerfile` | Deployment/runtime helper discovered in repository. | Env mismatch, missing dependencies, port conflict, stale checkout, failed health check. |
-| `backend/deploy_update.sh` | Deployment/runtime helper discovered in repository. | Env mismatch, missing dependencies, port conflict, stale checkout, failed health check. |
-| `backend/update.sh` | Deployment/runtime helper discovered in repository. | Env mismatch, missing dependencies, port conflict, stale checkout, failed health check. |
-| `backend/run.sh` | Deployment/runtime helper discovered in repository. | Env mismatch, missing dependencies, port conflict, stale checkout, failed health check. |
+| `backend/run.sh` | Local development only (`--reload`, binds 127.0.0.1). Never run on the server. | Port conflict with another local process. |
 | `docker/rd-agent/Dockerfile` | Deployment/runtime helper discovered in repository. | Env mismatch, missing dependencies, port conflict, stale checkout, failed health check. |
 | `docker/rd-agent/docker-compose.yml` | Deployment/runtime helper discovered in repository. | Env mismatch, missing dependencies, port conflict, stale checkout, failed health check. |
 | `ml-engine/Dockerfile` | Deployment/runtime helper discovered in repository. | Env mismatch, missing dependencies, port conflict, stale checkout, failed health check. |
@@ -39,11 +37,11 @@ AGENTS.md requires backend verification on `saumyapatel@192.168.1.122`, not by r
 
 1. Push current branch and record `git rev-parse HEAD`.
 2. Non-interactive SSH clean-check on `/home/saumyapatel/Desktop/nivesh`; stop if dirty.
-3. Kill stale uvicorn/python backend processes.
-4. Fetch/switch/pull `--ff-only` on intended branch and verify remote `HEAD` equals local SHA.
-5. Start uvicorn from `/home/saumyapatel/Desktop/nivesh/backend` with `../venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000 --reload`.
+3. Never kill :8000 or uvicorn (`fuser`, `pkill`) and never start uvicorn with `nohup` or `--reload` on the server; systemd (`nivesh.service`) owns the process.
+4. Fetch/switch/pull `--ff-only` on intended branch (or `git checkout --detach <SHA>`) and verify remote `HEAD` equals local SHA.
+5. Restart with `sudo systemctl restart nivesh`, then `systemctl is-active --quiet nivesh && curl -fsS http://localhost:8000/ping`.
 6. Run relevant `python3 -m pytest` remotely.
-7. Health-check `/ping`, `/health`, `/health/live` or feature-specific endpoints and inspect `/tmp/uvicorn.log`.
+7. Health-check `/ping`, `/health`, `/health/live` or feature-specific endpoints and inspect `journalctl -u nivesh --since '-10 min'`.
 
 ## Environment and Secrets
 
@@ -66,8 +64,7 @@ Rollback after failed deployment should restore the last verified commit and rec
 ## Deployment Drift and Open Questions
 
 - Current iOS default base URL is `https://api.nivesh.qzz.io`; `ServerURLPolicy.swift` rewrites legacy `http://192.168.1.122:8000` values to the default.
-- `backend/nivesh.service` describes user/path `nivesh` and `/home/nivesh/stocks`, while AGENTS.md and current remote deployment instructions use `/home/saumyapatel/Desktop/nivesh`.
-- `backend/nivesh.service` uses `uvicorn main:app --workers 2`; README/history mention different worker counts, and AGENTS.md deployment flow uses `nohup ... --reload`. Treat the remote live service as authoritative before operational edits.
-- `backend/deploy_update.sh` contains broad `git add .` and main-branch pull/commit behavior that conflicts with the current explicit staging, branch, and clean-check rules.
+- `backend/nivesh.service` runs as `saumyapatel` from `/home/saumyapatel/Desktop/nivesh/backend`, matching AGENTS.md. Confirm the installed copy in `/etc/systemd/system/` matches the repo file and that the unit is enabled.
+- The `--workers` count in `backend/nivesh.service` is the deployed value; the multi-worker decision is tracked separately (ARCH-07).
 - `scripts/health_check.sh` defaults to `https://api.nivesh.app`, while the app and current docs use `https://api.nivesh.qzz.io`.
 - `ml-engine` runs separately on port 8001; `scripts/deploy_ml_engine.sh` builds/runs the container on `saumyapatel@192.168.1.122` and restarts backend Uvicorn.

@@ -80,9 +80,11 @@ def test_update_holding_with_ios_payload_persists(client):
 
 
 def test_schemas_keep_fields_only_the_helpers_copies_had():
-    req = schemas.AnalyzeRequest(ticker=" bajaj-auto ", language="hi", debate_rounds=2, risk_tolerance="moderate")
+    req = schemas.AnalyzeRequest(ticker=" bajaj-auto ", language="Hindi", debate_rounds=2, risk_tolerance="moderate")
     assert req.ticker == "BAJAJ-AUTO"
-    assert (req.language, req.debate_rounds, req.risk_tolerance) == ("hi", 2, "moderate")
+    assert (req.language, req.debate_rounds, req.risk_tolerance) == ("Hindi", 2, "Moderate")
+    with pytest.raises(ValidationError):  # LLM-07: language is whitelisted, not free text
+        schemas.AnalyzeRequest.model_validate({"ticker": "TCS", "language": "hi"})
     assert schemas.AnalyzeRequest(ticker="m&m").ticker == "M&M"
     with pytest.raises(ValidationError):
         schemas.AnalyzeRequest(ticker="RELI ANCE")

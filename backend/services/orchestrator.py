@@ -19,6 +19,7 @@ import asyncio
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
+from types import SimpleNamespace
 
 # Task 14: Use orjson for fast JSON serialization when available
 try:
@@ -545,6 +546,12 @@ class OptimizedTradingAgentsGraph(TradingAgentsGraph):
 # ═════════════════════════════════════════════════════════════════════════════
 
 
+# LLM-07: the only report languages besides English. Prompts interpolate these fixed names,
+# never the caller's string; any other value is ignored.
+_REPORT_LANGUAGES = {"Hindi": "Hindi", "Hinglish": "Hinglish (Hindi written in Latin script)"}
+_SCAN_TYPES = ("standard", "deep", "extreme")
+
+
 def build_ta_config(scan_type: str = "standard", debate_rounds: int | None = None, language: str | None = None) -> dict:
     config = DEFAULT_CONFIG.copy()
     if scan_type == "extreme":
@@ -576,9 +583,31 @@ def build_ta_config(scan_type: str = "standard", debate_rounds: int | None = Non
     if debate_rounds is not None and 1 <= debate_rounds <= 3:
         config["max_debate_rounds"] = debate_rounds
 
-    if language and language != "English":
-        config["response_language"] = language
+    if language in _REPORT_LANGUAGES:
+        config["response_language"] = _REPORT_LANGUAGES[language]
     return config
+
+
+def _log_graph_usage(usage_by_model: dict, scan_type: str) -> None:
+    """Log the agent graph's token usage, one token_log entry per model (LLM-09).
+
+    LangChain's input_tokens include prompt-cache tokens; the log stores uncached input
+    separately from cache reads/writes, as Anthropic reports them.
+    """
+    for model, u in (usage_by_model or {}).items():
+        details = u.get("input_token_details") or {}
+        cache_read = details.get("cache_read") or 0
+        cache_write = details.get("cache_creation") or 0
+        _log_token_usage(
+            f"graph_{scan_type}",
+            SimpleNamespace(
+                input_tokens=max(0, (u.get("input_tokens") or 0) - cache_read - cache_write),
+                output_tokens=u.get("output_tokens") or 0,
+                cache_read_input_tokens=cache_read,
+                cache_creation_input_tokens=cache_write,
+            ),
+            model,
+        )
 
 
 def run_trading_agents(full_ticker: str, analysis_date: str, scan_type: str = "standard",
@@ -586,13 +615,20 @@ def run_trading_agents(full_ticker: str, analysis_date: str, scan_type: str = "s
     logging.info(f"\n[AI] Initializing Analysis for {full_ticker}...")
     logging.info(f"[AI] Thinking: Gathering market data and fundamental ratios...")
     config = build_ta_config(scan_type, debate_rounds=debate_rounds, language=language)
+    # LLM-09: the graph's LangChain calls are the largest spend; collect their usage.
+    from langchain_core.callbacks import UsageMetadataCallbackHandler
+    usage_cb = UsageMetadataCallbackHandler()
     ta = OptimizedTradingAgentsGraph(
         selected_analysts=["governance", "market", "news", "fundamentals"],
         debug=True,
         config=config,
+        callbacks=[usage_cb],
     )
     logging.info(f"[AI] Thinking: Running Agent Graph propagation...")
-    final_state, decision = ta.propagate(full_ticker, analysis_date)
+    try:
+        final_state, decision = ta.propagate(full_ticker, analysis_date)
+    finally:
+        _log_graph_usage(usage_cb.usage_metadata, scan_type)
     logging.info(f"[AI] Thinking: Analysis complete. Formatting output...")
     governance_report = final_state.get("governance_report", "")
     output = str(decision)
@@ -660,8 +696,8 @@ def reformat_with_deepseek(
             system_prompt = INDIAN_MARKET_SYSTEM_PROMPT
             if is_extreme:
                 system_prompt += EXTREME_ADDENDUM
-            if language and language != "English":
-                system_prompt += f"\n\nIMPORTANT: Write ALL text fields (summary, bull_case, bear_case, key_risks, etc.) in {language}. Keep JSON keys, signal values (BUY/SELL/HOLD), and numbers in English."
+            if language in _REPORT_LANGUAGES:
+                system_prompt += f"\n\nIMPORTANT: Write ALL text fields (summary, bull_case, bear_case, key_risks, etc.) in {_REPORT_LANGUAGES[language]}. Keep JSON keys, signal values (BUY/SELL/HOLD), and numbers in English."
             ds_raw = _deepseek_chat(
                 messages=[
                     {"role": "system", "content": system_prompt},
@@ -1617,9 +1653,11 @@ def _save_and_fetch_advisors(
     ticker: str,
     exchange: str,
     scan_type: str = "standard",
+    persist: bool = True,
 ) -> tuple[dict, list[dict]]:
     """Persist analysis to DB and fetch recent advisor insights.
-    Returns (saved_result, advisor_list_of_dicts).
+    Returns (saved_result, advisor_list_of_dicts). persist=False skips the save, for
+    personalised reports that must not enter the shared per-ticker cache (LLM-07).
     """
     from datetime import timezone as _tz
 
@@ -1633,7 +1671,7 @@ def _save_and_fetch_advisors(
             result,
             raw_output=raw_output,
             scan_type=scan_type,
-        )
+        ) if persist else result
         rows = (
             session.query(AdvisorInsight)
             .filter(
@@ -1682,7 +1720,8 @@ def analyze(
         job_id (str | None): Optional job ID for tracking.
         language (str | None): Optional language for the report.
         debate_rounds (int | None): Number of debate rounds for the agents.
-        risk_tolerance (str | None): User's risk tolerance profile.
+        risk_tolerance (str | None): Accepted for API compatibility; unused, so the
+            shared cached report is never personalised (LLM-07).
 
     Returns:
         dict: The complete normalized analysis result.
@@ -1690,6 +1729,11 @@ def analyze(
     exchange = exchange.upper()
     if exchange not in EXCHANGE_SUFFIX:
         raise ValueError(f"Unsupported exchange: {exchange}. Use NSE or BSE.")
+    if scan_type not in _SCAN_TYPES:
+        raise ValueError(f"Unsupported scan_type: {scan_type}. Use one of {', '.join(_SCAN_TYPES)}.")
+    # LLM-07: the analysis cache is shared per (ticker, scan_type), so only English reports
+    # are read from or written to it; a Hindi/Hinglish report is generated for this caller only.
+    shared = language in (None, "English")
     deep_scan = deep_scan or scan_type == "deep"
     full_ticker = _resolve_ticker(ticker, exchange)
     analysis_date = date.today().strftime("%Y-%m-%d")
@@ -1705,7 +1749,7 @@ def analyze(
     with get_session() as session:
         # 1. Query Cache: exact scan_type match only.
         # Cross-tier fallback makes Standard/Deep/Extreme display the wrong report.
-        cached_today = get_analysis_for_date(session, ticker, analysis_date, scan_type)
+        cached_today = get_analysis_for_date(session, ticker, analysis_date, scan_type) if shared else None
         if cached_today:
             logging.info(
                 f"[CACHE HIT] Returning existing analysis for {full_ticker} on {analysis_date}"
@@ -1842,7 +1886,7 @@ def analyze(
         prior = get_all_ticker_history(session, ticker, user_id)
 
     # 3. Smart Cache: skip for extreme scans — they're always fresh by design
-    if prior and scan_type != "extreme":
+    if prior and scan_type != "extreme" and shared:
         last_analysis = prior[-1]
         last_date_str = last_analysis.get("analysis_date")
         if last_date_str != analysis_date:
@@ -2067,13 +2111,8 @@ def analyze(
     )
     raw_output += f"\n\nADDITIONAL DATA (MANDATORY TO INCLUDE IN fundamentals_snapshot):\nPromoter Pledging: {pledging_data}\n"
 
-    if risk_tolerance and risk_tolerance != "Moderate":
-        raw_output += (
-            f"\n\nUSER RISK PROFILE: {risk_tolerance}\n"
-            "Adjust target_prices, key_risks emphasis, and confidence commentary "
-            "to reflect this risk appetite. Conservative = tighter stops, lower targets. "
-            "Aggressive = wider ranges, growth-weighted.\n"
-        )
+    # LLM-07: risk_tolerance is no longer written into the prompt. The report is the shared
+    # per-ticker artifact, so it must not be personalised by (or carry text from) one caller.
 
     # ── Deep Scan: PKScreener + FinBERT injection ────────────────────────────
     if deep_scan:
@@ -2224,7 +2263,7 @@ def analyze(
 
     try:
         result, _advisor_rows_dicts = _save_and_fetch_advisors(
-            result, raw_output, user_id, ticker, exchange, scan_type
+            result, raw_output, user_id, ticker, exchange, scan_type, persist=shared
         )
     except Exception as e:
         logging.info(

@@ -4,6 +4,7 @@ from typing import List, Dict, Any, Optional
 
 from database import get_session
 from services.llm_utils import deepseek_chat, HAIKU_MODEL
+from core.dashboard_state import _log_token_usage
 from services.kyc_consent_service import AI_PROCESSING_CONSENT, has_active_consent
 import anthropic
 import os
@@ -29,6 +30,7 @@ def claude_haiku(messages: List[Dict[str, Any]]) -> str:
         max_tokens=2000,
         messages=filtered_messages
     )
+    _log_token_usage("copilot_haiku", getattr(response, "usage", None), HAIKU_MODEL)
     return response.content[0].text
 
 def strip_emoji(text: str) -> str:

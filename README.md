@@ -429,7 +429,7 @@ REDIS_URL=redis://localhost:6379/0
 
 ```bash
 alembic upgrade head          # create/update tables
-uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+uvicorn main:app --host 127.0.0.1 --port 8000 --reload   # local development only
 ```
 
 ### iOS
@@ -481,7 +481,8 @@ The production backend runs on a dedicated Fedora server:
 ssh saumyapatel@192.168.1.122
 cd /home/saumyapatel/Desktop/nivesh
 git pull --ff-only origin main
-sudo systemctl restart nivesh
+sudo systemctl restart nivesh   # systemd is the only supervisor: no nohup, fuser or --reload
+journalctl -u nivesh -n 100     # service log
 ```
 
 ### Health
@@ -530,11 +531,11 @@ curl https://api.nivesh.qzz.io/health  # DB-backed
 | **Server** | `192.168.1.122` |
 | **User** | `saumyapatel` |
 | **Path** | `/home/saumyapatel/Desktop/nivesh` |
-| **Port** | `8000` (uvicorn --reload) |
+| **Port** | `8000` (systemd `nivesh.service`; never `--reload` in production) |
 | **Venv** | `/home/saumyapatel/Desktop/nivesh/venv` |
 | **API** | `https://api.nivesh.qzz.io` |
 | **Admin auth** | JWT from `POST /login` for an `is_admin` account (`backend/scripts/manage_users.py set-admin <username>`); there is no `ADMIN_TOKEN` |
-| **Deploy skill** | `/nivesh-deploy` — full pipeline: sync → kill → restart → health → tests |
+| **Deploy skill** | `/nivesh-deploy` — full pipeline: exact-SHA sync → `systemctl restart nivesh` → health → tests |
 
 ### Banknote Aesthetic (iOS)
 | Rule | Detail |
@@ -569,9 +570,10 @@ curl https://api.nivesh.qzz.io/health  # DB-backed
 ### Tools & Commands
 | Task | Command |
 |------|---------|
-| Full deploy | `/nivesh-deploy` (skill) or `ssh saumyapatel@192.168.1.122 "sudo fuser -k 8000/tcp; ...; nohup uvicorn ..."` |
+| Full deploy | `/nivesh-deploy` (skill) or `ssh saumyapatel@192.168.1.122 "sudo systemctl restart nivesh && systemctl is-active nivesh"` |
 | Run tests on server | `ssh saumyapatel@192.168.1.122 "cd ~/Desktop/nivesh/backend && ~/Desktop/nivesh/venv/bin/python3 -m pytest tests/ -q"` |
 | Health check | `curl https://api.nivesh.qzz.io/ping` |
+| Server logs | `ssh saumyapatel@192.168.1.122 "journalctl -u nivesh --since '-10 min' --no-pager"` |
 | Check git status | `git -C /Users/saumya/Desktop/career/nivesh status --short --branch` |
 | Create issue | `gh issue create --title "..." --body "..." --label "..."` |
 | List worktrees | `git -C /Users/saumya/Desktop/career/nivesh worktree list` |

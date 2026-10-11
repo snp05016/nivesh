@@ -6,7 +6,6 @@ import time
 import time as _time
 import io
 from datetime import date, datetime, timedelta, timezone
-from pathlib import Path
 from typing import Optional
 
 # tradingagents-core installed via: pip install -e ./tradingagents-core
@@ -623,34 +622,9 @@ def dashboard_data(authorization: str = Header(None)):
         "deepseek": bool(os.getenv("DEEPSEEK_API_KEY")),
         "google": bool(os.getenv("GOOGLE_API_KEY")),
     }
-    # Bucket every token_log.jsonl line by the vendor of its logged model. Lines with no
-    # known model (all lines written before the model field existed) are counted but
-    # never priced — guessing Sonnet rates misreported DeepSeek-heavy spend.
-    stats_by_vendor = {
-        "claude":   {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0},
-        "deepseek": {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0},
-        "unknown":  {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": None},
-    }
-    try:
-        token_log = Path(_ds.TOKEN_LOG_PATH)
-        if token_log.exists():
-            with open(token_log, "r") as f:
-                for line in f:
-                    try:
-                        e = json.loads(line.strip())
-                        inp = e.get("input_tokens", 0) or 0
-                        out = e.get("output_tokens", 0) or 0
-                        bucket = stats_by_vendor[_ds.model_vendor(e.get("model"))]
-                        bucket["calls"] += 1
-                        bucket["input_tokens"] += inp
-                        bucket["output_tokens"] += out
-                        cost = _ds.estimate_cost_usd(e.get("model"), inp, out)
-                        if cost is not None and bucket["cost_usd"] is not None:
-                            bucket["cost_usd"] += cost
-                    except Exception as _e:
-                        continue
-    except Exception as _e:
-        logging.warning(f"[dashboard] token log read failed: {_e}")
+    # Per-vendor spend from token_log.jsonl (one reader: core.dashboard_state, LLM-09).
+    # Lines with no known model are counted under "unknown" and never priced.
+    stats_by_vendor = _ds.token_usage_summary()["by_vendor"]
     claude_stats = stats_by_vendor["claude"]
     deepseek_stats = stats_by_vendor["deepseek"]
     unknown_stats = stats_by_vendor["unknown"]

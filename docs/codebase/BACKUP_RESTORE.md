@@ -49,13 +49,13 @@ Use `copy`, not `sync`: if the local folder is wiped, `sync` would wipe the off-
 
 ```bash
 cd /home/saumyapatel/Desktop/nivesh/backend
-sudo systemctl stop nivesh || pkill -f uvicorn     # stop every writer first
+sudo systemctl stop nivesh                         # stop every writer first (systemd only, no pkill)
 pgrep -fa "uvicorn|job_worker"                     # must print nothing
 mkdir -p ~/nivesh-pre-restore
 mv stockapp.db stockapp.db-wal stockapp.db-shm ~/nivesh-pre-restore/ 2>/dev/null   # keep the old files, and never leave a stale -wal beside the restored DB
 cp ~/nivesh-backups/stockapp-<STAMP>.db stockapp.db
 ../venv/bin/python -c "import sqlite3; print(sqlite3.connect('stockapp.db').execute('PRAGMA integrity_check').fetchone()[0])"   # expect: ok
-sudo systemctl start nivesh                        # or the nohup uvicorn command from AGENTS.md section 6.5
+sudo systemctl start nivesh && systemctl is-active nivesh   # systemd is the only production supervisor (AGENTS.md section 6.5)
 curl -fsS http://127.0.0.1:8000/health
 ```
 

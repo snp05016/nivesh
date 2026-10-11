@@ -20,26 +20,21 @@ echo "Deploying $SHA to 192.168.1.122"
 ssh saumyapatel@192.168.1.122 "cd /home/saumyapatel/Desktop/nivesh && \
   test -z \"\$(git status --porcelain)\""
 
-# 3. Kill stale processes
-ssh saumyapatel@192.168.1.122 "sudo fuser -k 8000/tcp 2>/dev/null; sleep 2"
-
-# 4. Fetch + fast-forward
+# 3. Fetch + check out the exact SHA (never reset --hard origin/main)
 ssh saumyapatel@192.168.1.122 "cd /home/saumyapatel/Desktop/nivesh && \
-  git fetch origin && git checkout main && git reset --hard origin/main"
+  git fetch origin && git checkout --detach $SHA"
 
-# 5. Verify SHA
+# 4. Verify SHA
 ssh saumyapatel@192.168.1.122 "cd /home/saumyapatel/Desktop/nivesh && \
   git rev-parse HEAD"
 
-# 6. Restart
-ssh saumyapatel@192.168.1.122 "cd /home/saumyapatel/Desktop/nivesh/backend && \
-  nohup /home/saumyapatel/Desktop/nivesh/venv/bin/uvicorn main:app \
-  --host 0.0.0.0 --port 8000 --reload > /tmp/uvicorn.log 2>&1 & sleep 5 && \
-  curl -s http://localhost:8000/ping"
+# 5. Restart under systemd (nivesh.service is the only supervisor: no fuser/pkill/nohup/--reload)
+ssh saumyapatel@192.168.1.122 "sudo systemctl restart nivesh && sleep 5 && \
+  systemctl is-active --quiet nivesh && curl -fsS --max-time 5 http://localhost:8000/ping"
 
-# 7. Health checks
-curl -s --max-time 5 https://api.nivesh.qzz.io/ping
-curl -s --max-time 5 https://api.nivesh.qzz.io/health
+# 6. Health checks
+curl -fsS --max-time 5 https://api.nivesh.qzz.io/ping
+curl -fsS --max-time 5 https://api.nivesh.qzz.io/health
 ```
 
 ## Post-Deploy Verification
@@ -50,6 +45,9 @@ curl -s --max-time 5 https://api.nivesh.qzz.io/health
 curl -s https://api.nivesh.qzz.io/api/v1/predictions/performance -H "Authorization: Bearer $ADMIN_JWT"
 curl -s https://api.nivesh.qzz.io/api/v1/stocks/RELIANCE.NS/financials -H "Authorization: Bearer $ADMIN_JWT"
 curl -s https://api.nivesh.qzz.io/dividends/RELIANCE.NS
+
+# Recent errors (journald keeps and rotates the service log)
+ssh saumyapatel@192.168.1.122 "journalctl -u nivesh --since '-10 min' --no-pager | grep -cE 'Traceback| 500 '"
 
 # Run tests on server, in a throwaway worktree with no backend/.env (never the prod checkout)
 ssh saumyapatel@192.168.1.122 "cd /home/saumyapatel/Desktop/nivesh && \

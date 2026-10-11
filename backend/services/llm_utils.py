@@ -99,8 +99,9 @@ def deepseek_chat(
 
             response = client.chat.completions.create(**kwargs)
 
-            if log_endpoint and hasattr(response, "usage"):
-                _log_token_usage(log_endpoint, response.usage, selected_model)
+            # Every call is logged (LLM-09); unlabelled callers still show up in spend.
+            if getattr(response, "usage", None) is not None:
+                _log_token_usage(log_endpoint or "unlabelled", response.usage, selected_model)
 
             choice = response.choices[0]
             content = choice.message.content or ""

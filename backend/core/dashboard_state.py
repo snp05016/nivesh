@@ -8,8 +8,8 @@ import os
 import json
 import threading
 import uuid
-from datetime import datetime, timezone
-from collections import deque
+from datetime import datetime, timedelta, timezone
+from collections import defaultdict, deque
 
 SERVER_START = datetime.now(timezone.utc)
 _dash_lock = threading.Lock()
@@ -44,14 +44,22 @@ _PRICING_PER_M: list[tuple[str, float, float]] = [
     ("sonnet", 3.0, 15.0),
     ("opus", 15.0, 75.0),
 ]
+# Prompt-cache tokens, as multiples of the model's input rate: reads bill at 0.1x
+# (Anthropic and DeepSeek cache hits), Anthropic 5-minute cache writes at 1.25x.
+_CACHE_READ_MULT = 0.1
+_CACHE_WRITE_MULT = 1.25
+_IST = timezone(timedelta(hours=5, minutes=30))
 
 
-def estimate_cost_usd(model: str | None, input_tokens: int, output_tokens: int) -> float | None:
+def estimate_cost_usd(model: str | None, input_tokens: int, output_tokens: int,
+                      cache_read_tokens: int = 0, cache_write_tokens: int = 0) -> float | None:
     """USD cost of one call, or None when the model is missing or unpriced."""
     m = (model or "").lower()
     for needle, in_rate, out_rate in _PRICING_PER_M:
         if needle in m:
-            return (input_tokens * in_rate + output_tokens * out_rate) / 1_000_000
+            billed_input = (input_tokens + cache_read_tokens * _CACHE_READ_MULT
+                            + cache_write_tokens * _CACHE_WRITE_MULT)
+            return (billed_input * in_rate + output_tokens * out_rate) / 1_000_000
     return None
 
 
@@ -131,16 +139,21 @@ def _dash_log_request(method: str, path: str, params: dict, status: int, duratio
             "duration_ms": round(duration_ms),
         })
 
+def _usage_int(usage, *names: str) -> int:
+    """First non-zero integer token count among `names` (SDKs may report None)."""
+    for name in names:
+        v = getattr(usage, name, 0)
+        if isinstance(v, int) and not isinstance(v, bool) and v:
+            return v
+    return 0
+
+
 def _log_token_usage(endpoint: str, usage, model: str | None = None) -> None:
     """Record one LLM call. Pass `model` so the dashboard can price it by vendor."""
-    inp = getattr(usage, "input_tokens", 0)
-    if inp == 0:
-        inp = getattr(usage, "prompt_tokens", 0)
-    out = getattr(usage, "output_tokens", 0)
-    if out == 0:
-        out = getattr(usage, "completion_tokens", 0)
-    cr = getattr(usage, "cache_read_input_tokens", 0)
-    cw = getattr(usage, "cache_creation_input_tokens", 0)
+    inp = _usage_int(usage, "input_tokens", "prompt_tokens")
+    out = _usage_int(usage, "output_tokens", "completion_tokens")
+    cr = _usage_int(usage, "cache_read_input_tokens")
+    cw = _usage_int(usage, "cache_creation_input_tokens")
     try:
         entry = {
             "ts": datetime.now(timezone.utc).isoformat(),
@@ -172,3 +185,86 @@ def _log_token_usage(endpoint: str, usage, model: str | None = None) -> None:
             "cache_read": cr,
             "cache_write": cw,
         })
+
+
+def token_usage_summary() -> dict:
+    """Aggregate token_log.jsonl into the admin spend view (LLM-09).
+
+    The one reader of the log for /token-stats and /dashboard-data. Calls are priced per
+    model including prompt-cache tokens; lines without a known model are counted in
+    unpriced_calls and never guessed. Days are IST calendar days.
+    """
+    vendors = {
+        "claude":   {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0},
+        "deepseek": {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0},
+        "unknown":  {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": None},
+    }
+    total_cost = 0.0
+    calls = unpriced = 0
+    tok_in = tok_out = tok_cr = tok_cw = 0
+    by_endpoint: dict = defaultdict(float)
+    by_model: dict = defaultdict(float)
+    day_cost: dict = defaultdict(float)
+    day_calls: dict = defaultdict(int)
+    try:
+        with open(TOKEN_LOG_PATH, "r") as f:
+            lines = f.readlines()
+    except FileNotFoundError:
+        lines = []
+    except OSError as e:
+        import logging
+        logging.getLogger(__name__).warning(f"token log unreadable: {e}")
+        lines = []
+
+    for line in lines:
+        try:
+            e = json.loads(line)
+            inp = int(e.get("input_tokens") or 0)
+            out = int(e.get("output_tokens") or 0)
+            cr = int(e.get("cache_read_input_tokens") or 0)
+            cw = int(e.get("cache_creation_input_tokens") or 0)
+        except (ValueError, TypeError, AttributeError):
+            continue  # corrupt line, or not a JSON object
+        model = e.get("model")
+        cost = estimate_cost_usd(model, inp, out, cr, cw)
+        bucket = vendors[model_vendor(model)]
+        bucket["calls"] += 1
+        bucket["input_tokens"] += inp
+        bucket["output_tokens"] += out
+        if cost is None:
+            unpriced += 1
+            cost = 0.0
+        elif bucket["cost_usd"] is not None:
+            bucket["cost_usd"] += cost
+        calls += 1
+        tok_in, tok_out, tok_cr, tok_cw = tok_in + inp, tok_out + out, tok_cr + cr, tok_cw + cw
+        total_cost += cost
+        by_endpoint[e.get("endpoint") or "unknown"] += cost
+        by_model[model or "unknown"] += cost
+        try:
+            day = datetime.fromisoformat(e.get("ts") or "").astimezone(_IST).date().isoformat()
+        except (TypeError, ValueError):
+            continue
+        day_cost[day] += cost
+        day_calls[day] += 1
+
+    usd_inr = float(os.getenv("USD_INR_RATE") or 88.0)
+    last_7 = sorted(day_cost, reverse=True)[:7]
+    return {
+        "total_cost_usd": round(total_cost, 6),
+        "total_cost_inr": round(total_cost * usd_inr, 2),
+        "total_calls": calls,
+        "unpriced_calls": unpriced,
+        "cost_by_endpoint": {k: round(v, 6) for k, v in sorted(by_endpoint.items(), key=lambda x: x[1], reverse=True)},
+        "cost_by_model": {k: round(v, 6) for k, v in sorted(by_model.items(), key=lambda x: x[1], reverse=True)},
+        "by_vendor": vendors,
+        # Share of prompt tokens served from cache (can never exceed 100%).
+        "cache_hit_rate_pct": round(tok_cr / (tok_in + tok_cr) * 100, 2) if tok_in + tok_cr else 0.0,
+        "most_expensive_endpoint": max(by_endpoint, key=lambda k: by_endpoint[k]) if by_endpoint else None,
+        "total_input_tokens": tok_in,
+        "total_output_tokens": tok_out,
+        "total_cache_read_tokens": tok_cr,
+        "total_cache_write_tokens": tok_cw,
+        "estimated_monthly_usd": round(sum(day_cost.values()) / len(day_cost) * 30, 2) if day_cost else 0.0,
+        "last_7_days": [{"date": d, "calls": day_calls[d], "cost_usd": round(day_cost[d], 6)} for d in last_7],
+    }

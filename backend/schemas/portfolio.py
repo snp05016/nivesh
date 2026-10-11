@@ -1,6 +1,6 @@
 """Portfolio, trading, and analysis Pydantic request schemas."""
 
-from typing import Optional
+from typing import Literal, Optional
 from pydantic import BaseModel, Field, field_validator
 
 _ALLOWED_TX_TYPES = {"BUY", "SELL", "SPLIT", "BONUS", "DIVIDEND"}
@@ -11,10 +11,11 @@ class AnalyzeRequest(BaseModel):
     exchange: str = "NSE"
     user_id: Optional[int] = None
     deep_scan: bool = False
-    scan_type: str = "standard"   # "standard" | "extreme"
-    language: Optional[str] = None
-    debate_rounds: Optional[int] = None
-    risk_tolerance: Optional[str] = None
+    # LLM-07: these feed LLM prompts, so only whitelisted values get through (422 otherwise).
+    scan_type: Literal["standard", "deep", "extreme"] = "standard"
+    language: Optional[Literal["English", "Hindi", "Hinglish"]] = None  # iOS Settings options
+    debate_rounds: Optional[int] = Field(default=None, ge=1, le=3)
+    risk_tolerance: Optional[str] = Field(default=None, max_length=20)
 
     @field_validator("ticker")
     def validate_ticker(cls, v):
@@ -29,6 +30,15 @@ class AnalyzeRequest(BaseModel):
     def validate_exchange(cls, v):
         if v not in ("NSE", "BSE"):
             raise ValueError("Exchange must be NSE or BSE")
+        return v
+
+    @field_validator("risk_tolerance")
+    def validate_risk_tolerance(cls, v):
+        if v is None:
+            return v
+        v = v.strip().title()
+        if v not in ("Conservative", "Moderate", "Aggressive"):
+            raise ValueError("risk_tolerance must be Conservative, Moderate or Aggressive")
         return v
 
 

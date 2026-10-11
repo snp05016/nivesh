@@ -531,13 +531,14 @@ kills the run. One running job per user (guarded by the DB job state).
     ticker = req.ticker.upper()
 
     # ── Cache check: return existing analysis instantly if exact tier is available ──
+    # The cache holds English reports only (LLM-07), so other languages always generate.
     try:
         from database import get_analysis_for_date, get_session
         from datetime import date
         with get_session() as cache_session:
             cached = get_analysis_for_date(
                 cache_session, ticker, date.today().strftime("%Y-%m-%d"), req.scan_type
-            )
+            ) if req.language in (None, "English") else None
             if cached:
                 from services.orchestrator import _normalize_response, _inject_live_data
                 cached = _normalize_response(cached)
@@ -1469,95 +1470,5 @@ def daily_action_endpoint(user_id: int, authorization: str = Header(None)):
 @router.get("/token-stats")
 def token_stats_endpoint(authorization: str = Header(None)):
     require_admin(authorization)
-    try:
-        from collections import defaultdict
-        from core.dashboard_state import estimate_cost_usd
-
-        if not os.path.exists(TOKEN_LOG_PATH):
-            return {
-                "total_cost_usd": 0.0,
-                "total_calls": 0,
-                "unpriced_calls": 0,
-                "cost_by_endpoint": {},
-                "cache_hit_rate_pct": 0.0,
-                "most_expensive_endpoint": None,
-                "total_input_tokens": 0,
-                "total_output_tokens": 0,
-                "total_cache_read_tokens": 0,
-            }
-
-        total_cost = 0.0
-        total_calls = 0
-        unpriced_calls = 0
-        cost_by_ep: dict[str, float] = {}
-        total_input = 0
-        total_output = 0
-        total_cache_read = 0
-        day_costs: dict = defaultdict(float)
-        day_calls: dict = defaultdict(int)
-
-        with open(TOKEN_LOG_PATH, "r") as f:
-            for line in f:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    entry = json.loads(line)
-                except json.JSONDecodeError:
-                    continue
-
-                inp = entry.get("input_tokens", 0) or 0
-                out = entry.get("output_tokens", 0) or 0
-                cr  = entry.get("cache_read_input_tokens", 0) or 0
-                endpoint = entry.get("endpoint") or "unknown"
-                # Lines without a known model (all pre-fix lines) are counted but never
-                # priced — guessing Sonnet rates misreported DeepSeek-heavy spend.
-                cost = estimate_cost_usd(entry.get("model"), inp, out)
-                if cost is None:
-                    unpriced_calls += 1
-                    cost = 0.0
-
-                total_cost += cost
-                total_calls += 1
-                total_input += inp
-                total_output += out
-                total_cache_read += cr
-                cost_by_ep[endpoint] = cost_by_ep.get(endpoint, 0.0) + cost
-                day = (entry.get("ts") or entry.get("timestamp") or "")[:10]
-                if day:
-                    day_costs[day] += cost
-                    day_calls[day] += 1
-
-        cache_hit_rate = round(total_cache_read / total_input * 100, 2) if total_input > 0 else 0.0
-        most_expensive = max(cost_by_ep, key=lambda k: cost_by_ep[k]) if cost_by_ep else None
-
-        unique_days = len(day_costs) or 1
-        monthly_est = round(total_cost / unique_days * 30, 2)
-        last_7 = sorted(day_costs.keys(), reverse=True)[:7]
-
-        return {
-            "total_cost_usd": round(total_cost, 6),
-            "total_cost_inr": round(total_cost * 83.5, 2),
-            "total_calls": total_calls,
-            "unpriced_calls": unpriced_calls,
-            "cost_by_endpoint": {k: round(v, 6) for k, v in sorted(cost_by_ep.items(), key=lambda x: x[1], reverse=True)},
-            "cache_hit_rate_pct": cache_hit_rate,
-            "most_expensive_endpoint": most_expensive,
-            "total_input_tokens": total_input,
-            "total_output_tokens": total_output,
-            "total_cache_read_tokens": total_cache_read,
-            "estimated_monthly_usd": monthly_est,
-            "last_7_days": [{"date": d, "calls": day_calls[d], "cost_usd": round(day_costs[d], 6)} for d in last_7],
-        }
-    except Exception as e:
-        logging.info(f"[TOKEN-STATS] Error: {e}")
-        return {
-            "total_cost_usd": 0.0,
-            "total_calls": 0,
-            "cost_by_endpoint": {},
-            "cache_hit_rate_pct": 0.0,
-            "most_expensive_endpoint": None,
-            "total_input_tokens": 0,
-            "total_output_tokens": 0,
-            "total_cache_read_tokens": 0,
-        }
+    from core.dashboard_state import token_usage_summary
+    return token_usage_summary()

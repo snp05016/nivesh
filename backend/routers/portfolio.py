@@ -82,7 +82,7 @@ from services.portfolio_service import (
 )
 
 
-from pydantic import BaseModel as _BaseModel
+from pydantic import BaseModel as _BaseModel, Field as _Field
 from typing import Optional as _Optional
 
 class NetWorthSnapshotResponse(_BaseModel):
@@ -104,11 +104,12 @@ class NetWorthSnapshotResponse(_BaseModel):
 router = APIRouter(tags=["Portfolio"])
 
 # ── Item 35: SIP Calculator ───────────────────────────────────────────
+# Bounded (MATH-17): at most 600 loop months, and every value stays finite (no inf -> 500).
 class SIPCalculatorRequest(_BaseModel):
-    monthly_amount: float
-    expected_return_pct: float
-    years: int
-    step_up_pct: float = 0.0
+    monthly_amount: float = _Field(gt=0, le=1e8)
+    expected_return_pct: float = _Field(ge=-50, le=50)
+    years: int = _Field(ge=1, le=50)
+    step_up_pct: float = _Field(default=0.0, ge=0, le=100)
 
 @router.post("/portfolio/sip-calculator")
 def sip_calculator(req: SIPCalculatorRequest):
