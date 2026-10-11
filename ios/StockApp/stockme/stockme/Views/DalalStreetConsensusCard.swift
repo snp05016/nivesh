@@ -253,8 +253,7 @@ private struct TrendingTickerRow: View {
     let onTap: () -> Void
 
     var body: some View {
-        Button(action: onTap) { HapticManager.selection(); 
-            HStack(spacing: Theme.Spacing.medium) {
+        Button(action: { HapticManager.selection(); onTap() }) { HStack(spacing: Theme.Spacing.medium) {
                 // Ticker label
                 Text(stripEmoji(ticker.ticker))
                     .font(Theme.serialNumberFont(size: 12))

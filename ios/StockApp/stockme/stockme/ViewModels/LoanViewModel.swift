@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 import UIKit
 
 /// Drives LoanMarketplaceView — fetches mock loan offers and applies

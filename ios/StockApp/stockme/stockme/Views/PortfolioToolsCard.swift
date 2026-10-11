@@ -31,6 +31,7 @@ struct PortfolioToolsCard: View {
 
     @State private var showSIPSheet = false
     @State private var showFDCalculatorSheet = false
+    @State private var showCalculatorsSheet = false
     @State private var showBenchmarkSheet = false
     @State private var isExportingPDF = false
     @State private var isLoadingBenchmark = false
@@ -103,15 +104,31 @@ struct PortfolioToolsCard: View {
                     HapticManager.selection()
                     showFDCalculatorSheet = true
                 }
+
+                GuillocheDivider()
+                    .padding(.horizontal, Theme.Spacing.card)
+
+                ToolButtonRow(
+                    icon: "function",
+                    title: "Calculators",
+                    subtitle: "EMI, SIP & Gratuity estimates",
+                    isLoading: false
+                ) {
+                    HapticManager.selection()
+                    showCalculatorsSheet = true
+                }
             }
             .padding(.bottom, Theme.Spacing.medium)
         }
         .banknoteCard()
         .sheet(isPresented: $showSIPSheet) {
-            SIPCalculatorSheet()
+            PortfolioSIPCalculatorSheet()
         }
         .sheet(isPresented: $showFDCalculatorSheet) {
             FixedDepositCalculatorView()
+        }
+        .sheet(isPresented: $showCalculatorsSheet) {
+            CalculatorsView()
         }
         .sheet(isPresented: $showBenchmarkSheet) {
             BenchmarkComparisonSheet(data: benchmarkData, errorMessage: benchmarkError)
@@ -180,8 +197,7 @@ private struct ToolButtonRow: View {
     let action: () -> Void
 
     var body: some View {
-        Button(action: action) { HapticManager.selection(); 
-            HStack(spacing: Theme.Spacing.standard) {
+        Button(action: { HapticManager.selection(); action() }) { HStack(spacing: Theme.Spacing.standard) {
                 Image(systemName: icon)
                     .font(Theme.engravedSerif(size: 18, weight: .medium))
                     .foregroundStyle(Theme.inkPrimary)
@@ -217,7 +233,7 @@ private struct ToolButtonRow: View {
 
 // MARK: - SIP Calculator Sheet
 
-private struct SIPCalculatorSheet: View {
+private struct PortfolioSIPCalculatorSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var monthlyAmount: String = "10000"

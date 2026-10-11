@@ -225,7 +225,7 @@ struct NLScreenerScreen: View {
                 }
             }
         }
-        .toolbar { HapticManager.selection();  ToolbarItem(placement: .navigationBarTrailing) { HelpTypedButton(showHelp: $showHelp) } }
+        .toolbar { ToolbarItem(placement: .navigationBarTrailing) { HelpTypedButton(showHelp: $showHelp) } }
         .helpSheet(isPresented: $showHelp, title: FeatureHelp.nlScreener.title, subtitle: FeatureHelp.nlScreener.subtitle, sections: FeatureHelp.nlScreener.sections)
     }
     

@@ -132,8 +132,7 @@ struct LoginScreen: View {
                         }
 
                         // Primary Action Button
-                        Button(action: attemptAction) { HapticManager.selection(); 
-                            HStack {
+                        Button(action: { HapticManager.selection(); attemptAction() }) { HStack {
                                 if authManager.isLoggingIn {
                                     ProgressView().tint(Theme.inkPrimary)
                                 } else {

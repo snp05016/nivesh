@@ -73,7 +73,7 @@ struct SubscriptionFeatureRow: Identifiable {
     let title: String
     /// Value shown per tier — nil renders as a dash, otherwise a checkmark
     /// (for "true"/"yes") or the literal string (e.g. "5/day", "Unlimited").
-    let values: [SubscriptionTier: String]
+    let values: [SubscriptionTier: String?]
 }
 
 /// One pricing/plan entry shown in the paywall's tier comparison. The

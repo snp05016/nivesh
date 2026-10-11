@@ -29,7 +29,7 @@ class HomeDashboardViewModel: ObservableObject {
             do {
                 let pulse = try await NetworkManager.shared.fetchDashboardPulse()
                 
-                let userId = AuthManager.shared.currentUser?.id ?? 1
+                let userId = AuthManager.shared.currentUser?.userId ?? 1
                 let portfolio = try? await NetworkManager.shared.getPortfolio(userId: userId)
                 
                 let totalValue = portfolio?.reduce(0) { $0 + ($1.stock.currentPrice * $1.shares) } ?? 0.0

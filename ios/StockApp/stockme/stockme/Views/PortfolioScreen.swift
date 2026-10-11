@@ -55,7 +55,7 @@ class WatchlistTagsManager: ObservableObject {
 }
 
 @MainActor
-class PortfolioViewModel: ObservableObject {
+class PortfolioScreenViewModel: ObservableObject {
     @Published var holdings: [PortfolioHolding] = []
     @Published var totalValue: Double = 0
     @Published var investedValue: Double = 0
@@ -118,7 +118,7 @@ class PortfolioViewModel: ObservableObject {
 struct PortfolioScreen: View {
     @EnvironmentObject var authManager: AuthManager
     @EnvironmentObject var reportManager: LocalReportManager
-    @StateObject private var viewModel = PortfolioViewModel()
+    @StateObject private var viewModel = PortfolioScreenViewModel()
     @State private var selectedTab = 0
     @State private var showAddWatchlistSheet = false
     @State private var addSheetSearchText = ""
@@ -1310,14 +1310,12 @@ private struct WatchlistRowView: View {
         }
         .banknoteCard()
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-            Button(role: .destructive, action: onRemove) { HapticManager.selection(); 
-                Label("Remove", systemImage: "trash")
+            Button(role: .destructive, action: { HapticManager.selection(); onRemove() }) { Label("Remove", systemImage: "trash")
             }
             .tint(Theme.bearRed)
         }
         .swipeActions(edge: .leading) {
-            Button(action: onTag) { HapticManager.selection(); 
-                Label("Tag", systemImage: "tag")
+            Button(action: { HapticManager.selection(); onTag() }) { Label("Tag", systemImage: "tag")
             }
             .tint(Theme.securityGold)
         }
@@ -1349,7 +1347,7 @@ private struct WatchlistSkeletonRow: View {
 }
 
 private struct AddHoldingSheet: View {
-    let viewModel: PortfolioViewModel
+    let viewModel: PortfolioScreenViewModel
     let authManager: AuthManager
     @Environment(\.dismiss) private var dismiss
 
@@ -1616,7 +1614,7 @@ private struct AddHoldingSheet: View {
 
 private struct EditHoldingSheet: View {
         let holding: PortfolioHolding
-        let viewModel: PortfolioViewModel
+        let viewModel: PortfolioScreenViewModel
         let authManager: AuthManager
         @Environment(\.dismiss) private var dismiss
         
@@ -1625,7 +1623,7 @@ private struct EditHoldingSheet: View {
         @State private var errorText: String? = nil
         @State private var isSaving = false
         
-        init(holding: PortfolioHolding, viewModel: PortfolioViewModel, authManager: AuthManager) {
+        init(holding: PortfolioHolding, viewModel: PortfolioScreenViewModel, authManager: AuthManager) {
             self.holding = holding
             self.viewModel = viewModel
             self.authManager = authManager

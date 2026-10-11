@@ -63,33 +63,7 @@ struct MarketAnomalyScreen: View {
                 ScrollView {
                     VStack(spacing: Theme.Spacing.large) {
                         if !vm.availableFilters.isEmpty {
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: Theme.Spacing.standard) {
-                                    ForEach(vm.availableFilters, id: \.self) { filter in
-                                        Button(action: { HapticManager.selection();  HapticManager.selection()
-                                            withAnimation {
-                                                vm.selectedFilter = filter
-                                            }
-                                        }) {
-                                            Text(filter.replacingOccurrences(of: "_", with: " "))
-                                                .font(Theme.labelStyle)
-                                                .padding(.horizontal, Theme.Spacing.standard)
-                                                .padding(.vertical, Theme.Spacing.tight)
-                                                .background(vm.selectedFilter == filter ? Theme.inkPrimary : Color.clear)
-                                                .foregroundColor(vm.selectedFilter == filter ? Theme.canvas : Theme.inkSecondary)
-                                                .overlay(
-                                                    RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
-                                                        .stroke(vm.selectedFilter == filter ? Theme.inkPrimary : Theme.borderFine, lineWidth: 1)
-                                                )
-                                        }
-                                        .buttonStyle(EKPressStyle())
-                                        .simultaneousGesture(TapGesture().onEnded {
-                                            HapticManager.selection()
-                                        })
-                                    }
-                                }
-                                .padding(.horizontal, Theme.screenPadding)
-                            }
+                            filterRow
                         }
                         
                         if vm.isLoading && vm.anomalies.isEmpty {
@@ -128,12 +102,43 @@ struct MarketAnomalyScreen: View {
                     await vm.fetchAnomalies()
                 }
             }
-            .toolbar { HapticManager.selection();  ToolbarItem(placement: .navigationBarTrailing) { HelpTypedButton(showHelp: $showHelp) } }
+            .toolbar { ToolbarItem(placement: .navigationBarTrailing) { HelpTypedButton(showHelp: $showHelp) } }
         }
         .helpSheet(isPresented: $showHelp, title: FeatureHelp.anomalies.title, subtitle: FeatureHelp.anomalies.subtitle, sections: FeatureHelp.anomalies.sections)
     }
-}
 
+    @ViewBuilder
+    private var filterRow: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: Theme.Spacing.standard) {
+                ForEach(vm.availableFilters, id: \.self) { filter in
+                    Button(action: {
+                        HapticManager.selection()
+                        withAnimation {
+                            vm.selectedFilter = filter
+                        }
+                    }) {
+                        Text(filter.replacingOccurrences(of: "_", with: " "))
+                            .font(Theme.labelStyle)
+                            .padding(.horizontal, Theme.Spacing.standard)
+                            .padding(.vertical, Theme.Spacing.tight)
+                            .background(vm.selectedFilter == filter ? Theme.inkPrimary : Color.clear)
+                            .foregroundColor(vm.selectedFilter == filter ? Theme.canvas : Theme.inkSecondary)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
+                                    .stroke(vm.selectedFilter == filter ? Theme.inkPrimary : Theme.borderFine, lineWidth: 1)
+                            )
+                    }
+                    .buttonStyle(EKPressStyle())
+                    .simultaneousGesture(TapGesture().onEnded {
+                        HapticManager.selection()
+                    })
+                }
+            }
+            .padding(.horizontal, Theme.screenPadding)
+        }
+    }
+}
 struct AnomalyCard: View {
     let anomaly: MarketAnomaly
     

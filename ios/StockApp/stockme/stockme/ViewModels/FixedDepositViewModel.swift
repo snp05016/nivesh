@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 import UIKit
 
 /// Drives FixedDepositListView — fetches mock FD schemes and exposes a

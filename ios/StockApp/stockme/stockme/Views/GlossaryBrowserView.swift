@@ -205,8 +205,7 @@ private struct ChipView: View {
     let action: () -> Void
 
     var body: some View {
-        Button(action: action) { HapticManager.selection(); 
-            Text(label)
+        Button(action: { HapticManager.selection(); action() }) { Text(label)
                 .font(Theme.labelStyle)
                 .foregroundStyle(isSelected ? Theme.canvas : Theme.inkPrimary)
                 .padding(.horizontal, Theme.Spacing.standard)

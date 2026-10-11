@@ -48,7 +48,7 @@ class PortfolioViewModel: ObservableObject {
         
         Task {
             do {
-                let userId = AuthManager.shared.currentUser?.id ?? 1
+                let userId = AuthManager.shared.currentUser?.userId ?? 1
                 let portfolio = try await NetworkManager.shared.getPortfolio(userId: userId)
                 
                 self.holdings = portfolio

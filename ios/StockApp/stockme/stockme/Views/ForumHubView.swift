@@ -33,7 +33,7 @@ struct ForumHubView: View {
             }
         }
         .sheet(isPresented: $showCreateThread) {
-            CreateThreadView()
+            CreateThreadView(onCreated: { _ in vm.fetchBoards() })
         }
         .refreshable { vm.fetchBoards() }
     }
@@ -227,7 +227,7 @@ struct BoardThreadListView: View {
             }
         }
         .sheet(isPresented: $showCreateThread) {
-            CreateThreadView(preselectedBoard: board)
+            CreateThreadView(preselectedBoard: board, onCreated: { _ in vm.fetchThreads() })
         }
         .refreshable { vm.fetchThreads() }
     }

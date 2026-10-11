@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 
 /// Drives FinanceTrackerView — fetches mock linked accounts, the balance
 /// summary, and the spend-categorization placeholder, mirroring

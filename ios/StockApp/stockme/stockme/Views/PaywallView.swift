@@ -196,6 +196,7 @@ struct PaywallView: View {
         }
     }
 
+    @ViewBuilder
     private var matrixHeaderRow: some View {
         HStack(spacing: Theme.Spacing.small) {
             Text("FEATURE")
@@ -325,10 +326,10 @@ private struct FeatureMatrixRow: View {
 
     @ViewBuilder
     private func cell(for tier: SubscriptionTier) -> some View {
-        let value = row.values[tier]
+        let value = row.values[tier] ?? nil
         if value == "yes" {
             Image(systemName: "checkmark.circle.fill").foregroundStyle(Theme.bullGreen)
-        } else if let value {
+        } else if let value = value {
             Text(value)
                 .font(Theme.serialNumberFont(size: 11))
                 .foregroundStyle(Theme.inkSecondary)

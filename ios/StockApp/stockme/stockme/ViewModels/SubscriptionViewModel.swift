@@ -1,5 +1,5 @@
 import SwiftUI
-
+import Combine
 /// Drives PaywallView and SubscriptionManagementView — fetches the mock plan
 /// catalog + current plan, and performs the mock upgrade/downgrade/cancel
 /// actions. Mirrors LoanViewModel's fetch/error/loading shape. MOCK DATA -

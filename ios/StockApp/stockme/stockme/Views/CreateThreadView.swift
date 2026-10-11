@@ -6,8 +6,13 @@ struct CreateThreadView: View {
     @StateObject private var vm: CreateThreadViewModel
     @Environment(\.dismiss) private var dismiss
 
-    init(preselectedBoard: ForumBoard? = nil) {
+    /// Invoked with the newly created thread right before the sheet dismisses,
+    /// so the caller (board thread list, forum hub) can refresh in place.
+    var onCreated: ((ForumThreadDetail) -> Void)? = nil
+
+    init(preselectedBoard: ForumBoard? = nil, onCreated: ((ForumThreadDetail) -> Void)? = nil) {
         _vm = StateObject(wrappedValue: CreateThreadViewModel(preselectedBoard: preselectedBoard))
+        self.onCreated = onCreated
     }
 
     var body: some View {
@@ -51,7 +56,15 @@ struct CreateThreadView: View {
                     Button {
                         HapticManager.selection()
                         vm.submit { success in
-                            if success { dismiss() }
+                            if success {
+                                HapticManager.success()
+                                if let created = vm.createdThread {
+                                    onCreated?(created)
+                                }
+                                dismiss()
+                            } else {
+                                HapticManager.error()
+                            }
                         }
                     } label: {
                         if vm.isSubmitting {

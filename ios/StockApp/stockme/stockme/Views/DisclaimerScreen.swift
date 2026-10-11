@@ -53,8 +53,7 @@ struct DisclaimerScreen: View {
                 Spacer()
 
                 VStack(spacing: Theme.Spacing.card) {
-                    Button(action: onAccept) { HapticManager.selection(); 
-                        Text("I ACKNOWLEDGE & CONTINUE")
+                    Button(action: { HapticManager.selection(); onAccept() }) { Text("I ACKNOWLEDGE & CONTINUE")
                             .font(Theme.labelStyle)
                             .foregroundStyle(Theme.canvas)
                             .frame(maxWidth: .infinity)

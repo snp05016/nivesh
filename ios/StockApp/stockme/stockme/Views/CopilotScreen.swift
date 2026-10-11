@@ -145,8 +145,7 @@ struct CopilotScreen: View {
                                         .stroke(Theme.borderFine, lineWidth: 0.5)
                                 )
 
-                            Button(action: sendMessage) { HapticManager.selection(); 
-                                ZStack {
+                            Button(action: { HapticManager.selection(); sendMessage() }) { ZStack {
                                     Circle()
                                         .fill(messageText.isEmpty ? Theme.inkTertiary.opacity(0.2) : Theme.securityGold)
                                         .frame(width: 44, height: 44)

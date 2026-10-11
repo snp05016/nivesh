@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 
 /// Drives ForumHubView — fetches the board list.
 @MainActor
@@ -235,7 +236,11 @@ class CreateThreadViewModel: ObservableObject {
                 self.isSubmitting = false
                 completion(true)
             } catch {
-                self.errorMessage = "Couldn't create thread. Please try again."
+                if case let NetworkError.fetchFailed(_, status, _) = error, status == 422 {
+                    self.errorMessage = "Your post was flagged and blocked. Try rephrasing."
+                } else {
+                    self.errorMessage = "Couldn't post your thread. Try again."
+                }
                 self.isSubmitting = false
                 completion(false)
             }

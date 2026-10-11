@@ -250,7 +250,7 @@ struct AnalysisErrorStateView: View {
                 .banknoteCard()
 
                 VStack(spacing: Theme.Spacing.standard) {
-                    Button(action: onRetry) { HapticManager.selection(); 
+                    Button(action: { HapticManager.selection(); onRetry() }) {
                         HStack(spacing: Theme.Spacing.medium) {
                             Image(systemName: "arrow.clockwise")
                             Text("RETRY ANALYSIS")

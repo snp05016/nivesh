@@ -89,9 +89,8 @@ private struct BanknoteDialogCard: View {
         }
     }
 
-    private func dialogButton(_ button: BanknoteDialogButton) -> some View { HapticManager.selection(); 
-        Button { HapticManager.selection(); 
-    HapticManager.selection()
+    private func dialogButton(_ button: BanknoteDialogButton) -> some View {
+        Button {
             HapticManager.selection()
             onClose()
             button.action()

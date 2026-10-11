@@ -2323,11 +2323,6 @@ extension HomeScreen {
                                     .foregroundStyle(Theme.inkPrimary)
                             }
                             Spacer()
-<<<<<<< Updated upstream
-                            Button { HapticManager.selection(); 
-    HapticManager.selection()
-=======
-                            
                             if viewModel.morningBriefData != nil {
                                 let todayStr: String = {
                                     let df = DateFormatter(); df.dateFormat = "yyyy-MM-dd"
@@ -2369,7 +2364,6 @@ extension HomeScreen {
                             }
                             
                             Button {
->>>>>>> Stashed changes
                                 HapticManager.selection()
                                 withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
                                     showSearch.toggle()
@@ -2385,8 +2379,7 @@ extension HomeScreen {
                                     .overlay(Circle().stroke(Theme.securityGold.opacity(0.3), lineWidth: 0.5))
                             }
                             .buttonStyle(EKPressStyle())
-                            Button { HapticManager.selection(); 
-    HapticManager.selection()
+                            Button {
                                 HapticManager.selection()
                                 showGlossary = true
                             } label: {

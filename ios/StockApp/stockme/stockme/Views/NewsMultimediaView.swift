@@ -269,7 +269,8 @@ struct NewsMultimediaView: View {
                 .frame(width: 130, height: 10)
         }
         .padding(Theme.Spacing.standard)
-        .frame(maxWidth: .infinity, height: 140)
+        .frame(maxWidth: .infinity)
+        .frame(height: 140)
         .banknoteCard()
         .shimmerPlaceholder(isLoading: true)
     }

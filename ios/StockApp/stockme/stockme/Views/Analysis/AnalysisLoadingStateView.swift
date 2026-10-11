@@ -54,7 +54,7 @@ struct AnalysisLoadingStateView: View {
                         )
                     }
 
-                    Button(action: onCancel) { HapticManager.selection(); 
+                    Button(action: { HapticManager.selection(); onCancel() }) {
                         Text("CANCEL ANALYSIS")
                             .font(Theme.sectionCapsLabel(size: 9))
                             .foregroundStyle(Theme.dataNegative)

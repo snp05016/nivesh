@@ -175,8 +175,7 @@ struct SubmitButtonSection: View {
     var isSubmitting: Bool = false
     
     var body: some View {
-        Button(action: action) { HapticManager.selection(); 
-            Text(isSubmitting ? "Logging..." : "Confirm Transaction")
+        Button(action: { HapticManager.selection(); action() }) { Text(isSubmitting ? "Logging..." : "Confirm Transaction")
                 .font(.headline)
                 .fontDesign(.serif)
                 .frame(maxWidth: .infinity)

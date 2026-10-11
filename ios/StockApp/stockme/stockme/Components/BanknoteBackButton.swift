@@ -43,7 +43,7 @@ struct BanknoteBackButton: View {
 extension View {
     /// Hides the native back button and installs the app-owned `BanknoteBackButton`
     /// in the navigation bar's leading slot, for device-consistent appearance.
-    func banknoteBackButton(_ action: @escaping () -> Void) -> some View { HapticManager.selection(); 
+    func banknoteBackButton(_ action: @escaping () -> Void) -> some View {
         self
             .navigationBarBackButtonHidden(true)
             .toolbar {

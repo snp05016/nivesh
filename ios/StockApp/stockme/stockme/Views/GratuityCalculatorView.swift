@@ -1,0 +1,142 @@
+import SwiftUI
+
+// MARK: - Gratuity Calculator
+//
+// MOCK/DEMO — a simplified, offline estimate only. This is NOT tax or legal
+// advice; it approximates the Payment of Gratuity Act, 1972 formula for
+// employees covered under the Act and does not account for exemptions,
+// employer-specific gratuity schemes, or non-covered establishments. Always
+// confirm actual entitlement with your employer/HR or a qualified advisor.
+//
+// Gratuity = (Last Drawn Monthly Salary × 15 × Years of Service) / 26
+// Statutory ceiling (current): ₹20,00,000 — amounts above this are capped.
+
+struct GratuityCalculatorView: View {
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: Theme.sectionSpacing) {
+                    Text("Estimate your gratuity payout under the Payment of Gratuity Act, 1972.")
+                        .font(Theme.engravedSerif(size: 13, relativeTo: .footnote))
+                        .foregroundColor(Theme.inkTertiary)
+
+                    GratuityCalculatorContent()
+                }
+                .padding(Theme.screenPadding)
+            }
+            .background(Theme.canvas.ignoresSafeArea())
+            .navigationTitle("Gratuity Calculator")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        HapticManager.selection()
+                        dismiss()
+                    }
+                    .foregroundStyle(Theme.securityGold)
+                }
+            }
+        }
+    }
+}
+
+/// Inline, self-contained gratuity calculator body (sliders + result card)
+/// with no NavigationStack of its own — reusable both inside
+/// GratuityCalculatorView's sheet and inside CalculatorsView's tabbed
+/// container.
+struct GratuityCalculatorContent: View {
+    @State private var lastDrawnSalary: Double = 50_000
+    @State private var yearsOfService: Double = 10
+
+    private var result: GratuityCalculationResult {
+        GratuityCalculationResult.computeLocally(
+            lastDrawnSalary: lastDrawnSalary,
+            yearsOfService: Int(yearsOfService)
+        )
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.sectionSpacing) {
+            FDInputSlider(
+                title: "Last Drawn Monthly Salary (Basic + DA)",
+                value: $lastDrawnSalary,
+                range: 5_000...10_00_000,
+                step: 1_000,
+                display: { IndianFormatter.formatLakhsCrores($0) }
+            )
+            FDInputSlider(
+                title: "Years of Service",
+                value: $yearsOfService,
+                range: 1...45,
+                step: 1,
+                display: { "\(Int($0)) yr" }
+            )
+
+            GratuityResultCard(result: result)
+        }
+    }
+}
+
+struct GratuityCalculationResult: Equatable {
+    let uncappedGratuity: Double
+    let payableGratuity: Double
+    let isCapped: Bool
+
+    /// Statutory ceiling for employees covered under the Payment of
+    /// Gratuity Act, 1972 (current value as of this demo).
+    static let statutoryCeiling: Double = 20_00_000
+
+    /// Gratuity = (Last Drawn Salary × 15 × Years of Service) / 26.
+    /// Pure/local — simplified/demo estimate only, not tax or legal advice.
+    static func computeLocally(lastDrawnSalary: Double, yearsOfService: Int) -> GratuityCalculationResult {
+        let years = max(yearsOfService, 0)
+        let uncapped = (lastDrawnSalary * 15 * Double(years)) / 26.0
+        let payable = min(uncapped, statutoryCeiling)
+
+        return GratuityCalculationResult(
+            uncappedGratuity: (uncapped * 100).rounded() / 100,
+            payableGratuity: (payable * 100).rounded() / 100,
+            isCapped: uncapped > statutoryCeiling
+        )
+    }
+}
+
+private struct GratuityResultCard: View {
+    let result: GratuityCalculationResult
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.card) {
+            Text("Estimated Gratuity")
+                .font(Theme.engravedSerif(size: 16, weight: .semibold, relativeTo: .title3))
+                .foregroundColor(Theme.inkPrimary)
+
+            Text(IndianFormatter.formatLakhsCrores(result.payableGratuity))
+                .font(Theme.serialNumberFont(size: 28, relativeTo: .largeTitle))
+                .foregroundColor(Theme.securityGold)
+            Text("PAYABLE GRATUITY")
+                .font(Theme.officialStampFont(size: 10, relativeTo: .caption2))
+                .tracking(1.2)
+                .foregroundColor(Theme.inkTertiary)
+
+            if result.isCapped {
+                VStack(alignment: .leading, spacing: Theme.Spacing.small) {
+                    Text("UNCAPPED VALUE: \(IndianFormatter.formatLakhsCrores(result.uncappedGratuity))")
+                        .font(Theme.officialStampFont(size: 10, relativeTo: .caption2))
+                        .tracking(1.0)
+                        .foregroundColor(Theme.inkSecondary)
+                    Text("Capped at the statutory ceiling of \(IndianFormatter.formatLakhsCrores(GratuityCalculationResult.statutoryCeiling)).")
+                        .font(Theme.engravedSerif(size: 11, relativeTo: .caption2))
+                        .foregroundColor(Theme.inkTertiary)
+                }
+            }
+
+            Text("MOCK/DEMO — simplified estimate for employees covered under the Payment of Gratuity Act, 1972. Not tax or legal advice; confirm with your employer or an advisor.")
+                .font(Theme.engravedSerif(size: 11, relativeTo: .caption2))
+                .foregroundColor(Theme.inkTertiary)
+        }
+        .padding(Theme.Spacing.card)
+        .banknoteCard()
+    }
+}

@@ -26,14 +26,16 @@ struct CompareScreen: View {
                     VStack(spacing: Theme.Spacing.screen) {
                         // Picker row
                         HStack(spacing: Theme.Spacing.small) {
-                            StockPickerButton(label: "Stock A", selected: selectedA, searchText: $searchTextA) { HapticManager.selection();  entry in
+                            StockPickerButton(label: "Stock A", selected: selectedA, searchText: $searchTextA) { entry in
+                                HapticManager.selection()
                                 selectedA = entry
                                 searchTextA = ""
                             }
                             Image(systemName: "arrow.left.arrow.right")
                                 .foregroundStyle(Theme.securityGold)
                                 .font(.caption.weight(.bold))
-                            StockPickerButton(label: "Stock B", selected: selectedB, searchText: $searchTextB) { HapticManager.selection();  entry in
+                            StockPickerButton(label: "Stock B", selected: selectedB, searchText: $searchTextB) { entry in
+                                HapticManager.selection()
                                 selectedB = entry
                                 searchTextB = ""
                             }
@@ -41,7 +43,8 @@ struct CompareScreen: View {
                                 Image(systemName: "arrow.left.arrow.right")
                                     .foregroundStyle(Theme.securityGold)
                                     .font(.caption.weight(.bold))
-                                StockPickerButton(label: "Stock C", selected: selectedC, searchText: $searchTextC) { HapticManager.selection();  entry in
+                                StockPickerButton(label: "Stock C", selected: selectedC, searchText: $searchTextC) { entry in
+                                    HapticManager.selection()
                                     selectedC = entry
                                     searchTextC = ""
                                 }

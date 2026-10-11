@@ -253,8 +253,7 @@ private struct AlertRow: View {
                 }
 
                 // Delete button (visible on card, since swipe actions don't work in horizontal scroll)
-                Button(action: onDelete) { HapticManager.selection(); 
-                    Image(systemName: "trash.circle.fill")
+                Button(action: { HapticManager.selection(); onDelete() }) { Image(systemName: "trash.circle.fill")
                         .font(.title2)
                         .foregroundStyle(Theme.bearRed.opacity(0.7))
                 }
