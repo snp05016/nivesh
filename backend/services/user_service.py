@@ -11,6 +11,7 @@ from helpers import (
 from database import MarketErrorLog
 from services.harvester_reformatter import strip_emoji
 from services.notifications_inbox import create_notification
+from services.preferences import push_allowed
 from services.sebi_registry import registration_for_channel
 
 _watchlist_price_cache: dict = {}
@@ -136,6 +137,8 @@ def get_watchlist(user_id: int) -> Optional[dict]:
 
 
 def _deliver_apns(user_id: int, payload: dict) -> bool:
+    if not push_allowed(user_id):
+        return False
     try:
         with get_session() as session:
             tokens = session.query(DeviceToken).filter_by(user_id=user_id).all()

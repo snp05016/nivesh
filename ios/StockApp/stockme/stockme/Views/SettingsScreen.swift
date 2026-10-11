@@ -11,23 +11,17 @@ struct SettingsScreen: View {
     @AppStorage("nivesh_autoRunOnTap") private var autoRunOnTap = false
     @AppStorage("nivesh_riskTolerance") private var riskTolerance = "Moderate"
     @AppStorage("nivesh_defaultExchange") private var defaultExchange = "Auto"
-    @AppStorage("nivesh_minMarketCap") private var minMarketCap = "Any"
 
     // Notifications
-    @AppStorage("nivesh_signalChangeAlerts") private var signalChangeAlerts = false
     @AppStorage("morningBriefTime") private var morningBriefTime: Double = 0
     @AppStorage("notificationSound") private var notificationSound = "Default"
 
     // AI & Analysis
     @AppStorage("defaultDeepScan") private var defaultDeepScan = false
     @AppStorage("nivesh_autoRegenerateStale") private var autoRegenerateStale = false
-    @AppStorage("nivesh_minConfidenceAlert") private var minConfidenceAlert = "50%"
     @AppStorage("nivesh_analysisLanguage") private var analysisLanguage = "English"
     @AppStorage("nivesh_debateRounds") private var debateRounds = "1"
     @AppStorage("nivesh_showGovernanceFirst") private var showGovernanceFirst = false
-    @AppStorage("nivesh_alertOnBuy") private var alertOnBuy = true
-    @AppStorage("nivesh_alertOnSell") private var alertOnSell = true
-    @AppStorage("nivesh_muteHoldSignals") private var muteHoldSignals = false
 
     // Appearance
     @AppStorage("selectedTheme") private var selectedThemeRaw = AppTheme.darkImmersive.rawValue
@@ -162,7 +156,6 @@ struct SettingsScreen: View {
             PickerRow(icon: "shield.checkered", color: Theme.securityGold, title: "Risk Tolerance", selection: $riskTolerance, options: ["Conservative", "Moderate", "Aggressive"])
             PickerRow(icon: "building.2", color: Theme.inkSecondary, title: "Default Exchange", selection: $defaultExchange, options: ["Auto", "NSE", "BSE"])
             NavRow(icon: "tag", color: Theme.inkSecondary, title: "Sector Blacklist", destination: SectorBlacklistView())
-            PickerRow(icon: "chart.bar", color: Theme.inkSecondary, title: "Min Market Cap", selection: $minMarketCap, options: ["Any", "Large (>20K Cr)", "Mid (5-20K Cr)", "Small (<5K Cr)"])
         }
     }
 
@@ -170,7 +163,6 @@ struct SettingsScreen: View {
 
     private var notificationsSection: some View {
         SettingsGroup(title: "NOTIFICATIONS", hindi: "सूचनाएं") {
-            ToggleRow(icon: "bell.badge", color: Theme.bearRed, title: "Signal Change Alerts", isOn: $signalChangeAlerts)
             DateRow(icon: "clock.fill", color: Theme.securityGold, title: "Morning Brief Time", selection: morningBriefDate)
             PickerRow(icon: "speaker.wave.2", color: Theme.bearRed, title: "Notification Sound", selection: $notificationSound, options: ["Default", "rupee_rustle.mp3"])
             NavRow(icon: "moon.zzz", color: Theme.inkSecondary, title: "Quiet Hours", destination: QuietHoursView())
@@ -184,13 +176,9 @@ struct SettingsScreen: View {
         SettingsGroup(title: "AI & ANALYSIS", hindi: "एआई विश्लेषण") {
             ToggleRow(icon: "waveform.badge.magnifyingglass", color: Theme.securityGold, title: "Deep Scan by Default", isOn: $defaultDeepScan)
             ToggleRow(icon: "arrow.triangle.2.circlepath", color: Theme.bearRed, title: "Auto-regenerate Stale", isOn: $autoRegenerateStale)
-            PickerRow(icon: "gauge.with.dots.needle.33percent", color: Theme.bullGreen, title: "Min Confidence Alert", selection: $minConfidenceAlert, options: ["50%", "65%", "75%", "90%"])
             PickerRow(icon: "globe", color: Theme.inkSecondary, title: "Analysis Language", selection: $analysisLanguage, options: ["English", "Hindi", "Hinglish"])
             PickerRow(icon: "arrow.triangle.branch", color: Theme.securityGold, title: "Debate Rounds", selection: $debateRounds, options: ["1", "2", "3"])
             ToggleRow(icon: "shield.lefthalf.filled", color: Theme.inkSecondary, title: "Show Governance First", isOn: $showGovernanceFirst)
-            ToggleRow(icon: "arrow.up.circle", color: Theme.bullGreen, title: "Alert on BUY", isOn: $alertOnBuy)
-            ToggleRow(icon: "arrow.down.circle", color: Theme.bearRed, title: "Alert on SELL", isOn: $alertOnSell)
-            ToggleRow(icon: "pause.circle", color: Theme.holdAmber, title: "Mute HOLD Signals", isOn: $muteHoldSignals)
         }
     }
 

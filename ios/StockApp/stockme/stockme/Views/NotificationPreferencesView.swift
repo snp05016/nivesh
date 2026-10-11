@@ -2,29 +2,31 @@ import SwiftUI
 
 // MARK: - NotificationPreferencesView
 //
-// Per-category push notification toggles (price alerts, IPO updates, forum
-// replies, market news). The backend only has a generic UserPreference
-// row (theme + a single alerts_enabled bool — backend/models/db_models.py,
-// routers/preferences.py) with no per-category columns, and
-// SettingsScreen.swift already persists its notification toggles locally
-// via @AppStorage (signalChangeAlerts, morningBriefTime, etc.) rather than
-// syncing them server-side. This view follows that same established
-// local-only pattern instead of inventing a new server model.
+// Push master switch. It is stored locally (@AppStorage nivesh_pushMasterEnabled,
+// read by NotificationManager to mute local notifications and the Morning Brief) and
+// synced to the backend's UserPreference.alerts_enabled via PUT /api/v1/preferences,
+// which the price-alert poller and APNs delivery honour. The sync and the one-time
+// migration of a pre-sync local OFF live in NotificationManager.
+// Price alerts are the only push type today, so there are no per-category toggles.
 
 struct NotificationPreferencesView: View {
-    @AppStorage("nivesh_pushPriceAlerts") private var priceAlerts = true
-    @AppStorage("nivesh_pushIPOUpdates") private var ipoUpdates = true
-    @AppStorage("nivesh_pushForumReplies") private var forumReplies = false
-    @AppStorage("nivesh_pushMarketNews") private var marketNews = false
     @AppStorage("nivesh_pushMasterEnabled") private var masterEnabled = true
+    @State private var syncError: String? = nil
 
     var body: some View {
         ZStack {
             Theme.canvasDeep.ignoresSafeArea()
             ScrollView {
-                VStack(spacing: Theme.Spacing.large) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.large) {
                     masterSection
-                    categoriesSection
+                    if let syncError {
+                        Text(syncError)
+                            .font(Theme.serialNumberFont(size: 10)).foregroundStyle(Theme.bearRed)
+                            .padding(.horizontal, Theme.Spacing.small)
+                    }
+                    Text("Server pushes are price alerts only today; more categories coming soon.")
+                        .font(Theme.serialNumberFont(size: 10)).foregroundStyle(Theme.inkTertiary)
+                        .padding(.horizontal, Theme.Spacing.small)
                 }
                 .padding(.horizontal, Theme.Spacing.screen)
                 .padding(.vertical, Theme.Spacing.large)
@@ -32,54 +34,22 @@ struct NotificationPreferencesView: View {
         }
         .navigationTitle("Notifications")
         .navigationBarTitleDisplayMode(.large)
+        .task { await NotificationManager.shared.syncPushMaster() }
+        .onChange(of: masterEnabled) { _, newValue in
+            Task {
+                guard let saved = await NotificationManager.shared.pushMasterChanged(to: newValue) else { return }
+                syncError = saved ? nil : "Couldn't save this setting. Check your connection and try again."
+            }
+        }
     }
 
     private var masterSection: some View {
-        VStack(spacing: Theme.Spacing.none) {
-            NotifToggleRow(
-                icon: "bell.badge.fill", color: Theme.securityGold,
-                title: "Push Notifications", subtitle: "Master switch for all categories below",
-                isOn: $masterEnabled
-            )
-        }
+        NotifToggleRow(
+            icon: "bell.badge.fill", color: Theme.securityGold,
+            title: "Push Notifications", subtitle: "Price alerts, Morning Brief and analysis alerts",
+            isOn: $masterEnabled
+        )
         .banknoteCard()
-    }
-
-    private var categoriesSection: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
-            HStack(alignment: .bottom, spacing: Theme.Spacing.tight) {
-                Text("श्रेणियाँ").font(Theme.hindiFont(size: 9)).foregroundStyle(Theme.inkSecondary)
-                Text("CATEGORIES").font(Theme.officialStampFont(size: 9)).foregroundStyle(Theme.inkPrimary)
-            }
-            .padding(.horizontal, Theme.Spacing.small)
-
-            VStack(spacing: Theme.Spacing.none) {
-                NotifToggleRow(
-                    icon: "chart.line.uptrend.xyaxis", color: Theme.bullGreen,
-                    title: "Price Alerts", subtitle: "Signal changes & target price hits",
-                    isOn: $priceAlerts, disabled: !masterEnabled
-                )
-                GuillocheDivider()
-                NotifToggleRow(
-                    icon: "newspaper.fill", color: Theme.securityGold,
-                    title: "IPO Updates", subtitle: "New listings, allotment & subscription status",
-                    isOn: $ipoUpdates, disabled: !masterEnabled
-                )
-                GuillocheDivider()
-                NotifToggleRow(
-                    icon: "bubble.left.and.bubble.right.fill", color: Theme.inkSecondary,
-                    title: "Forum Replies", subtitle: "Replies & mentions on your threads",
-                    isOn: $forumReplies, disabled: !masterEnabled
-                )
-                GuillocheDivider()
-                NotifToggleRow(
-                    icon: "globe.asia.australia.fill", color: Theme.holdAmber,
-                    title: "Market News", subtitle: "Macro headlines & sector rotation digests",
-                    isOn: $marketNews, disabled: !masterEnabled
-                )
-            }
-            .banknoteCard()
-        }
     }
 }
 
@@ -91,7 +61,6 @@ private struct NotifToggleRow: View {
     let title: String
     let subtitle: String
     @Binding var isOn: Bool
-    var disabled: Bool = false
 
     var body: some View {
         HStack(spacing: Theme.Spacing.standard) {
@@ -111,11 +80,9 @@ private struct NotifToggleRow: View {
             Toggle(title, isOn: $isOn)
                 .labelsHidden()
                 .tint(Theme.securityGold)
-                .disabled(disabled)
                 .onChange(of: isOn) { _, _ in HapticManager.selection() }
         }
         .padding(.vertical, Theme.Spacing.standard)
         .padding(.horizontal, Theme.Spacing.card)
-        .opacity(disabled ? 0.4 : 1.0)
     }
 }

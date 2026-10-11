@@ -36,6 +36,63 @@ final class NotificationManager: NSObject, ObservableObject, UNUserNotificationC
                 diagnostic: ErrorDiagnostic(classification: "INFRASTRUCTURE_EXCEPTION")
             )
         }
+        // Runs at launch and sign-in (the only callers), so the device mute matches the
+        // server before the user ever opens Settings > Notifications.
+        await syncPushMaster()
+    }
+
+    // MARK: - Push master switch (nivesh_pushMasterEnabled <-> server alerts_enabled)
+
+    private static let pushMasterKey = "nivesh_pushMasterEnabled"
+    private static let pushMasterSyncedKey = "nivesh_pushMasterSynced"
+    /// alerts_enabled as last known on the server; a local change equal to it is not re-sent.
+    private var serverPushMaster: Bool?
+
+    var pushMasterEnabled: Bool {
+        UserDefaults.standard.object(forKey: Self.pushMasterKey) as? Bool ?? true
+    }
+
+    /// Reconciles the local switch with the server. Network failures keep the local value;
+    /// the next call retries.
+    func syncPushMaster() async {
+        let defaults = UserDefaults.standard
+        do {
+            if !defaults.bool(forKey: Self.pushMasterSyncedKey),
+               defaults.object(forKey: Self.pushMasterKey) as? Bool == false {
+                // One-time migration: older builds kept this switch on-device only, so the
+                // server never learned an explicit OFF. Send it rather than adopt the server default.
+                try await NetworkManager.shared.updateAlertsEnabled(false)
+                serverPushMaster = false
+            } else {
+                let enabled = try await NetworkManager.shared.fetchPreferences().alertsEnabled ?? true
+                serverPushMaster = enabled
+                defaults.set(enabled, forKey: Self.pushMasterKey)
+            }
+            defaults.set(true, forKey: Self.pushMasterSyncedKey)
+        } catch {
+            os_log(.info, "[Nivesh/Notifications] Push switch sync deferred: %{public}@", error.localizedDescription)
+        }
+        scheduleMorningBrief()
+    }
+
+    /// Persists a change of the local switch (already written to UserDefaults).
+    /// Returns nil when there was nothing to send, true when saved, false when the save
+    /// failed and the switch was reverted.
+    func pushMasterChanged(to enabled: Bool) async -> Bool? {
+        scheduleMorningBrief()
+        guard enabled != serverPushMaster else { return nil }
+        do {
+            try await NetworkManager.shared.updateAlertsEnabled(enabled)
+            serverPushMaster = enabled
+            UserDefaults.standard.set(true, forKey: Self.pushMasterSyncedKey)
+            return true
+        } catch {
+            // Revert so the switch never claims a state the server does not have.
+            serverPushMaster = !enabled
+            UserDefaults.standard.set(!enabled, forKey: Self.pushMasterKey)
+            scheduleMorningBrief()
+            return false
+        }
     }
 
     /// Called by AppDelegate when APNs token is received
@@ -93,27 +150,13 @@ final class NotificationManager: NSObject, ObservableObject, UNUserNotificationC
         completionHandler()
     }
 
-    /// Schedule a local notification immediately.
-    /// - Parameters:
-    ///   - signalType: Optional signal type (BUY/SELL/HOLD) for alert filtering.
-    func scheduleLocal(title: String, body: String, subtitle: String = "", signalType: String? = nil, confidencePct: Int? = nil) {
-        // Confidence threshold filtering
-        if let pct = confidencePct {
-            let thresholdStr = UserDefaults.standard.string(forKey: "nivesh_minConfidenceAlert") ?? "50%"
-            let threshold = Int(thresholdStr.replacingOccurrences(of: "%", with: "")) ?? 50
-            if pct < threshold { return }
-        }
-
-        // Signal-type filtering
-        if let signal = signalType?.uppercased() {
-            let alertOnBuy = UserDefaults.standard.bool(forKey: "nivesh_alertOnBuy")
-            let alertOnSell = UserDefaults.standard.bool(forKey: "nivesh_alertOnSell")
-            let muteHold = UserDefaults.standard.bool(forKey: "nivesh_muteHoldSignals")
-
-            if signal.contains("BUY") && !alertOnBuy { return }
-            if signal.contains("SELL") && !alertOnSell { return }
-            if signal.contains("HOLD") && muteHold { return }
-        }
+    /// Schedule a local notification immediately, honouring the Push Notifications
+    /// master switch, quiet hours and the chosen sound. scheduleMorningBrief also
+    /// honours the master switch. (NetworkManager.scheduleLocalNotification bypasses
+    /// both but has no callers.)
+    func scheduleLocal(title: String, body: String, subtitle: String = "",
+                       identifier: String? = nil, userInfo: [AnyHashable: Any] = [:]) {
+        guard pushMasterEnabled else { return }
 
         // Quiet hours check
         if isInQuietHours() { return }
@@ -122,6 +165,7 @@ final class NotificationManager: NSObject, ObservableObject, UNUserNotificationC
         content.title = title
         content.body = body
         if !subtitle.isEmpty { content.subtitle = subtitle }
+        content.userInfo = userInfo
 
         let customSound = UserDefaults.standard.string(forKey: "notificationSound") ?? "Default"
         if customSound == "Default" {
@@ -131,7 +175,7 @@ final class NotificationManager: NSObject, ObservableObject, UNUserNotificationC
         }
 
         let request = UNNotificationRequest(
-            identifier: "nivesh_local_\(UUID().uuidString.prefix(8))",
+            identifier: identifier ?? "nivesh_local_\(UUID().uuidString.prefix(8))",
             content: content,
             trigger: UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
         )
@@ -148,6 +192,9 @@ final class NotificationManager: NSObject, ObservableObject, UNUserNotificationC
     func scheduleMorningBrief() {
         let center = UNUserNotificationCenter.current()
         center.removePendingNotificationRequests(withIdentifiers: ["nivesh_morning_brief"])
+        // Master switch OFF cancels the repeating brief; ON (via syncPushMaster or
+        // pushMasterChanged) re-adds it.
+        guard pushMasterEnabled else { return }
 
         let totalSecs = UserDefaults.standard.double(forKey: "morningBriefTime")
         guard totalSecs > 0 else { return }
@@ -172,16 +219,17 @@ final class NotificationManager: NSObject, ObservableObject, UNUserNotificationC
     // MARK: - Quiet Hours
 
     private func isInQuietHours() -> Bool {
-        let startSecs = UserDefaults.standard.double(forKey: "nivesh_quietHoursStart")
-        let endSecs = UserDefaults.standard.double(forKey: "nivesh_quietHoursEnd")
-        guard startSecs > 0 || endSecs > 0 else { return false }
+        // Same defaults as QuietHoursView's @AppStorage (22:00-07:00), so the window shown is the window enforced.
+        let startSecs = UserDefaults.standard.object(forKey: "nivesh_quietHoursStart") as? Double ?? 79200
+        let endSecs = UserDefaults.standard.object(forKey: "nivesh_quietHoursEnd") as? Double ?? 25200
+        guard startSecs != endSecs else { return false }
 
         let daysData = UserDefaults.standard.data(forKey: "nivesh_quietHoursDays") ?? Data()
         let activeDays: Set<Int> = (try? JSONDecoder().decode(Set<Int>.self, from: daysData)) ?? Set(0...6)
 
         let cal = Calendar.current
         let now = Date()
-        let weekday = (cal.component(.weekday, from: now) + 5) % 7 // 0=Sun
+        let weekday = cal.component(.weekday, from: now) - 1 // 0=Sun, matches QuietHoursView.dayNames
         guard activeDays.contains(weekday) else { return false }
 
         let midnight = cal.startOfDay(for: now)

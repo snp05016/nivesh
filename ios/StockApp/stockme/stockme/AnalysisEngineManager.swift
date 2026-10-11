@@ -123,25 +123,26 @@ final class AnalysisEngineManager: ObservableObject {
     // MARK: - Notification
 
     private func fireLocalNotification(job: JobStatus) {
-        let content = UNMutableNotificationContent()
+        let title: String
+        let body: String
         switch job.status {
         case "SUCCEEDED":
-            content.title = "Analysis Complete"
-            content.body = "\(job.ticker) report is ready — tap to view."
+            title = "Analysis Complete"
+            body = "\(job.ticker) report is ready — tap to view."
         case "FAILED":
-            content.title = "Analysis Failed"
-            content.body = job.error ?? "\(job.ticker) analysis did not complete."
+            title = "Analysis Failed"
+            body = job.error ?? "\(job.ticker) analysis did not complete."
         case "TIMEOUT":
-            content.title = "Analysis Timed Out"
-            content.body = "\(job.ticker) took too long. Try again."
+            title = "Analysis Timed Out"
+            body = "\(job.ticker) took too long. Try again."
         default: return
         }
-        content.sound = .default
-        // NotificationManager.didReceive routes a tap on this to the stock's hub.
-        content.userInfo = ["ticker": job.ticker]
-        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
-        let request = UNNotificationRequest(identifier: "job-\(job.jobId)-\(job.status)",
-                                            content: content, trigger: trigger)
-        UNUserNotificationCenter.current().add(request)
+        // Routed through NotificationManager so the master switch, quiet hours and
+        // sound apply. NotificationManager.didReceive routes a tap to the stock's hub.
+        NotificationManager.shared.scheduleLocal(
+            title: title, body: body,
+            identifier: "job-\(job.jobId)-\(job.status)",
+            userInfo: ["ticker": job.ticker]
+        )
     }
 }

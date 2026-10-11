@@ -9,7 +9,7 @@ from urllib.parse import quote as _url_quote
 from helpers import _yf_price, _to_ns, get_session, PriceTarget
 from models.db_models import DeviceToken
 from services.notifications_inbox import create_notification
-from services.preferences import get_preferences
+from services.preferences import push_allowed
 
 logger = logging.getLogger(__name__)
 
@@ -257,8 +257,7 @@ async def _poll_once() -> None:
         if not _claim_alert(alert_id, user_id, ticker, direction, target_price, current_price):
             continue
 
-        prefs = get_preferences(user_id)
-        if prefs is not None and prefs.get("alerts_enabled") is False:
+        if not push_allowed(user_id):
             continue
         push_ok = await _send_apns_push(
             user_id=user_id,
