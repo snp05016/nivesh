@@ -10,14 +10,25 @@ import SwiftUI
 /// G2 — the single percentage badge style for the entire app.
 struct ChangeBadge: View {
     let value: Double   // percentage
+
+    /// The arrow carries the sign, so the number is an unsigned magnitude (never "+").
+    /// Rounded to 2dp first so -0.004 reads "▲ 0.00%", not "▼ 0.00%". Non-finite reads "—".
+    nonisolated static func label(for value: Double) -> (text: String, up: Bool) {
+        guard value.isFinite else { return ("—", true) }
+        let rounded = (value * 100).rounded() / 100
+        let up = rounded >= 0
+        return ((up ? "▲ " : "▼ ") + String(format: "%.2f%%", abs(rounded)), up)
+    }
+
     var body: some View {
-        let up = value >= 0
-        Text((up ? "▲ " : "▼ ") + IndianFormatter.percent(abs(value)))
+        let label = Self.label(for: value)
+        let tint = value.isFinite ? (label.up ? Theme.bullGreen : Theme.bearRed) : Theme.inkSecondary
+        Text(label.text)
             .font(Theme.serialNumberFont(size: 11, relativeTo: .footnote).weight(.semibold))
-            .foregroundStyle(up ? Theme.bullGreen : Theme.bearRed)
+            .foregroundStyle(tint)
             .padding(.horizontal, Theme.Spacing.medium)
             .padding(.vertical, Theme.Spacing.xSmall)
-            .background((up ? Theme.bullGreen : Theme.bearRed).opacity(0.18))
+            .background(tint.opacity(0.18))
             .clipShape(Capsule())
     }
 }
