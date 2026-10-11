@@ -1,5 +1,7 @@
+import hashlib
 import json
 import logging
+import operator
 from typing import Any
 
 from sqlalchemy import or_
@@ -58,66 +60,6 @@ _SECTOR_ALIASES: dict[str, list[str]] = {
     "defense": ["industrials"],
 }
 
-# Broad NSE universe covering large, mid, and small cap across all sectors
-_INDIA_STOCK_UNIVERSE = [
-    # NIFTY 50 — Large Cap
-    "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "ICICIBANK.NS", "INFY.NS",
-    "HINDUNILVR.NS", "ITC.NS", "SBIN.NS", "BAJFINANCE.NS", "BHARTIARTL.NS",
-    "KOTAKBANK.NS", "AXISBANK.NS", "ASIANPAINT.NS", "MARUTI.NS", "SUNPHARMA.NS",
-    "TITAN.NS", "ULTRACEMCO.NS", "WIPRO.NS", "HCLTECH.NS", "TECHM.NS",
-    "ONGC.NS", "POWERGRID.NS", "NTPC.NS", "COALINDIA.NS", "JSWSTEEL.NS",
-    "TATASTEEL.NS", "HINDALCO.NS", "GRASIM.NS", "ADANIENT.NS", "ADANIPORTS.NS",
-    "BAJAJ-AUTO.NS", "BAJAJFINSV.NS", "BPCL.NS", "BRITANNIA.NS", "CIPLA.NS",
-    "DIVISLAB.NS", "DRREDDY.NS", "EICHERMOT.NS", "HDFCLIFE.NS", "HEROMOTOCO.NS",
-    "INDUSINDBK.NS", "LT.NS", "M&M.NS", "NESTLEIND.NS", "SBILIFE.NS",
-    "SHRIRAMFIN.NS", "TATACONSUM.NS", "TATAMOTORS.NS", "TRENT.NS", "UPL.NS",
-    # NIFTY Next 50 / Upper Mid Cap
-    "ADANIGREEN.NS", "ADANITRANS.NS", "AMBUJACEM.NS", "APOLLOHOSP.NS", "BANDHANBNK.NS",
-    "BIOCON.NS", "BOSCHLTD.NS", "CANBK.NS", "CHOLAFIN.NS", "COLPAL.NS",
-    "CONCOR.NS", "DABUR.NS", "DLF.NS", "FEDERALBNK.NS", "GAIL.NS",
-    "GODREJCP.NS", "HAVELLS.NS", "IDFCFIRSTB.NS", "INDUSTOWER.NS", "IOC.NS",
-    "IRCTC.NS", "LTIM.NS", "LUPIN.NS", "MUTHOOTFIN.NS", "NAUKRI.NS",
-    "PAGEIND.NS", "PGHH.NS", "PIDILITIND.NS", "PIIND.NS", "PNB.NS",
-    "SBICARD.NS", "SIEMENS.NS", "SRF.NS", "TORNTPHARM.NS", "TVSMOTOR.NS",
-    "VEDL.NS", "VOLTAS.NS", "WHIRLPOOL.NS", "ZOMATO.NS", "PAYTM.NS",
-    # Mid Cap — Banking & Finance
-    "AUBANK.NS", "CITYUNIONB.NS", "EQUITASBNK.NS", "ESAFSFB.NS", "FINPIPE.NS",
-    "KARURVYSYA.NS", "LICHSGFIN.NS", "MANAPPURAM.NS", "POONAWALLA.NS", "RBLBANK.NS",
-    "SOUTHBANK.NS", "UJJIVANSFB.NS", "YESBANK.NS",
-    # Mid Cap — IT & Tech
-    "COFORGE.NS", "HEXAWARE.NS", "KPITTECH.NS", "MPHASIS.NS", "PERSISTENT.NS",
-    "TATAELXSI.NS", "ZENSAR.NS", "ZENSARTECH.NS", "INFY.NS", "LTTS.NS",
-    # Mid Cap — Pharma & Healthcare
-    "ALKEM.NS", "AUROPHARMA.NS", "GLENMARK.NS", "GRANULES.NS", "IPCA.NS",
-    "JBCHEPHARM.NS", "LAURUSLABS.NS", "NATCOPHARM.NS", "PFIZER.NS", "SANOFI.NS",
-    "STAR.NS", "THYROCARE.NS", "ZYDUSLIFE.NS",
-    # Mid Cap — Consumer & FMCG
-    "BAJAJELEC.NS", "EMAMILTD.NS", "GODREJIND.NS", "MARICO.NS", "MCDOWELL-N.NS",
-    "RADICO.NS", "TATAPOWER.NS", "UNITED SPIRITS.NS", "VBL.NS",
-    # Mid Cap — Auto & Ancillary
-    "APOLLOTYRE.NS", "ASHOKLEY.NS", "BALKRISIND.NS", "BHARATFORG.NS",
-    "CEATLTD.NS", "ESCORTS.NS", "EXIDEIND.NS", "MOTHERSON.NS", "SONACOMS.NS",
-    "SUNDRMFAST.NS", "TVSSRICHAK.NS",
-    # Mid Cap — Infrastructure & Engineering
-    "ABB.NS", "AIAENG.NS", "BHEL.NS", "BEL.NS", "CUMMINSIND.NS",
-    "GNFC.NS", "GRINDWELL.NS", "HAL.NS", "IRFC.NS", "KNRCON.NS",
-    "NPTC.NS", "PNCINFRA.NS", "POLYCAB.NS", "RATNAMANI.NS", "THERMAX.NS",
-    # Mid Cap — Metals & Materials
-    "APL.NS", "HLEGLAS.NS", "JINDALSTEL.NS", "JSWENERGY.NS", "NMDC.NS",
-    "SAILSTEEL.NS", "SANDUMA.NS", "WELSPUNLIV.NS",
-    # Mid Cap — Cement & Real Estate
-    "ACC.NS", "DALMIACEMT.NS", "GODREJPROP.NS", "JKCEMENT.NS", "MAHINDCIE.NS",
-    "OBEROI.NS", "PRESTIGE.NS", "RAMCOCEM.NS", "SOBHA.NS",
-    # Small Cap — Diverse
-    "AARTIIND.NS", "AEGISLOG.NS", "APLLTD.NS", "ASTRAL.NS", "AVANTIFEED.NS",
-    "BASF.NS", "CDSL.NS", "DEEPAKNTR.NS", "GICRE.NS", "GESHIP.NS",
-    "HINDCOPPER.NS", "ICICIGI.NS", "IDBI.NS", "INDHOTEL.NS", "IRCON.NS",
-    "JUBLFOOD.NS", "KFINTECH.NS", "LICI.NS", "MAXHEALTH.NS", "MCX.NS",
-    "METROPOLIS.NS", "NAUKRI.NS", "NIACL.NS", "PATANJALI.NS", "PCBL.NS",
-    "RECLTD.NS", "ROUTE.NS", "SAFARI.NS", "SENCO.NS", "SULA.NS",
-    "TANLA.NS", "TEJASNET.NS", "TRENT.NS", "VARUNBEV.NS", "ZYDUSWELL.NS",
-]
-
 SYSTEM_PROMPT = """You parse natural language stock screening queries into structured filters. Return ONLY valid JSON.
 Available filters: sector, industry, pe_max, pe_min, market_cap_min, market_cap_max, promoter_holding_min, fii_holding_min, dii_holding_min, roce_min, roe_min, debt_to_equity_max, ebitda_margin_min, dividend_yield_min, price_change_3m_min, price_change_1y_min, rsi_min, rsi_max, keyword (free text search in company name/description).
 
@@ -132,10 +74,8 @@ IMPORTANT: For market cap, output values in Crores (Cr) based on these standard 
 - Small Cap: 500 to 5000
 - Micro Cap: < 500
 
-Example: "mid cap stocks" -> {"market_cap_min": 5000, "market_cap_max": 20000}
-If user mentions a company by name (e.g. 'like HDFC Bank'), extract that company's metrics as reference values.
-
-Return ONLY a JSON object with a "parsed_filters" key containing the filters, and an optional "reference_company" key if a company was mentioned."""
+Example: "mid cap stocks" -> {"parsed_filters": {"market_cap_min": 5000, "market_cap_max": 20000}}
+Return ONLY a JSON object with a "parsed_filters" key containing the filters."""
 
 def _get_target_sectors(filter_sector: str) -> list[str]:
     """Map a user's sector term to yfinance sector strings, using aliases.
@@ -162,8 +102,82 @@ def _parse_float(val: Any) -> float | None:
         return None
 
 
+class NLQueryUnavailable(Exception):
+    """The LLM call failed (outage, quota, timeout); the query was never parsed."""
+
+
+class NLQueryNotUnderstood(Exception):
+    """The LLM reply had no usable filter, so there is nothing to screen on."""
+
+
+# Numeric filters: key -> (column, comparison, multiplier applied to the parsed value).
+# Market cap is parsed in Crores and stored in absolute INR (1 Cr = 1e7).
+_NUMERIC_FILTERS: dict[str, tuple[Any, Any, float]] = {
+    "pe_max": (StockUniverse.pe_ratio, operator.le, 1),
+    "pe_min": (StockUniverse.pe_ratio, operator.ge, 1),
+    "market_cap_min": (StockUniverse.market_cap, operator.ge, 1e7),
+    "market_cap_max": (StockUniverse.market_cap, operator.le, 1e7),
+    "promoter_holding_min": (StockUniverse.promoter_holding, operator.ge, 1),
+    "fii_holding_min": (StockUniverse.fii_holding, operator.ge, 1),
+    "dii_holding_min": (StockUniverse.dii_holding, operator.ge, 1),
+    "roce_min": (StockUniverse.roce, operator.ge, 1),
+    "roe_min": (StockUniverse.roe, operator.ge, 1),
+    "debt_to_equity_max": (StockUniverse.debt_to_equity, operator.le, 1),
+    "dividend_yield_min": (StockUniverse.dividend_yield, operator.ge, 1),
+    "ebitda_margin_min": (StockUniverse.ebitda_margin, operator.ge, 1),
+    "price_change_3m_min": (StockUniverse.price_change_3m, operator.ge, 1),
+    "price_change_1y_min": (StockUniverse.price_change_1y, operator.ge, 1),
+    "rsi_min": (StockUniverse.rsi, operator.ge, 1),
+    "rsi_max": (StockUniverse.rsi, operator.le, 1),
+}
+
+_MAX_RESULTS = 100
+
+
+def _cache_key(query: str) -> str:
+    """Process-independent key: builtin hash() of a str is salted per process."""
+    return "nl_screener_" + hashlib.sha256(query.strip().lower().encode()).hexdigest()
+
+
+def _build_conditions(filters: dict[str, Any]) -> tuple[list[Any], dict[str, Any]]:
+    """Turn parsed filters into SQL conditions; also return the filters actually applied."""
+    conditions: list[Any] = []
+    applied: dict[str, Any] = {}
+
+    for key, (column, compare, scale) in _NUMERIC_FILTERS.items():
+        value = _parse_float(filters.get(key))
+        if value is not None:
+            conditions.append(compare(column, value * scale))
+            applied[key] = filters[key]
+
+    filter_sector = filters.get("sector")
+    if filter_sector:
+        targets = _get_target_sectors(str(filter_sector))
+        conditions.append(or_(*[StockUniverse.sector.ilike(f"%{t}%") for t in targets]))
+        applied["sector"] = filter_sector
+
+    industry = filters.get("industry")
+    if industry:
+        conditions.append(StockUniverse.industry.ilike(f"%{industry}%"))
+        applied["industry"] = industry
+
+    keyword = filters.get("keyword")
+    if keyword:
+        kw = str(keyword)
+        conditions.append(or_(
+            StockUniverse.company_name.ilike(f"%{kw}%"),
+            StockUniverse.industry.ilike(f"%{kw}%"),
+        ))
+        applied["keyword"] = keyword
+
+    return conditions, applied
+
+
 def process_nl_query(query: str) -> dict[str, Any]:
-    cache_key = f"nl_screener_{hash(query)}"
+    if not query.strip():
+        raise NLQueryNotUnderstood("empty query")
+
+    cache_key = _cache_key(query)
     cached = cache_get("screener", cache_key)
     if cached:
         return cached
@@ -172,111 +186,58 @@ def process_nl_query(query: str) -> dict[str, Any]:
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user", "content": query}
     ]
-    
+
     try:
         raw_text = deepseek_chat(messages, temperature=0.0)
-        json_str = _extract_json_from_text(raw_text)
-        parsed_data = json.loads(json_str)
+    except Exception as e:
+        logger.error(f"NL screener LLM call failed: {e}")
+        raise NLQueryUnavailable(str(e)) from e
+
+    try:
+        parsed_data = json.loads(_extract_json_from_text(raw_text))
         filters = parsed_data.get("parsed_filters", {})
     except Exception as e:
-        logger.error(f"Failed to parse NL query: {e}")
-        filters = {}
+        logger.warning(f"Failed to parse NL query: {e}")
+        raise NLQueryNotUnderstood(str(e)) from e
+    if not isinstance(filters, dict):
+        raise NLQueryNotUnderstood("parsed_filters is not an object")
 
-    results = []
-    
+    conditions, applied = _build_conditions(filters)
+    if not applied:
+        # No recognised filter: screening would return the whole universe as "matches".
+        raise NLQueryNotUnderstood(f"no supported filter in {sorted(filters)}")
+
     try:
         with get_session() as session:
-            sql_query = session.query(StockUniverse)
-            
-            # Helper to add filters safely
-            def _f(key: str) -> float | None:
-                return _parse_float(filters.get(key))
-
-            pe_max = _f("pe_max")
-            if pe_max is not None: sql_query = sql_query.filter(StockUniverse.pe_ratio <= pe_max)
-            
-            pe_min = _f("pe_min")
-            if pe_min is not None: sql_query = sql_query.filter(StockUniverse.pe_ratio >= pe_min)
-
-            cap_min = _f("market_cap_min")
-            if cap_min is not None: sql_query = sql_query.filter(StockUniverse.market_cap >= cap_min * 1e7)
-            
-            cap_max = _f("market_cap_max")
-            if cap_max is not None: sql_query = sql_query.filter(StockUniverse.market_cap <= cap_max * 1e7)
-
-            promo_min = _f("promoter_holding_min")
-            if promo_min is not None: sql_query = sql_query.filter(StockUniverse.promoter_holding >= promo_min)
-
-            fii_min = _f("fii_holding_min")
-            if fii_min is not None: sql_query = sql_query.filter(StockUniverse.fii_holding >= fii_min)
-
-            dii_min = _f("dii_holding_min")
-            if dii_min is not None: sql_query = sql_query.filter(StockUniverse.dii_holding >= dii_min)
-
-            roce_min = _f("roce_min")
-            if roce_min is not None: sql_query = sql_query.filter(StockUniverse.roce >= roce_min)
-
-            roe_min = _f("roe_min")
-            if roe_min is not None: sql_query = sql_query.filter(StockUniverse.roe >= roe_min)
-
-            de_max = _f("debt_to_equity_max")
-            if de_max is not None: sql_query = sql_query.filter(StockUniverse.debt_to_equity <= de_max)
-
-            div_min = _f("dividend_yield_min")
-            if div_min is not None: sql_query = sql_query.filter(StockUniverse.dividend_yield >= div_min)
-
-            ebitda_min = _f("ebitda_margin_min")
-            if ebitda_min is not None: sql_query = sql_query.filter(StockUniverse.ebitda_margin >= ebitda_min)
-
-            p3m_min = _f("price_change_3m_min")
-            if p3m_min is not None: sql_query = sql_query.filter(StockUniverse.price_change_3m >= p3m_min)
-
-            p1y_min = _f("price_change_1y_min")
-            if p1y_min is not None: sql_query = sql_query.filter(StockUniverse.price_change_1y >= p1y_min)
-
-            rsi_min = _f("rsi_min")
-            if rsi_min is not None: sql_query = sql_query.filter(StockUniverse.rsi >= rsi_min)
-
-            rsi_max = _f("rsi_max")
-            if rsi_max is not None: sql_query = sql_query.filter(StockUniverse.rsi <= rsi_max)
-
-            filter_sector = filters.get("sector")
-            if filter_sector:
-                targets = _get_target_sectors(str(filter_sector))
-                conditions = [StockUniverse.sector.ilike(f"%{t}%") for t in targets]
-                sql_query = sql_query.filter(or_(*conditions))
-                
-            keyword = filters.get("keyword")
-            if keyword:
-                kw = str(keyword)
-                sql_query = sql_query.filter(
-                    or_(
-                        StockUniverse.company_name.ilike(f"%{kw}%"),
-                        StockUniverse.industry.ilike(f"%{kw}%")
-                    )
-                )
-
-            # Execute the optimized SQL query
-            matching_stocks = sql_query.all()
-            
-            for stock in matching_stocks:
-                results.append({
-                    "ticker": stock.ticker,
-                    "company": stock.company_name or stock.ticker,
-                    "score": 100.0,
-                    "reason": "Matches Database Criteria",
-                    "sector": stock.sector or "Unknown"
-                })
+            matching_stocks = (
+                session.query(StockUniverse)
+                .filter(*conditions)
+                .order_by(StockUniverse.market_cap.desc().nullslast())
+                .limit(_MAX_RESULTS)
+                .all()
+            )
     except Exception as e:
         logger.error(f"Database query failed for NL Screener: {e}")
+        raise
 
-    # Convert all filter values to strings for iOS compatibility
-    stringified_filters = {str(k): str(v) for k, v in filters.items()}
+    # Every returned row satisfies every applied filter, so 100 is exact, not a placeholder.
+    reason = f"Matches all {len(applied)} parsed filters"
+    results = [
+        {
+            "ticker": stock.ticker,
+            "company": stock.company_name or stock.ticker,
+            "score": 100.0,
+            "reason": reason,
+            "sector": stock.sector or "Unknown",
+        }
+        for stock in matching_stocks
+    ]
 
+    # Only report filters that were applied; values are strings for iOS compatibility.
     response_data = {
-        "parsed_filters": stringified_filters,
+        "parsed_filters": {str(k): str(v) for k, v in applied.items()},
         "results": results
     }
-    
+
     cache_set("screener", cache_key, response_data, ttl=3600) # Cache for 1hr
     return response_data

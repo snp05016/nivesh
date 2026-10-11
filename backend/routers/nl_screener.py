@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from services.nl_screener import process_nl_query
+from services.nl_screener import NLQueryNotUnderstood, NLQueryUnavailable, process_nl_query
 
 from typing import Dict, List, Optional
 
@@ -33,5 +33,12 @@ def natural_language_screener(req: NLScreenerRequest):
     """
     try:
         return process_nl_query(req.query)
+    except NLQueryNotUnderstood:
+        raise HTTPException(
+            status_code=422,
+            detail='Could not understand the query. Try e.g. "banks with PE under 20".',
+        )
+    except NLQueryUnavailable:
+        raise HTTPException(status_code=503, detail="Screener is temporarily unavailable")
     except Exception as e:
         raise HTTPException(status_code=500, detail="Internal server error")

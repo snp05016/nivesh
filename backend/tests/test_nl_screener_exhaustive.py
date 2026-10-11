@@ -22,16 +22,17 @@ def test_valid_natural_language_query(mock_chat):
 @patch("services.nl_screener.deepseek_chat")
 def test_empty_query(mock_chat):
     response = client.post("/api/v1/screener/natural-language", json={"query": ""})
-    assert response.status_code == 200
-    # LLM should probably return empty filters for an empty query
-    # In reality the iOS app blocks empty strings, but backend handles it
+    # A blank query is rejected before any (billed) LLM call.
+    assert response.status_code == 422
+    mock_chat.assert_not_called()
 
 @patch("services.nl_screener.deepseek_chat")
 def test_ambiguous_query(mock_chat):
     mock_chat.return_value = mock_deepseek_return({})
     response = client.post("/api/v1/screener/natural-language", json={"query": "good stocks"})
-    assert response.status_code == 200
-    assert response.json()["parsed_filters"] == {}
+    # No filter means nothing to screen on; never return the whole universe as matches.
+    assert response.status_code == 422
+    assert "results" not in response.json()
 
 @patch("services.nl_screener.deepseek_chat")
 def test_no_matching_stocks(mock_chat):
@@ -43,10 +44,9 @@ def test_no_matching_stocks(mock_chat):
 @patch("services.nl_screener.deepseek_chat")
 def test_high_volume_query(mock_chat):
     mock_chat.return_value = mock_deepseek_return({})
-    # Assuming volume filter isn't mapped, it should just return default limits
+    # Volume is not a supported filter, so the query is rejected rather than unfiltered.
     response = client.post("/api/v1/screener/natural-language", json={"query": "stocks with high volume"})
-    assert response.status_code == 200
-    assert len(response.json()["results"]) <= 10 # Capped at 10
+    assert response.status_code == 422
 
 @patch("services.nl_screener.deepseek_chat")
 def test_sector_filter(mock_chat):
@@ -98,15 +98,15 @@ def test_combined_filters(mock_chat):
 def test_malformed_llm_output(mock_chat):
     mock_chat.return_value = "Here are the results... wait this isn't json"
     response = client.post("/api/v1/screener/natural-language", json={"query": "banks"})
-    assert response.status_code == 200
-    assert response.json()["parsed_filters"] == {}
+    assert response.status_code == 422
+    assert "results" not in response.json()
 
 @patch("services.nl_screener.deepseek_chat")
 def test_parser_timeout(mock_chat):
     mock_chat.side_effect = TimeoutError("LLM Timeout")
     response = client.post("/api/v1/screener/natural-language", json={"query": "banks"})
-    assert response.status_code == 200 # Handled via empty filters fallback
-    assert response.json()["parsed_filters"] == {}
+    assert response.status_code == 503 # LLM outage is an error, not an unfiltered screen
+    assert "results" not in response.json()
 
 @patch("services.nl_screener.deepseek_chat")
 def test_nan_infinity_serialization(mock_chat):
