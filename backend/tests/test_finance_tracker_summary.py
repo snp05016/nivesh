@@ -11,7 +11,7 @@ import pytest
 
 def _make_user() -> int:
     import database
-    from models.db_models import User
+    from models.db_models import User  # pyright: ignore[reportMissingImports]  (checker resolves `models` to ml-engine/models)
 
     with database.get_session() as session:
         user = User(username=f"fin_summary_{uuid4().hex[:12]}", password_hash="x", display_name="Finance")
@@ -22,7 +22,7 @@ def _make_user() -> int:
 
 def _add_account(user_id: int, account_type: str, balance: str) -> None:
     import database
-    from models.db_models import FinanceTrackerAccount
+    from models.db_models import FinanceTrackerAccount  # pyright: ignore[reportMissingImports]  (checker resolves `models` to ml-engine/models)
 
     with database.get_session() as session:
         session.add(
@@ -41,7 +41,7 @@ def _add_account(user_id: int, account_type: str, balance: str) -> None:
 
 def _clear_accounts(user_id: int) -> None:
     import database
-    from models.db_models import FinanceTrackerAccount
+    from models.db_models import FinanceTrackerAccount  # pyright: ignore[reportMissingImports]  (checker resolves `models` to ml-engine/models)
 
     with database.get_session() as session:
         session.query(FinanceTrackerAccount).filter(FinanceTrackerAccount.user_id == user_id).delete()
