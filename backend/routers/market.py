@@ -8,7 +8,7 @@ from helpers import (
 
 from services.market_service import (
     _get_quarterly_fin, _yf_fetch_info, _fmt_inr_crores, _safe_float, get_rbi_policy,
-    analyst_ratings,
+    analyst_ratings, quarterly_rows,
     SECTOR_TICKERS,
 )
 from services.cache_service import cached_call
@@ -196,18 +196,7 @@ def quarterly_financials_endpoint(ticker: str, exchange: str = "NSE"):
         exchange = exchange.upper()
         full_ticker = _resolve_ticker(ticker, exchange)
         t, fin = _get_quarterly_fin(full_ticker)
-        result = []
-        if fin is not None and not fin.empty:
-            rev_row = fin.loc["Total Revenue"] if "Total Revenue" in fin.index else None
-            profit_row = fin.loc["Net Income"] if "Net Income" in fin.index else None
-            import math
-            for col in list(fin.columns)[:8]:  # last 8 quarters
-                label = col.strftime("Q%q %Y") if hasattr(col, 'strftime') else str(col)[:7]
-                rev = float(rev_row[col]) / 1e7 if rev_row is not None and col in rev_row.index else 0  # in crores
-                profit = float(profit_row[col]) / 1e7 if profit_row is not None and col in profit_row.index else 0
-                rev = 0.0 if math.isnan(rev) or math.isinf(rev) else round(rev, 1)
-                profit = 0.0 if math.isnan(profit) or math.isinf(profit) else round(profit, 1)
-                result.append({"label": label, "revenue": rev, "net_profit": profit})
+        result = quarterly_rows(fin)  # last 8 quarters, in crores
         # Fetch promoter holding history from quarterly balance sheet / info
         promoter_history = []
         try:
@@ -1012,20 +1001,7 @@ Returns HTTP 200 on partial failures — errors array explains what's missing.
     try:
         t_obj, fin = _get_quarterly_fin(full_ticker)
         if fin is not None and not fin.empty:
-            rev_row = fin.loc["Total Revenue"] if "Total Revenue" in fin.index else None
-            profit_row = fin.loc["Net Income"] if "Net Income" in fin.index else None
-            cols = list(fin.columns)[:8]
-            for col in cols:
-                label = col.strftime("Q%q %Y") if hasattr(col, "strftime") else str(col)[:7]
-                rev = float(rev_row[col]) / 1e7 if rev_row is not None and col in rev_row.index else 0
-                profit = float(profit_row[col]) / 1e7 if profit_row is not None and col in profit_row.index else 0
-                rev = 0.0 if math.isnan(rev) or math.isinf(rev) else round(rev, 1)
-                profit = 0.0 if math.isnan(profit) or math.isinf(profit) else round(profit, 1)
-                quarterly_data["quarters"].append({
-                    "label": label,
-                    "revenue": rev,
-                    "net_profit": profit,
-                })
+            quarterly_data["quarters"] = quarterly_rows(fin)
         else:
             quarterly_data["error"] = f"_get_quarterly_fin: empty data for {full_ticker}"
             errors.append("quarterly_financials_unavailable")

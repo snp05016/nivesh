@@ -9,7 +9,7 @@ from helpers import (
 from services import earnings_alerts_service
 from services.market_service import (
     _get_quarterly_fin, _yf_fetch_info, _earnings_result_from_row, _scan_upcoming_earnings,
-    get_earnings_estimates,
+    get_earnings_estimates, quarter_label,
 )
 import json
 import logging
@@ -266,7 +266,7 @@ def _build_yfinance_fallback_earnings(tickers: list[str], now_iso: str) -> tuple
 
             # Most recent quarter
             latest_col = cols[0]
-            latest_label = latest_col.strftime("Q%qFY%y") if hasattr(latest_col, 'strftime') else str(latest_col)[:7]
+            latest_label = quarter_label(latest_col)
             result_date = latest_col.strftime("%Y-%m-%d") if hasattr(latest_col, 'strftime') else now_iso[:10]
 
             revenue = float(rev_row[latest_col]) / 1e7 if rev_row is not None and latest_col in rev_row.index else 0.0

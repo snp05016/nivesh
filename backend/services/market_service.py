@@ -213,6 +213,34 @@ def _safe_float(v, default: float = 0.0) -> float:
 # Data-transformation helpers
 # ---------------------------------------------------------------------------
 
+def quarter_label(col) -> str:
+    """Indian fiscal quarter of a quarter-end column: 2025-06-30 -> 'Q1 FY26'.
+
+    yfinance quarterly columns are Timestamps; Timestamp.strftime has no '%q'
+    (CMKT-05), so the quarter is computed from the month.
+    """
+    if not hasattr(col, "month"):
+        return str(col)[:7]
+    fy = col.year + 1 if col.month >= 4 else col.year
+    return f"Q{(col.month - 4) % 12 // 3 + 1} FY{fy % 100:02d}"
+
+
+def quarterly_rows(fin, limit: int = 8) -> list[dict]:
+    """Newest-first {label, revenue, net_profit} rows (crores) from quarterly_financials."""
+    if fin is None or fin.empty:
+        return []
+
+    def _crores(row: str, col) -> float:
+        if row not in fin.index:
+            return 0.0
+        return round(_safe_float(fin.loc[row, col]) / 1e7, 1)
+
+    return [
+        {"label": quarter_label(col), "revenue": _crores("Total Revenue", col),
+         "net_profit": _crores("Net Income", col)}
+        for col in list(fin.columns)[:limit]
+    ]
+
 def _earnings_result_from_row(r, now_iso: str) -> dict:
     """Build an EarningsResult dict from an AnalysisHistory row."""
     try:
