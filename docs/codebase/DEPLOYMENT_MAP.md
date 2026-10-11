@@ -61,10 +61,31 @@ AGENTS.md requires backend verification on `saumyapatel@192.168.1.122`, not by r
 
 Rollback after failed deployment should restore the last verified commit and record the rollback in the issue/PR/deployment record.
 
+## Ingress & TLS
+
+Public clients (the iOS app) reach the backend only through `https://api.nivesh.qzz.io`. What the repository pins:
+
+| Item | Value | Source |
+|---|---|---|
+| API bind | `127.0.0.1:8000` by default (`NIVESH_BIND_HOST`, overridable in `backend/.env` only if the proxy runs on another host) | `backend/nivesh.service` |
+| Client IP | `--proxy-headers --forwarded-allow-ips 127.0.0.1`: `X-Forwarded-For` is trusted only from a proxy on the same host; the rate limiter keys on `request.client.host` | `backend/nivesh.service`, `backend/main.py` |
+| ML engine | Container listens on `0.0.0.0:8001` inside Docker but is published as `127.0.0.1:8001:8001` (no auth on its routes, so it must never be LAN-reachable; Docker-published ports bypass ufw) | `scripts/deploy_ml_microservice.sh`, `ml-engine/Dockerfile` |
+| Health probe | `scripts/health_check.sh` defaults to `https://api.nivesh.qzz.io`; checks `/ping`, `/health`, `/healthz` and public routes, exits non-zero on any failure | `scripts/health_check.sh` |
+
+Not yet captured in the repository (owner to fill in; commit the config with credentials removed):
+
+- Tunnel/proxy product and the host it runs on (e.g. `cloudflared` on `192.168.1.122`, or router port-forward plus a reverse proxy).
+- Hostname to origin mapping (`api.nivesh.qzz.io` to `http://localhost:8000`) and the TLS termination point.
+- Proxy timeouts and request-body limits.
+- Firewall rules (ufw) for 8000/8001 on the server.
+
+If the proxy runs on a different host, set `NIVESH_BIND_HOST=0.0.0.0` in `backend/.env`, change `--forwarded-allow-ips` to the proxy IP, and firewall 8000 to that IP; otherwise every user shares one rate-limit bucket. The manual `--host 0.0.0.0` start in the deployment flow above exposes the API on the home LAN in cleartext; prefer `--host 127.0.0.1` when the proxy is local.
+
+Domain risk: `qzz.io` is a free third-party subdomain hard-coded in the iOS app (#611). Losing it breaks every installed app; plan a move to an owned domain.
+
 ## Deployment Drift and Open Questions
 
 - Current iOS default base URL is `https://api.nivesh.qzz.io`; `ServerURLPolicy.swift` rewrites legacy `http://192.168.1.122:8000` values to the default.
 - `backend/nivesh.service` runs as `saumyapatel` from `/home/saumyapatel/Desktop/nivesh/backend`, matching AGENTS.md. Confirm the installed copy in `/etc/systemd/system/` matches the repo file and that the unit is enabled.
 - The `--workers` count in `backend/nivesh.service` is the deployed value; the multi-worker decision is tracked separately (ARCH-07).
-- `scripts/health_check.sh` defaults to `https://api.nivesh.app`, while the app and current docs use `https://api.nivesh.qzz.io`.
 - `ml-engine` runs separately on port 8001; `scripts/deploy_ml_engine.sh` builds/runs the container on `saumyapatel@192.168.1.122` and restarts backend Uvicorn.
