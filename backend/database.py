@@ -329,7 +329,6 @@ def get_last_analysis_any_type(session: Session, ticker: str) -> Optional[dict]:
         if row:
             res = json.loads(row.full_json)
             res.setdefault("confidence_math_breakdown", row.confidence_math_breakdown or {})
-            res["raw_output"] = row.raw_output
             res["_cached_scan_type"] = scan
             if row.created_at:
                 result = _cs(
@@ -487,6 +486,7 @@ def is_admin(user_id: int) -> bool:
 # ---------------------------------------------------------------------------
 from repositories.analysis_repo import (
     save_analysis, get_recent_analyses, get_analysis_for_date, get_all_ticker_history,
+    latest_per_ticker,
 )
 from repositories.job_repo import (
     create_job, get_job, update_job, append_checkpoint, add_job_tokens,

@@ -18,7 +18,7 @@ from types import SimpleNamespace
 from typing import cast
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-from database import get_session, Portfolio, PortfolioValuationHistory, User, AnalysisHistory, NetWorthLedger
+from database import get_session, Portfolio, PortfolioValuationHistory, User, AnalysisHistory, NetWorthLedger, latest_per_ticker
 from schemas.db_json_schemas import PortfolioPositionSchema, PortfolioSnapshotSchema, safe_validate_portfolio_json
 from services.llm_utils import contains_devanagari
 from services.yfinance_client import _yf_price, _to_ns
@@ -287,19 +287,10 @@ async def pregen_morning_briefs_all_users() -> dict:
                 skipped += 1
                 continue
             tickers = [h.ticker.upper() for h in holdings]
-            rows = (
-                db.query(AnalysisHistory)
-                .filter(
-                    AnalysisHistory.user_id == user.id,
-                    AnalysisHistory.ticker.in_(tickers),
-                )
-                .order_by(AnalysisHistory.created_at.desc())
-                .all()
-            )
-            last_signals: dict[str, str] = {}
-            for r in rows:
-                if r.ticker not in last_signals:
-                    last_signals[r.ticker] = r.signal
+            last_signals: dict[str, str] = {
+                t: rows[0].signal
+                for t, rows in latest_per_ticker(db, tickers, user_id=cast(int, user.id)).items()
+            }
             # Detach holdings from session by capturing plain values
             holding_snapshots = [
                 (h.ticker, str(h.company_name or h.ticker), float(h.shares), float(h.buy_price))

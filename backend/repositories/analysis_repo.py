@@ -1,6 +1,7 @@
 """Analysis history repository — query functions extracted from database.py."""
 
 import json
+from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Any, Iterable, Optional
 
@@ -159,7 +160,9 @@ def get_recent_analyses(
     return [json.loads(r.full_json) for r in reversed(rows)]
 
 
-def get_analysis_for_date(session: Session, ticker: str, target_date: str, scan_type: str = "standard") -> Optional[dict]:
+def get_analysis_for_date(
+    session: Session, ticker: str, target_date: str, scan_type: str = "standard", include_raw: bool = False
+) -> Optional[dict]:
     """Return the last analysis for a ticker and scan type, enriched with staleness metrics.
 
     Args:
@@ -168,6 +171,8 @@ def get_analysis_for_date(session: Session, ticker: str, target_date: str, scan_
         target_date (str): YYYY-MM-DD (IST) the row's analysis_date must equal; "" returns
             the latest row of any date (read-only cache introspection).
         scan_type (str, optional): The type of scan to filter by. Defaults to "standard".
+        include_raw (bool, optional): Attach the deferred raw_output transcript. Only the
+            worker's cache re-save needs it; request paths never ship it (PERF-08).
 
     Returns:
         Optional[dict]: The parsed analysis dictionary with staleness metrics, or None if not found.
@@ -184,7 +189,8 @@ def get_analysis_for_date(session: Session, ticker: str, target_date: str, scan_
         return None
     res = json.loads(row.full_json)
     res.setdefault("confidence_math_breakdown", row.confidence_math_breakdown or {})
-    res["raw_output"] = row.raw_output
+    if include_raw:
+        res["raw_output"] = row.raw_output
     res["_cached_scan_type"] = scan_type
     if row.created_at:
         result = _cs(
@@ -216,6 +222,7 @@ def get_all_ticker_history(
 
     Returns:
         list[dict]: Historical analysis dictionaries, oldest first; the last element is the newest.
+            Only the newest carries raw_output (one deferred load), for the smart-cache re-save.
     """
     q = session.query(AnalysisHistory).filter(AnalysisHistory.ticker == ticker.upper())
     if user_id is not None:
@@ -228,6 +235,45 @@ def get_all_ticker_history(
     for r in reversed(rows):
         res = json.loads(r.full_json)
         res.setdefault("confidence_math_breakdown", r.confidence_math_breakdown or {})
-        res["raw_output"] = r.raw_output
         results.append(res)
+    if results:
+        results[-1]["raw_output"] = rows[0].raw_output
     return results
+
+
+def latest_per_ticker(
+    session: Session,
+    tickers: Optional[Iterable[Any]],
+    n: int = 1,
+    user_id: Optional[int] = None,
+    cols: Iterable[Any] = (),
+    date_from: Optional[str] = None,
+) -> dict[Any, list[Any]]:
+    """Newest n analysis rows per ticker in ONE query (ROW_NUMBER window), newest first.
+
+    Replaces load-everything-then-dedupe loops and per-ticker N+1 queries (PERF-08).
+    Rows are named tuples carrying ticker, created_at, signal plus any extra cols.
+    tickers=None scans every ticker (with date_from bounding the window).
+    """
+    if tickers is not None:
+        tickers = list({t for t in tickers if t})
+        if not tickers:
+            return {}
+    base = [AnalysisHistory.ticker, AnalysisHistory.created_at, AnalysisHistory.signal]
+    selected = base + [c for c in cols if all(c is not b for b in base)]
+    rn = func.row_number().over(
+        partition_by=AnalysisHistory.ticker,
+        order_by=(AnalysisHistory.created_at.desc(), AnalysisHistory.id.desc()),
+    ).label("rn")
+    q = session.query(*selected, rn)
+    if tickers is not None:
+        q = q.filter(AnalysisHistory.ticker.in_(tickers))
+    if user_id is not None:
+        q = q.filter(AnalysisHistory.user_id == user_id)
+    if date_from is not None:
+        q = q.filter(AnalysisHistory.analysis_date >= date_from)
+    sub = q.subquery()
+    out: dict[Any, list[Any]] = defaultdict(list)
+    for row in session.query(sub).filter(sub.c.rn <= n).order_by(sub.c.ticker, sub.c.rn):
+        out[row.ticker].append(row)
+    return dict(out)

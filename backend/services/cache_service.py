@@ -196,7 +196,29 @@ def stats() -> dict:
 
 _T = TypeVar("_T")
 # ponytail: per-process single-flight; cross-worker needs a Redis SET NX lock.
-_SF_LOCKS = [threading.Lock() for _ in range(64)]
+# One lock per in-flight key (refcounted, dropped when idle): striped locks let a
+# nested cached_call on a different key (sector/performance -> quote/^CNXIT run
+# from a pool thread) land on the held stripe and deadlock.
+_SF_GUARD = threading.Lock()
+_SF_LOCKS: dict[tuple[str, str], list] = {}  # (namespace, key) -> [Lock, users]
+
+
+def _sf_enter(k: tuple[str, str]) -> list:
+    with _SF_GUARD:
+        entry = _SF_LOCKS.get(k)
+        if entry is None:
+            entry = _SF_LOCKS[k] = [threading.Lock(), 0]
+        entry[1] += 1
+    entry[0].acquire()
+    return entry
+
+
+def _sf_exit(k: tuple[str, str], entry: list) -> None:
+    entry[0].release()
+    with _SF_GUARD:
+        entry[1] -= 1
+        if entry[1] == 0:
+            del _SF_LOCKS[k]
 
 
 def cached_call(
@@ -216,7 +238,9 @@ def cached_call(
     hit = cache.get_sync(namespace, key)
     if hit is not None:
         return hit
-    with _SF_LOCKS[hash((namespace, key)) % len(_SF_LOCKS)]:
+    k = (namespace, key)
+    entry = _sf_enter(k)
+    try:
         hit = cache.get_sync(namespace, key)
         if hit is not None:
             return hit
@@ -226,3 +250,5 @@ def cached_call(
         elif negative_ttl > 0 and value is not None:
             cache.set_sync(namespace, key, value, negative_ttl)
         return value
+    finally:
+        _sf_exit(k, entry)

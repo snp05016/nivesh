@@ -18,6 +18,8 @@ from services.llm_utils import contains_devanagari
 from services.kyc_consent_service import AI_PROCESSING_CONSENT, has_active_consent
 from services import llm_budget
 from services.portfolio_service import _get_indices_data
+from database import latest_per_ticker
+from services.yfinance_client import get_quotes
 from config.settings import MORNING_BRIEF_TTL as _MORNING_CACHE_TTL
 
 router = APIRouter(tags=["Portfolio"])
@@ -71,31 +73,23 @@ def build_morning_summary(user_id: int) -> dict:
                 raise HTTPException(status_code=404, detail=f"User {user_id} not found")
             holdings = session.query(Portfolio).filter_by(user_id=user_id, group_name="holdings").all()
 
-            # Get last known signal for each ticker from analysis_history (single IN query)
-            last_signals: dict[str, str] = {}
+            # Last known signal per ticker: one windowed query, newest row only (PERF-08)
             tickers = [h.ticker.upper() for h in holdings]
-            rows = (
-                session.query(AnalysisHistory)
-                .filter(AnalysisHistory.user_id == user_id, AnalysisHistory.ticker.in_(tickers))
-                .order_by(AnalysisHistory.created_at.desc())
-                .all()
-            )
-            for r in rows:
-                if r.ticker not in last_signals:
-                    last_signals[r.ticker] = r.signal
+            last_signals: dict[str, str] = {
+                t: rows[0].signal for t, rows in latest_per_ticker(session, tickers, user_id=user_id).items()
+            }
 
         # Fetch prices and compute movers
         holding_lines = []
         mover_tickers = []
         significant_movers_lines = []
 
+        # All holdings' quotes in one concurrent, cached batch (PERF-07).
+        ns_by_ticker = {h.ticker: _to_ns(h.ticker) for h in holdings}
+        quotes = get_quotes(ns_by_ticker.values())
+
         for h in holdings:
-            ns = _to_ns(h.ticker)
-            try:
-                current_price, prev_close = _yf_price(ns)
-            except Exception as e:
-                logging.warning(f"Caught exception: {e}")
-                current_price, prev_close = None, None
+            current_price, prev_close = quotes.get(ns_by_ticker[h.ticker], (None, None))
 
             day_pct = None
             if current_price and prev_close and prev_close > 0:

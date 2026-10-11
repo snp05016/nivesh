@@ -9,7 +9,9 @@ import re
 import time
 import threading
 import random
-from datetime import datetime, timezone
+from concurrent.futures import ThreadPoolExecutor
+from datetime import date, datetime, timezone
+from typing import Iterable
 
 import yfinance as yf
 from cachetools import TTLCache
@@ -22,6 +24,7 @@ from config.settings import (
     YF_CIRCUIT_TIMEOUT as _YF_CIRCUIT_TIMEOUT,
 )
 from services.rate_limiter import yf_acquire
+from services.cache_service import cached_call
 
 # ---------------------------------------------------------------------------
 # Exchange & Ticker Constants (Task 33: suffixes now env-overridable)
@@ -110,6 +113,13 @@ def _yf_guard() -> bool:
 # ---------------------------------------------------------------------------
 
 def _yf_fetch_info(sym: str) -> dict:
+    """_yf_fetch_info_uncached behind the shared cache: 15 min per symbol, single
+    flight, empty results never cached (PERF-07). Returns a copy callers may mutate.
+    """
+    return dict(cached_call("yf_info", sym.upper(), lambda: _yf_fetch_info_uncached(sym), ttl=900))
+
+
+def _yf_fetch_info_uncached(sym: str) -> dict:
     """Fetches ticker information from yfinance with exponential backoff retries.
 
     Args:
@@ -141,11 +151,46 @@ _STALE_MAX_AGE_S = 4 * 86400  # covers a weekend plus a market holiday
 
 
 def _yf_price(ticker_sym: str) -> tuple[float | None, float | None]:
+    """_yf_price_uncached behind the shared cache: 60 s per symbol with single
+    flight, so N screens/holdings asking for one ticker cost one Yahoo call. A
+    failed lookup is never cached (PERF-07).
+    """
+    current, prev = cached_call(
+        "quote", ticker_sym.upper(), lambda: list(_yf_price_uncached(ticker_sym)),
+        ttl=60, cache_if=lambda v: v[0] is not None,
+    )
+    if current is not None:  # also on a hit: the entry may come from another process via Redis
+        with _last_good_lock:
+            _LAST_GOOD[ticker_sym] = (current, prev if prev is not None else current, time.time())
+    return current, prev
+
+
+def get_quotes(syms: Iterable[str]) -> dict[str, tuple[float | None, float | None]]:
+    """Cached (current, prev) for many symbols: deduplicated, fetched concurrently.
+
+    The shared batch helper for portfolio-wide endpoints (PERF-07); a symbol whose
+    lookup raises maps to (None, None).
+    """
+    uniq = list(dict.fromkeys(syms))
+    if not uniq:
+        return {}
+
+    def _one(sym: str) -> tuple[float | None, float | None]:
+        try:
+            return _yf_price(sym)
+        except Exception as e:
+            logging.info(f"[YF Quotes] {sym}: {e}")
+            return None, None
+
+    with ThreadPoolExecutor(max_workers=min(8, len(uniq))) as pool:
+        return dict(zip(uniq, pool.map(_one, uniq)))
+
+
+def _yf_price_uncached(ticker_sym: str) -> tuple[float | None, float | None]:
     """Fetches the current and previous closing prices for a ticker.
 
     Falls back to trying the .NS suffix if .BO returns no data, retries once
     after a short jittered pause, and logs a WARNING when no price is found.
-    Successful prices feed the last-good cache used by _yf_price_with_status.
 
     Args:
         ticker_sym (str): The ticker symbol to fetch prices for.
@@ -190,8 +235,6 @@ def _yf_price(ticker_sym: str) -> tuple[float | None, float | None]:
             logging.info(f"[BSE FALLBACK] No data for {ticker_sym}, trying {ns_sym}")
             current, prev = _fetch(ns_sym)
         if current is not None:
-            with _last_good_lock:
-                _LAST_GOOD[ticker_sym] = (current, prev if prev is not None else current, time.time())
             return current, prev
     logging.warning(f"[YF Price] no price for {ticker_sym} after retry")
     return current, prev
@@ -211,6 +254,55 @@ def _yf_price_with_status(ticker_sym: str) -> tuple[float | None, float | None, 
     if cached is not None and time.time() - cached[2] <= _STALE_MAX_AGE_S:
         return cached[0], cached[1], "stale", datetime.fromtimestamp(cached[2], timezone.utc).isoformat()
     return None, None, "unavailable", None
+
+def _yf_history_uncached(sym: str, period: str) -> dict:
+    """One Ticker.history call as a JSON-safe payload ({} when empty or failed).
+
+    The index travels as ISO strings plus its tz name: DataFrame.to_json converts
+    an IST index to UTC and shifts every date back a day.
+    """
+    import pandas as pd
+    if not _yf_guard():
+        return {}
+    try:
+        hist = yf.Ticker(sym).history(period=period)
+    except Exception as e:
+        yf_circuit_record_failure()
+        logging.info(f"[YF History Error] {sym} {period}: {e}")
+        return {}
+    if hist is None or hist.empty:
+        return {}
+    yf_circuit_record_success()
+    if isinstance(hist.columns, pd.MultiIndex):
+        hist.columns = [c[0] for c in hist.columns]
+    idx = hist.index
+    is_dt = isinstance(idx, pd.DatetimeIndex)
+    payload = hist.to_dict(orient="split")
+    payload["index"] = [ts.isoformat() for ts in idx] if is_dt else list(idx)
+    payload["dt"] = is_dt
+    payload["tz"] = str(idx.tz) if is_dt and idx.tz is not None else None
+    payload["index_name"] = idx.name
+    return payload
+
+
+def yf_history(sym: str, period: str):
+    """Ticker(sym).history(period=...) behind the shared cache (6 h, keyed by day,
+    single flight). Returns an empty DataFrame on failure; failures are not cached.
+    """
+    import pandas as pd
+    payload = cached_call(
+        "yf_hist", f"{sym.upper()}:{period}:{date.today().isoformat()}",
+        lambda: _yf_history_uncached(sym, period), ttl=21600,
+    )
+    if not payload:
+        return pd.DataFrame()
+    if payload.get("dt"):
+        idx = pd.to_datetime(payload["index"], utc=True)
+        idx = idx.tz_convert(payload["tz"]) if payload.get("tz") else idx.tz_localize(None)
+    else:
+        idx = pd.Index(payload["index"])
+    idx.name = payload.get("index_name")
+    return pd.DataFrame(payload["data"], columns=payload["columns"], index=idx)
 
 # ---------------------------------------------------------------------------
 # Ticker resolution

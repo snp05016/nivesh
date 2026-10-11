@@ -25,6 +25,9 @@ from helpers import (
     PortfolioValuationHistory, NetWorthLedger, _extract_json_from_text, require_auth,
     format_indian_currency,
 )
+from database import latest_per_ticker
+from services.yfinance_client import get_quotes, yf_history
+from concurrent.futures import ThreadPoolExecutor
 import os
 from services.market_service import get_rbi_policy
 from services.llm_utils import deepseek_chat as _deepseek_chat
@@ -123,9 +126,11 @@ def portfolio_benchmark(user_id: int, _caller: int = Depends(require_user_match)
     total_invested = 0.0
     total_current = 0.0
     unpriced: list[str] = []
+    ns_by_ticker = {str(h.ticker): _to_ns(str(h.ticker)) for h in holdings}
+    quotes = get_quotes(ns_by_ticker.values())  # one concurrent, cached batch (PERF-07)
     for h in holdings:
         ticker = str(h.ticker)
-        cp = _yf_price(_to_ns(ticker))[0]
+        cp = quotes.get(ns_by_ticker[ticker], (None, None))[0]
         if not cp:
             unpriced.append(ticker)
             continue
@@ -205,8 +210,7 @@ def get_valuation_history(user_id: int, days: int = 90, _caller: int = Depends(r
                     all_closes = {}
                     for t in ticker_shares:
                         try:
-                            tk = yf.Ticker(f"{t}.NS")
-                            hist = tk.history(period="35d")
+                            hist = yf_history(f"{t}.NS", "35d")  # shared, cached (PERF-07)
                             if not hist.empty:
                                 closes = hist["Close"].dropna()
                                 all_closes[t] = {d.strftime("%Y-%m-%d"): float(c) for d, c in closes.items()}
@@ -440,9 +444,15 @@ def portfolio_risk_analysis_endpoint(user_id: int, _caller: int = Depends(requir
         # For correlation: keep (ticker, list_of_daily_returns) indexed by date
         _return_series: dict[str, dict] = {}  # ticker -> {date_str: return_float}
 
+        # Fetch every holding's fundamentals concurrently (cached), not one by one (PERF-07).
+        ns_by_ticker = {t: _to_ns(t) for t, _, _, _ in holdings_data}
+        _ns_list = list(dict.fromkeys(ns_by_ticker.values()))
+        with ThreadPoolExecutor(max_workers=min(8, len(_ns_list))) as _pool:
+            infos = dict(zip(_ns_list, _pool.map(_yf_fetch_info, _ns_list)))
+
         for ticker, company_name, shares, buy_price in holdings_data:
-            ns = _to_ns(ticker)
-            info = _yf_fetch_info(ns)
+            ns = ns_by_ticker[ticker]
+            info = infos[ns]
             current_price = info.get("currentPrice") or info.get("regularMarketPrice") or buy_price
             beta = info.get("beta")
             sector = info.get("sector") or "Unknown"
@@ -451,8 +461,7 @@ def portfolio_risk_analysis_endpoint(user_id: int, _caller: int = Depends(requir
 
             hist_volatility = None
             try:
-                t = yf.Ticker(ns)
-                hist = t.history(period="90d")
+                hist = yf_history(ns, "90d")
                 if not hist.empty and len(hist) > 1:
                     returns = hist["Close"].pct_change().dropna()
                     v = float(returns.std() * (252 ** 0.5) * 100)
@@ -558,11 +567,15 @@ def portfolio_red_flags_endpoint(user_id: int, _caller: int = Depends(require_us
                         "warnings": 0, "watches": 0, "flags": [],
                         "summary": "No holdings found."}
 
+            # Newest 4 analyses per held ticker (any user) in ONE query; rows[0] is the
+            # latest, all 4 feed the FII trend (PERF-08).
+            recent = latest_per_ticker(
+                session, held_tickers, n=4,
+                cols=(AnalysisHistory.full_json, AnalysisHistory.promoter_pledged_pct),
+            )
             latest_analyses: dict[str, dict] = {}
             for ticker in held_tickers:
-                row = session.query(AnalysisHistory).filter(
-                    AnalysisHistory.ticker == ticker
-                ).order_by(AnalysisHistory.created_at.desc()).first()
+                row = recent.get(ticker, [None])[0]
                 if row and row.full_json:
                     try:
                         data = json.loads(row.full_json)
@@ -574,9 +587,7 @@ def portfolio_red_flags_endpoint(user_id: int, _caller: int = Depends(require_us
             # FII trend: last 4 analyses per ticker (most recent first)
             fii_histories: dict[str, list[float]] = {}
             for ticker in held_tickers:
-                rows = session.query(AnalysisHistory).filter(
-                    AnalysisHistory.ticker == ticker
-                ).order_by(AnalysisHistory.created_at.desc()).limit(4).all()
+                rows = recent.get(ticker, [])
                 fiis = []
                 for r in rows:
                     try:
@@ -950,16 +961,14 @@ def portfolio_attribution_endpoint(
 
     for h in holdings:
         try:
-            t = yf.Ticker(_resolve_ticker(h.ticker, "NSE"))
-            info = t.fast_info
+            sym = _resolve_ticker(h.ticker, "NSE")
+            info = yf.Ticker(sym).fast_info
             current_price = getattr(info, "last_price", None)
-            info_dict = {}
+            # The sector needs .info; it comes from the shared 15-min cache, not a fresh Yahoo call (PERF-02/07).
+            info_dict = _yf_fetch_info(sym)
             if current_price is None or math.isnan(current_price):
-                info_dict = t.info
                 current_price = info_dict.get("currentPrice") or info_dict.get("regularMarketPrice") or h.buy_price
-            else:
-                info_dict = t.info
-            
+
             sector = info_dict.get("sector", "Unknown")
         except Exception as e:
             logging.warning(f"Caught exception: {e}")

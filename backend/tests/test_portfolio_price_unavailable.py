@@ -93,7 +93,10 @@ def test_yf_price_with_status_falls_back_to_last_good(monkeypatch):
     monkeypatch.setattr(yfc.time, "sleep", lambda _s: None)
     monkeypatch.setattr(yfc, "_LAST_GOOD", {})
 
+    import services.cache_service as cs
+
     live = yfc._yf_price_with_status("STALETEST.NS")
+    cs.cache.invalidate_sync("quote", "STALETEST.NS")  # the 60 s quote cache expires (PERF-07)
     stale = yfc._yf_price_with_status("STALETEST.NS")
 
     assert live[:3] == (105.0, 100.0, "live")
@@ -125,7 +128,8 @@ def test_benchmark_excludes_unpriced_holdings(client, monkeypatch):
     monkeypatch.setattr(portfolio_router.yf, "Ticker", lambda _sym: nifty)
     monkeypatch.setattr(portfolio_router, "_to_ns", lambda t: t)
     monkeypatch.setattr(
-        portfolio_router, "_yf_price", lambda sym: (3030.0, 3000.0) if sym == "TCS" else (None, None)
+        portfolio_router, "get_quotes",
+        lambda syms: {s: (3030.0, 3000.0) if s == "TCS" else (None, None) for s in syms},
     )
 
     r = client.get("/portfolio/benchmark", params={"user_id": uid}, headers=headers)

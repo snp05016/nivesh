@@ -793,7 +793,9 @@ def dashboard_user_data(user_id: int, authorization: str = Header(None)):
             result["portfolio_summary"] = {"total_invested": round(total_invested, 2), "holdings_count": holdings_count}
 
             # ── Analysis History ──
-            analyses = session.query(AnalysisHistory).filter(
+            from sqlalchemy.orm import undefer
+            # raw_output is deferred (PERF-08); this export ships it, so load it in the same query.
+            analyses = session.query(AnalysisHistory).options(undefer(AnalysisHistory.raw_output)).filter(
                 AnalysisHistory.user_id == user_id
             ).order_by(AnalysisHistory.created_at.desc()).limit(50).all()
             analysis_rows = []

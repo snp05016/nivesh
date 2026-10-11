@@ -280,6 +280,13 @@ def _reset_yf_guards(monkeypatch):
     with _yfc._ticker_resolution_lock:
         _yfc._ticker_resolution_cache.clear()
         _yfc._ticker_unresolved.clear()
+    # The yfinance gateway caches quotes/info/history in the shared cache (PERF-07):
+    # give every test a fresh in-process cache with Redis skipped, so one test's mocked
+    # prices never leak into another and no test writes to a live Redis.
+    import services.cache_service as _cs
+    _svc = _cs.CacheService(redis_url="redis://localhost:19999")
+    _svc._down_until = float("inf")
+    monkeypatch.setattr(_cs, "cache", _svc)
     yield
 
 

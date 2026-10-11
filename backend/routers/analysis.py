@@ -49,6 +49,7 @@ from config.settings import (
     SECTOR_PE_MAP,
     ADVISOR_INSIGHTS_LOOKBACK_DAYS,
 )
+from services.cache_service import cached_call
 # One locked yfinance circuit breaker, shared with the yfinance_client wrappers (REL-14).
 from services.yfinance_client import (
     yf_circuit_is_open as _yf_circuit_is_open,
@@ -141,18 +142,7 @@ def _run_analysis_worker(queue, ticker, exchange, user_id, deep_scan=False, scan
 # ---------------------------------------------------------------------------
 @router.get("/quick-info")
 def quick_info_endpoint(ticker: str, exchange: str = "NSE"):
-    try:
-        exchange = exchange.upper()
-        if exchange not in EXCHANGE_SUFFIX:
-            raise HTTPException(status_code=400, detail=f"Unsupported exchange: {exchange}")
-
-        cache_key = f"{ticker.upper()}_{exchange.upper()}"
-        from services.disk_cache import get as _dcache_get, set as _dcache_set
-        _disk_hit = _dcache_get("quick-info", cache_key)
-        if _disk_hit:
-            logging.info(f"[QUICK-INFO CACHE HIT] {cache_key}")
-            return _disk_hit
-
+    def _compute() -> dict:
         full_ticker = _resolve_ticker(ticker, exchange)
 
         # ── PARALLEL: fetch info + history + news concurrently (Task: concurrency bottleneck) ──
@@ -348,7 +338,8 @@ def quick_info_endpoint(ticker: str, exchange: str = "NSE"):
             from database import AnalysisHistory, get_session as _get_db_session
             import json as _json
             with _get_db_session() as _sess:
-                _last = _sess.query(AnalysisHistory).filter(
+                # Only the JSON column: the row's other blobs are not needed here (PERF-08).
+                _last = _sess.query(AnalysisHistory.full_json).filter(
                     AnalysisHistory.ticker == ticker.upper()
                 ).order_by(AnalysisHistory.created_at.desc()).first()
                 if _last:
@@ -414,9 +405,21 @@ def quick_info_endpoint(ticker: str, exchange: str = "NSE"):
             "governance_red_flags": governance_red_flags,
             "errors": errors,
         }
-        if not errors:
-            _dcache_set("quick-info", cache_key, result)
         return result
+
+    try:
+        exchange = exchange.upper()
+        if exchange not in EXCHANGE_SUFFIX:
+            raise HTTPException(status_code=400, detail=f"Unsupported exchange: {exchange}")
+
+        cache_key = f"{ticker.upper()}_{exchange.upper()}"
+        # Single flight: concurrent misses fetch once; a priceless or degraded (errors)
+        # result is kept only 60 s so a Yahoo blip is neither pinned nor refetched per caller (PERF-07).
+        return cached_call(
+            "quick-info", cache_key, _compute, ttl=_QUICK_INFO_TTL,
+            cache_if=lambda r: bool(r) and r.get("current_price") is not None and not r.get("errors"),
+            negative_ttl=60,
+        )
     except HTTPException:
         raise
     except Exception as e:
@@ -811,8 +814,10 @@ def get_home_feed(user_id: int, ticker: str = None, caller: int | None = Depends
     # personalisation) rather than hard-failing with 401. Home feed content is public.
     if caller != user_id:
         user_id = 0  # anonymous mode: no red flags, no portfolio video matching
+    from sqlalchemy.orm import defer
+    _no_body = defer(NewsArticle.body_text)  # type: ignore[arg-type]  # full article bodies are never serialized here (PERF-02)
     with get_session() as session:
-        news_query = session.query(NewsArticle).order_by(NewsArticle.published_at.desc())
+        news_query = session.query(NewsArticle).options(_no_body).order_by(NewsArticle.published_at.desc())
         if ticker:
             news_query = news_query.filter(NewsArticle.ticker == ticker.upper())
         else:
@@ -823,7 +828,7 @@ def get_home_feed(user_id: int, ticker: str = None, caller: int | None = Depends
 
         # Fallback to wider window before hitting yfinance
         if not articles and not ticker:
-            articles = session.query(NewsArticle).order_by(
+            articles = session.query(NewsArticle).options(_no_body).order_by(
                 NewsArticle.published_at.desc()
             ).limit(15).all()
 
@@ -836,7 +841,7 @@ def get_home_feed(user_id: int, ticker: str = None, caller: int | None = Depends
             Portfolio.group_name == "holdings"
         ).all()
         holding_tickers = [h.ticker for h in holdings]
-        red_flags = session.query(NewsArticle).filter(
+        red_flags = session.query(NewsArticle).options(_no_body).filter(
             NewsArticle.is_red_flag == True,
             NewsArticle.ticker.in_(holding_tickers),
             NewsArticle.published_at >= datetime.now(timezone.utc) - timedelta(days=7)
@@ -1317,23 +1322,19 @@ def daily_action_endpoint(user_id: int, _caller: int = Depends(require_user_matc
         try:
             # Inline the signal warnings logic (from portfolio router or helper)
             from helpers import get_session, Portfolio, AnalysisHistory, SignalEvent
+            from database import latest_per_ticker
             with get_session() as session:
                 holdings = session.query(Portfolio).filter_by(
                     user_id=user_id, group_name="holdings"
                 ).all()
                 held_tickers = [h.ticker for h in holdings]
+                # Newest two rows per ticker in one query, not two per holding (PERF-08).
+                latest_two = latest_per_ticker(session, held_tickers, n=2)
                 for ticker in held_tickers:
-                    row = session.query(AnalysisHistory).filter(
-                        AnalysisHistory.ticker == ticker
-                    ).order_by(AnalysisHistory.created_at.desc()).first()
-                    if not row:
+                    pair = latest_two.get(ticker, [])
+                    if len(pair) < 2:
                         continue
-                    prev = session.query(AnalysisHistory).filter(
-                        AnalysisHistory.ticker == ticker,
-                        AnalysisHistory.id < row.id
-                    ).order_by(AnalysisHistory.created_at.desc()).first()
-                    if not prev:
-                        continue
+                    row, prev = pair[0], pair[1]
                     if row.signal != prev.signal:
                         warnings.append({
                             "ticker": ticker,
@@ -1359,10 +1360,9 @@ def daily_action_endpoint(user_id: int, _caller: int = Depends(require_user_matc
                     user_id=user_id, group_name="holdings"
                 ).all()
                 held_tickers = [h.ticker for h in holdings]
+                latest = latest_per_ticker(session, held_tickers, cols=(AnalysisHistory.full_json,))
                 for ticker in held_tickers:
-                    row = session.query(AnalysisHistory).filter(
-                        AnalysisHistory.ticker == ticker
-                    ).order_by(AnalysisHistory.created_at.desc()).first()
+                    row = latest.get(ticker, [None])[0]
                     if not row or not row.full_json:
                         continue
                     try:

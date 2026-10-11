@@ -18,10 +18,21 @@ from concurrent.futures import ThreadPoolExecutor
 from fastapi import APIRouter, Depends, HTTPException
 import yfinance as yf
 from services.cache_service import cached_call
+from database import latest_per_ticker
 from services.scraper import fetch_earnings_sync_ratio, fetch_yoy_aggregate_indicators
 from pydantic import BaseModel as _BaseModel
 from typing import Optional as _Optional
 from pydantic import BaseModel as _BaseModelLocal
+
+def _latest_rows_since(session, cutoff: str) -> list:
+    """Newest analysis per ticker since cutoff, newest first: one windowed query over
+    the four columns the earnings feeds read, not every row's blobs (PERF-08)."""
+    latest = latest_per_ticker(
+        session, None, date_from=cutoff,
+        cols=(AnalysisHistory.analysis_date, AnalysisHistory.full_json),
+    )
+    return sorted((rows[0] for rows in latest.values()), key=lambda r: r.created_at or datetime.min, reverse=True)
+
 
 router = APIRouter(tags=["Market Data"])
 
@@ -392,15 +403,8 @@ Adds data_source and diagnostic fields for transparency.
         with get_session() as session:
             from datetime import timedelta
             cutoff = (datetime.now(timezone.utc) - timedelta(days=90)).strftime("%Y-%m-%d")
-            rows = session.query(AnalysisHistory).filter(
-                AnalysisHistory.analysis_date >= cutoff
-            ).order_by(AnalysisHistory.created_at.desc()).all()
-            seen: set = set()
             results = []
-            for r in rows:
-                if r.ticker in seen:
-                    continue
-                seen.add(r.ticker)
+            for r in _latest_rows_since(session, cutoff):
                 item = _earnings_result_from_row(r, now_iso)
                 if item["revenue"] == 0 and item["net_profit"] == 0:
                     continue
@@ -564,14 +568,9 @@ def post_result_movers_endpoint():
         with get_session() as session:
             from datetime import timedelta
             cutoff = (datetime.now(timezone.utc) - timedelta(days=14)).strftime("%Y-%m-%d")
-            rows = session.query(AnalysisHistory).filter(
-                AnalysisHistory.analysis_date >= cutoff
-            ).order_by(AnalysisHistory.created_at.desc()).all()
-            seen: set = set()
-            for r in rows:
-                if r.ticker in seen or len(movers) >= 15:
-                    continue
-                seen.add(r.ticker)
+            for r in _latest_rows_since(session, cutoff):
+                if len(movers) >= 15:
+                    break
                 try:
                     ns = _to_ns(r.ticker)
                     t_obj = yf.Ticker(ns)

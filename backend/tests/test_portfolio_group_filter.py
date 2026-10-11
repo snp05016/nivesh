@@ -51,7 +51,10 @@ def test_benchmark_uses_holding_inception(client, monkeypatch):
     monkeypatch.setattr(portfolio_router.yf, "Ticker", lambda _sym: nifty)
     monkeypatch.setattr(portfolio_router, "_to_ns", lambda t: t)
     priced = []
-    monkeypatch.setattr(portfolio_router, "_yf_price", lambda sym: (priced.append(sym), (110.0, 100.0))[1])
+    monkeypatch.setattr(
+        portfolio_router, "get_quotes",
+        lambda syms: {s: (priced.append(s), (110.0, 100.0))[1] for s in syms},
+    )
 
     r = client.get("/portfolio/benchmark", params={"user_id": uid}, headers=headers)
 

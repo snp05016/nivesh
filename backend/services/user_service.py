@@ -1,6 +1,5 @@
 import asyncio
 import time
-from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 import logging
@@ -12,6 +11,7 @@ from helpers import (
 )
 from database import MarketErrorLog
 from repositories.analysis_repo import latest_signals_by_ticker
+from services.yfinance_client import get_quotes
 from services.harvester_reformatter import strip_emoji
 from services.notifications_inbox import create_notification
 from services.preferences import push_allowed
@@ -88,6 +88,10 @@ def get_watchlist(user_id: int) -> Optional[dict]:
         ).all()
         items_data = [(h.ticker, h.company_name) for h in items]
 
+    # One concurrent, cached quote fetch for the whole list (PERF-07).
+    ns_by_ticker = {t: _to_ns(t) for t, _ in items_data}
+    quotes = get_quotes(list(ns_by_ticker.values()))
+
     try:
         asm_gsm_data = _get_asm_gsm_lists()
     except Exception as e:
@@ -102,12 +106,9 @@ def get_watchlist(user_id: int) -> Optional[dict]:
     except Exception as e:
         logging.error(f"Error occurred: {e}", exc_info=True)
 
-    with ThreadPoolExecutor(max_workers=min(len(tickers), 10) or 1) as ex:
-        prices = dict(zip(tickers, ex.map(lambda t: _yf_price(_to_ns(t)), tickers)))
-
     result = []
     for ticker, company_name in items_data:
-        current_price, prev_close = prices[ticker]
+        current_price, prev_close = quotes.get(ns_by_ticker[ticker], (None, None))
         day_change_pct = 0.0
         if current_price and prev_close and prev_close > 0:
             day_change_pct = round((current_price - prev_close) / prev_close * 100, 2)

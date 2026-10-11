@@ -6,7 +6,7 @@ from sqlalchemy import (
     Boolean, CheckConstraint, Column, Date, DateTime, Float, Integer, JSON, Numeric, String, Text,
     ForeignKey, Index, UniqueConstraint, text,
 )
-from sqlalchemy.orm import DeclarativeBase, relationship
+from sqlalchemy.orm import DeclarativeBase, deferred, relationship
 
 
 class Base(DeclarativeBase):
@@ -190,7 +190,8 @@ class AnalysisHistory(Base):
     target_long    = Column(Float, nullable=True)
     promoter_pledged_pct = Column(Float, nullable=True)
     promoter_pledged_trend = Column(String(20), nullable=True)
-    raw_output     = Column(Text, nullable=True)
+    # Multi-agent transcript: deferred so entity queries skip it; read only where needed (PERF-08).
+    raw_output     = deferred(Column(Text, nullable=True))
     full_json      = Column(Text, nullable=False)
     scan_type      = Column(String(20), nullable=False, default="standard")
     # Epistemic feedback loop — added 2026-06-03

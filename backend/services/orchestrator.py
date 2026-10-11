@@ -1884,7 +1884,10 @@ def analyze(
     with get_session() as session:
         # 1. Query Cache: exact scan_type match only.
         # Cross-tier fallback makes Standard/Deep/Extreme display the wrong report.
-        cached_today = get_analysis_for_date(session, ticker, analysis_date, scan_type) if shared else None
+        # include_raw: the per-user copy below re-saves the transcript (PERF-08).
+        cached_today = get_analysis_for_date(
+            session, ticker, analysis_date, scan_type, include_raw=True
+        ) if shared else None
         if cached_today:
             logging.info(
                 f"[CACHE HIT] Returning existing analysis for {full_ticker} on {analysis_date}"
