@@ -8,10 +8,6 @@ import SwiftUI
 // /block-author, /blocks.
 
 enum ForumModeration {
-    /// OWNER: placeholder (reserved example.com domain) — replace with the real
-    /// moderation / grievance contact before release (App Store 1.2 needs one).
-    static let contactEmail = "forum-moderation@example.com"
-    static var contactURL: URL? { URL(string: "mailto:\(contactEmail)") }
     /// @AppStorage key — true once the user has agreed to the guidelines.
     static let guidelinesKey = "nivesh_forumGuidelinesAcceptedV1"
     static let detailsLimit = 500
@@ -219,14 +215,16 @@ struct ForumGuidelinesSheet: View {
     }
 }
 
+/// REG-13: the published moderation contact is the Grievance Officer notice
+/// (REG-12), served from the backend env, so there is one real address.
 struct ForumContactModeratorsLink: View {
     var body: some View {
-        if let url = ForumModeration.contactURL {
-            Link(destination: url) {
-                Label("Contact moderators: \(ForumModeration.contactEmail)", systemImage: "envelope")
-                    .font(Theme.engravedSerif(size: 13, relativeTo: .footnote))
-                    .foregroundColor(Theme.securityGold)
-            }
+        NavigationLink {
+            DisclosureDetailView(key: .grievanceOfficer)
+        } label: {
+            Label("Contact & Grievance Officer", systemImage: "envelope")
+                .font(Theme.engravedSerif(size: 13, relativeTo: .footnote))
+                .foregroundColor(Theme.securityGold)
         }
     }
 }
