@@ -1,12 +1,10 @@
 import Foundation
 import UIKit
 
-// Global bridges for C function pointers — must be top-level, zero context capture
+// Global bridge for the C function pointer — must be top-level, zero context capture
 private var _exceptionBridge: ((NSException) -> Void)?
-private var _signalBridge: ((Int32) -> Void)?
 
 private func _niveshOnException(_ e: NSException) { _exceptionBridge?(e) }
-private func _niveshOnSignal(_ sig: Int32)        { _signalBridge?(sig) }
 
 enum CrashInterceptor {
     private static var didRegister = false
@@ -25,21 +23,11 @@ enum CrashInterceptor {
         }
         NSSetUncaughtExceptionHandler(_niveshOnException)
 
-        // POSIX signal handlers — via global bridge (C function pointer)
-        _signalBridge = { sig in handleSignal(sig) }
-        let signals: [Int32] = [SIGABRT, SIGSEGV, SIGBUS, SIGILL, SIGTRAP, SIGFPE]
-        for sig in signals {
-            signal(sig, _niveshOnSignal)
-        }
-    }
-
-    private static func handleSignal(_ sig: Int32) {
-        let name = String(cString: strsignal(sig))
-        let stack = Thread.callStackSymbols.prefix(40).joined(separator: "\n")
-        record(type: .signal, signal: sig, name: name, reason: nil,
-               stackTrace: stack, viewPath: CrashGuard.lastViewPath)
-        signal(sig, SIG_DFL)
-        raise(sig)
+        // No POSIX signal handlers: allocation, JSON and file IO are not
+        // async-signal-safe and can deadlock a crashing process (e.g. SIGSEGV
+        // inside malloc). Signal crashes go to the OS crash reporter (Xcode
+        // Organizer / TestFlight). CrashType.signal stays so old logs decode.
+        // ponytail: add an MXMetricManagerSubscriber (MXCrashDiagnostic) if in-app signal crash lists matter.
     }
 
     static func record(type: CrashType, signal: Int32?, name: String, reason: String?,
