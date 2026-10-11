@@ -29,7 +29,8 @@ jobs:
       - name: Install Bandit
         run: pip install bandit==1.7.10
       - name: Run Bandit
-        # Blocking: fails on any medium/high finding not already triaged into the baseline.
-        # Regenerate the baseline with the same version and exclusions:
+        # Blocking on high-severity, high-confidence findings (TEST-14). The medium gate
+        # needs a committed baseline, which never landed (-b on a missing file exits 2).
+        # To widen: generate it with this version and exclusions, commit it, then use -ll -ii -b:
         #   bandit -r backend/ -ll -ii -x backend/tradingagents-core,backend/tests,backend/.venv,backend/venv -f json -o backend/.bandit-baseline.json
-        run: bandit -r backend/ -ll -ii -x backend/tradingagents-core,backend/tests,backend/.venv,backend/venv -b backend/.bandit-baseline.json
+        run: bandit -r backend/ -lll -iii -x backend/tradingagents-core,backend/tests,backend/.venv,backend/venv

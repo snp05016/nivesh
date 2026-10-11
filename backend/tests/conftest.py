@@ -159,6 +159,60 @@ def _blocked_process_start(self):
 _mp_process.BaseProcess.start = _blocked_process_start
 
 # ---------------------------------------------------------------------------
+# STEP 2c: No real network (TEST-13)
+# Live harvester runs spent the YouTube quota shared with production. Every
+# Python-level connect / DNS lookup to a non-loopback host raises; patch the
+# client in the test instead. Opt in to live tests (e.g. test_e2e_api against a
+# remote NIVESH_LIVE_E2E_BASE_URL) with ALLOW_NETWORK_TESTS=1.
+# ponytail: C-level clients (libpq, curl_cffi) bypass Python sockets; they are
+# mocked above (yfinance) or only reach the test DB.
+# ---------------------------------------------------------------------------
+import ipaddress
+import socket
+
+
+def _network_allowed(host) -> bool:
+    if not host:
+        return True
+    if isinstance(host, bytes):
+        host = host.decode(errors="replace")
+    if host == "localhost":
+        return True
+    try:
+        return ipaddress.ip_address(host.split("%", 1)[0]).is_loopback
+    except ValueError:
+        return False
+
+
+def _guard_address(address):
+    # AF_UNIX addresses are str/bytes paths; INET ones are (host, port, ...).
+    if isinstance(address, tuple) and address and not _network_allowed(address[0]):
+        raise RuntimeError(f"network blocked in tests: {address}")
+
+
+if os.getenv("ALLOW_NETWORK_TESTS") != "1":
+    _real_connect = socket.socket.connect
+    _real_connect_ex = socket.socket.connect_ex
+    _real_getaddrinfo = socket.getaddrinfo
+
+    def _guarded_connect(self, address):
+        _guard_address(address)
+        return _real_connect(self, address)
+
+    def _guarded_connect_ex(self, address):
+        _guard_address(address)
+        return _real_connect_ex(self, address)
+
+    def _guarded_getaddrinfo(host, *args, **kwargs):
+        if not _network_allowed(host):
+            raise RuntimeError(f"network blocked in tests: {host}")
+        return _real_getaddrinfo(host, *args, **kwargs)
+
+    socket.socket.connect = _guarded_connect
+    socket.socket.connect_ex = _guarded_connect_ex
+    socket.getaddrinfo = _guarded_getaddrinfo
+
+# ---------------------------------------------------------------------------
 # STEP 3: Add backend to sys.path and import the app
 # ---------------------------------------------------------------------------
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

@@ -52,7 +52,7 @@ FINANCIAL_TICKERS = BANK_TICKERS | {
 
 def _symbol_seed(symbol: str) -> int:
     """Return a deterministic integer seed for a ticker symbol."""
-    h = hashlib.md5(symbol.strip().upper().encode()).hexdigest()
+    h = hashlib.md5(symbol.strip().upper().encode(), usedforsecurity=False).hexdigest()  # seed, not security
     return int(h[:8], 16)
 
 

@@ -1,0 +1,9 @@
+# Test and lint tools for CI and local runs, exact pins (TEST-13, TEST-14).
+# Install after requirements.txt (or requirements.lock once OPS-16 adds it):
+#   pip install -r backend/requirements-dev.txt
+pytest==9.0.3
+pytest-asyncio==1.4.0
+httpx==0.28.1
+ruff==0.8.4
+# Keep in step with .github/workflows/security_scan.yml.
+bandit==1.7.10

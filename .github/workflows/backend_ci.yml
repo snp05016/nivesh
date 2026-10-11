@@ -28,7 +28,7 @@ jobs:
         python -m pip install --upgrade pip
         # OPS-16: exact pins from requirements.lock; requirements.txt only until the lock exists.
         if [ -f backend/requirements.lock ]; then pip install -r backend/requirements.lock; else pip install -r backend/requirements.txt; fi
-        pip install ruff==0.8.4 pytest httpx
+        pip install -r backend/requirements-dev.txt
 
     - name: Lint with ruff
       # Rules live in backend/ruff.toml: syntax errors (E9), broken comparisons/asserts (F63),
@@ -135,7 +135,7 @@ jobs:
         python -m pip install --upgrade pip
         # OPS-16: exact pins from requirements.lock; requirements.txt only until the lock exists.
         if [ -f backend/requirements.lock ]; then pip install -r backend/requirements.lock; else pip install -r backend/requirements.txt; fi
-        pip install pytest
+        pip install -r backend/requirements-dev.txt
 
     - name: Upgrade and check migrations on Postgres
       working-directory: backend

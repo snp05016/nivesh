@@ -42,12 +42,9 @@ forbid "ML deploy script kills or starts the API" \
 forbid "workflow action on a moving branch or raw event input" \
   'uses: .*@(master|main)$|\$\{\{ *github\.event\.inputs' -- .github/workflows
 
-# (e) CI gates must fail closed.
-# TODO(GH-691/TEST-14): drop the bandit exception once Bandit fails the job.
-forbid "fail-open CI step (|| echo / || exit 0)" \
-  '\|\| *(echo|exit 0)' -- .github/workflows ':!.github/workflows/security_scan.yml'
-forbid "fail-open CI step (|| exit 0)" \
-  '\|\| *exit 0' -- .github/workflows/security_scan.yml
+# (e) CI gates must fail closed (TEST-14).
+forbid "fail-open CI step (|| echo / || true / || exit 0)" \
+  '\|\|[[:space:]]*(echo|true|exit 0)' -- .github/workflows
 
 # (f) Agent/readme entry points exist; the old scratch folder does not.
 for f in README.md AGENTS.md CLAUDE.md; do
