@@ -12,12 +12,18 @@ Sources:
 
 Output:
   backend/data/nse_bse_symbols.json  — merged, deduplicated list
+  ios/StockApp/stockme/stockme/Resources/nse_bse_symbols.json — byte copy bundled
+      by the iOS app (written only when that directory exists in the checkout)
 """
 
 import csv, json, os, re, subprocess, sys, tempfile, time, urllib.request
 from io import StringIO
 
 OUTPUT_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "nse_bse_symbols.json")
+IOS_RESOURCE_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+    "ios", "StockApp", "stockme", "stockme", "Resources",
+)
 REPO_URL    = "https://github.com/maanavshah/stock-market-india.git"
 NSE_CSV_URL = "https://archives.nseindia.com/content/equities/EQUITY_L.csv"
 
@@ -167,6 +173,13 @@ def merge_and_save(nse: list[dict], bse_only: list[dict]) -> None:
     with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
         json.dump(merged, f, indent=2, ensure_ascii=False)
     logging.info(f"\nSaved: {OUTPUT_PATH}")
+
+    # Keep the iOS bundled copy byte-identical (tests/test_stock_universe.py checks it).
+    if os.path.isdir(IOS_RESOURCE_DIR):
+        ios_path = os.path.join(IOS_RESOURCE_DIR, "nse_bse_symbols.json")
+        with open(OUTPUT_PATH, "rb") as src, open(ios_path, "wb") as dst:
+            dst.write(src.read())
+        logging.info(f"Saved: {ios_path}")
 
 
 def main() -> None:

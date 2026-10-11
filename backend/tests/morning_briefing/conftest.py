@@ -52,8 +52,8 @@ def mock_cache_service(monkeypatch, cache_service_instance):
     import services.cache_service as _cs
     monkeypatch.setattr(_cs, "cache", cache_service_instance)
     # Also patch the sync helpers to use our instance
-    monkeypatch.setattr(_cs, "sync_get", lambda ns, key: _cs._run_async_in_thread(cache_service_instance.get(ns, key)))
-    monkeypatch.setattr(_cs, "sync_set", lambda ns, key, val, ttl=None: _cs._run_async_in_thread(cache_service_instance.set(ns, key, val, ttl)))
+    monkeypatch.setattr(_cs, "sync_get", cache_service_instance.get_sync)
+    monkeypatch.setattr(_cs, "sync_set", cache_service_instance.set_sync)
     return cache_service_instance
 
 

@@ -121,7 +121,6 @@ def start_scheduler():
     from services.portfolio_snapshot import snapshot_all_users, pregen_morning_briefs_all_users
     from services.pkscreener_runner import run_nightly_screen
     from services.filings_extractor import harvest_filings
-    from services.disk_cache import purge_expired as cache_purge_expired
     from services.nse_data_provider import download_bhavcopy
     from services.piotroski import batch_refresh_piotroski
     from services.error_telemetry import generate_daily_digest
@@ -171,17 +170,8 @@ def start_scheduler():
         with get_session() as db:
             evaluate_analysis_outcomes(db)
 
-    # ── NEW JOB 1: Disk cache purge — 3:00 AM IST ────────────────────────────
-    async def _run_cache_purge():
-        _dash_update_harvest("cache_purge", "running")
-        try:
-            result = cache_purge_expired()
-            total_freed = sum(v.get("freed_mb", 0) for v in result.values())
-            _dash_update_harvest("cache_purge", "idle", {"namespaces": result, "total_freed_mb": round(total_freed, 3)})
-            logging.info(f"[cache_purge] Complete. Freed {total_freed:.2f} MB")
-        except Exception as e:
-            _dash_update_harvest("cache_purge", "error", {"error": str(e)})
-            logging.error(f"[cache_purge] Error: {e}")
+    # No cache-purge job: Redis TTLs and the in-process TTLCache fallback expire
+    # entries on their own (ARCH-09).
 
     # ── NEW JOB 2: Bhavcopy download — 7:00 PM IST (13:30 UTC) ──────────────
     async def _run_bhavcopy_download():
@@ -299,7 +289,6 @@ def start_scheduler():
     _scheduler.add_job(_run_backfill_preferences, "cron", hour=21, minute=35)  # 3:05 AM IST
 
     # ── NEW jobs ──────────────────────────────────────────────────────────────
-    _scheduler.add_job(_run_cache_purge,          "cron", hour=3,  minute=0)              # 3:00 AM IST
     _scheduler.add_job(_run_bhavcopy_download,    "cron", hour=13, minute=30)             # 7:00 PM IST
     _scheduler.add_job(_run_pregen_morning_briefs,"cron", hour=1,  minute=0)              # 6:30 AM IST
     _scheduler.add_job(_run_piotroski_batch,      "cron", day_of_week="sun", hour=17, minute=30)  # Sun 11 PM IST
@@ -317,7 +306,7 @@ def start_scheduler():
     logging.info(
         "All schedulers started — existing: (advisor 1:30, news 12:30, yt-channel 1:00, "
         "yt-portfolio 1:15, snapshot 4:30 PM, pkscreener 4:45 PM, outcome-eval 2:00 AM) | "
-        "new: (cache-purge 3:00 AM, bhavcopy 7:00 PM, morning-brief-pregen 6:30 AM, "
+        "new: (bhavcopy 7:00 PM, morning-brief-pregen 6:30 AM, "
         "piotroski-weekly Sun 11 PM, premarket-warm 9:00 AM, error-digest 7:00 AM) | "
         "harvesters: (expert 120min, sebi 120min, yt-expert 120min) [all IST]"
     )

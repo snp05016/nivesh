@@ -17,6 +17,7 @@ from typing import Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from helpers import require_auth
+from services import stock_universe
 from schemas.ml_signal import MLSignalResponse
 from schemas.stock_fundamentals import (
     CorporateAction,
@@ -142,19 +143,8 @@ _SECTOR_BASE = {
 
 
 def _sector_for_symbol(symbol: str) -> str:
-    """Look up sector from the NSE directory in main.py if accessible, else default."""
-    # We try to import the in-memory directory; if unavailable, fall back.
-    try:
-        from main import _NSE_DIR_INDEX
-        s = symbol.strip().upper()
-        for entry in _NSE_DIR_INDEX:
-            if entry["_t"] == s.lower():
-                return entry["sector"]
-    except Exception as e:
-        import logging
-        logging.error(f"Error occurred: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Internal server error")
-    return "Diversified"
+    """Look up sector from the shared NSE/BSE directory, else 'Diversified'."""
+    return stock_universe.sector_for(symbol, "Diversified")
 
 
 def _build_income_line_items(

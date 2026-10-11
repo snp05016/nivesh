@@ -29,8 +29,6 @@ from contextlib import asynccontextmanager
 from fastapi import Request
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.staticfiles import StaticFiles
-from cachetools import TTLCache
-from collections import deque
 import uuid
 from fastapi.responses import StreamingResponse, HTMLResponse, Response
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -66,176 +64,17 @@ from helpers import format_indian_currency, _ban_western_scale  # GH #123 — ca
 import logging
 import threading
 
-_token_log_lock = threading.Lock()
-TOKEN_LOG_PATH = Path(__file__).parent / "token_log.jsonl"
-
 # ---------------------------------------------------------------------------
-# Dashboard state (in-memory, main process only)
+# Dashboard state — single source of truth is core.dashboard_state (written by
+# helpers/routers/services). Importing the same objects here keeps the admin
+# dashboard and the request-log middleware on that one copy (ARCH-05).
 # ---------------------------------------------------------------------------
 _server_start = datetime.now(timezone.utc)
-_dash_lock = threading.Lock()
-_active_analyses = TTLCache(maxsize=1000, ttl=86400)
-_completed_analyses: deque = deque(maxlen=50)
-_request_log: deque = deque(maxlen=2000)
-_harvest_logs: deque = deque(maxlen=30)
-_token_stats: dict = {
-    "total_input": 0,
-    "total_output": 0,
-    "total_cache_read": 0,
-    "total_cache_write": 0,
-    "total_calls": 0,
-    "recent": deque(maxlen=20),
-}
-_harvest_status: dict = {
-    "youtube": {"status": "idle", "last_run": None, "last_result": None},
-    "advisor": {"status": "idle", "last_run": None, "last_result": None},
-    "news":    {"status": "idle", "last_run": None, "last_result": None},
-    "filings": {"status": "idle", "last_run": None, "last_result": None},
-}
-
-
-def _dash_update_harvest(key: str, status: str, result: dict | None = None) -> None:
-    """
-    Update the dashboard state for harvesting jobs.
-
-    Args:
-        key: The harvest job identifier (e.g., 'youtube', 'news').
-        status: The current status of the job.
-        result: Optional result dictionary if the job has finished.
-    """
-    with _dash_lock:
-        if key in _harvest_status:
-            _harvest_status[key]["status"] = status
-            if status == "running":
-                _harvest_status[key]["last_run"] = datetime.now(timezone.utc).isoformat()
-            if result is not None:
-                _harvest_status[key]["last_result"] = result
-                _harvest_logs.appendleft({
-                    "ts": datetime.now(timezone.utc).isoformat(),
-                    "key": key,
-                    "status": status,
-                    "result": result
-                })
-
-def _dash_start_job(job_id: str, ticker: str, exchange: str, user_id) -> None:
-    """
-    Register a new AI analysis job in the dashboard state.
-
-    Args:
-        job_id: Unique job identifier.
-        ticker: The stock ticker being analyzed.
-        exchange: The exchange for the ticker.
-        user_id: The ID of the user requesting the analysis.
-    """
-    with _dash_lock:
-        _active_analyses[job_id] = {
-            "job_id": job_id,
-            "ticker": ticker.upper(),
-            "exchange": exchange,
-            "user_id": user_id,
-            "start_ts": datetime.now(timezone.utc).isoformat(),
-            "stage": "AI agents initializing...",
-        }
-
-def _dash_end_job(job_id: str, result: dict | None = None, error: str | None = None, killed: bool = False) -> None:
-    """
-    Mark an AI analysis job as completed or failed in the dashboard state.
-
-    Args:
-        job_id: Unique job identifier.
-        result: The result payload, if successful.
-        error: Error message, if the job failed.
-        killed: Boolean indicating if the job was forcibly terminated.
-    """
-    with _dash_lock:
-        job = _active_analyses.pop(job_id, None)
-        if not job:
-            return
-        duration = (datetime.now(timezone.utc) - datetime.fromisoformat(job["start_ts"])).total_seconds()
-        entry = {**job, "end_ts": datetime.now(timezone.utc).isoformat(), "duration_s": round(duration, 1)}
-        if result:
-            entry["signal"] = result.get("signal")
-            entry["confidence"] = result.get("confidence_pct")
-            entry["company_name"] = result.get("company_name", "")
-            entry["cache_type"] = result.get("_cache_type", "FULL AI")
-            entry["status"] = "completed"
-        elif killed:
-            entry["status"] = "disconnected"
-            entry["cache_type"] = "—"
-        else:
-            entry["status"] = "error"
-            entry["error"] = error or "unknown"
-            entry["cache_type"] = "—"
-        _completed_analyses.appendleft(entry)
-
-def _dash_log_request(method: str, path: str, params: dict, status: int, duration_ms: float) -> None:
-    """
-    Log an incoming HTTP request for dashboard telemetry.
-
-    Args:
-        method: HTTP method.
-        path: The requested URL path.
-        params: Query parameters.
-        status: Response HTTP status code.
-        duration_ms: Duration of the request in milliseconds.
-    """
-    with _dash_lock:
-        _request_log.appendleft({
-            "id": str(uuid.uuid4())[:8],
-            "ts": datetime.now(timezone.utc).isoformat(),
-            "method": method,
-            "path": path,
-            "params": params,
-            "status": status,
-            "duration_ms": round(duration_ms),
-        })
-
-
-def _log_token_usage(endpoint: str, usage) -> None:
-    """
-    Log AI token usage statistics.
-
-    Args:
-        endpoint: The API endpoint or component responsible for the AI call.
-        usage: Object containing usage metrics (input, output, cache tokens).
-    """
-    # Handle both Anthropic (input_tokens) and OpenAI (prompt_tokens)
-    inp = getattr(usage, "input_tokens", 0)
-    if inp == 0:
-        inp = getattr(usage, "prompt_tokens", 0)
-        
-    out = getattr(usage, "output_tokens", 0)
-    if out == 0:
-        out = getattr(usage, "completion_tokens", 0)
-        
-    cr = getattr(usage, "cache_read_input_tokens", 0)
-    cw = getattr(usage, "cache_creation_input_tokens", 0)
-    try:
-        entry = {
-            "ts": datetime.now(timezone.utc).isoformat(),
-            "endpoint": endpoint,
-            "input_tokens": inp,
-            "output_tokens": out,
-            "cache_creation_input_tokens": cw,
-            "cache_read_input_tokens": cr,
-        }
-        with _token_log_lock:
-            with open(TOKEN_LOG_PATH, "a") as f:
-                f.write(json.dumps(entry) + "\n")
-    except Exception as e:
-        import logging
-        logging.warning(f"Failed to log token usage: {e}")
-    with _dash_lock:
-        _token_stats["total_input"]      += inp
-        _token_stats["total_output"]     += out
-        _token_stats["total_cache_read"] += cr
-        _token_stats["total_cache_write"]+= cw
-        _token_stats["total_calls"]      += 1
-        _token_stats["recent"].appendleft({
-            "ts": datetime.now(timezone.utc).isoformat(),
-            "endpoint": endpoint,
-            "input": inp, "output": out, "cache_read": cr, "cache_write": cw,
-        })
+from core.dashboard_state import (
+    _dash_lock, _active_analyses, _completed_analyses, _request_log,
+    _dash_logs as _harvest_logs, _token_stats, _harvest_status,
+    TOKEN_LOG_PATH, _dash_log_request,
+)
 
 # ---------------------------------------------------------------------------
 # Simple in-memory rate limiter
@@ -254,9 +93,9 @@ from core.security import get_current_user_id, require_auth, require_admin
 # Custom exception classes — Financial Error Boundaries
 # ---------------------------------------------------------------------------
 
-class DataHarvestingError(Exception):
-    """Raised when a market data scraping / harvest pipeline fails."""
-    pass
+# Single definition lives in helpers.py; routers raise that class, so the
+# 503 handler below must bind the same one.
+from helpers import DataHarvestingError, _quick_info_cache
 
 
 @asynccontextmanager
@@ -285,7 +124,6 @@ from fastapi.middleware.cors import CORSMiddleware
 _ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "")
 _origins = [o.strip() for o in _ALLOWED_ORIGINS.split(",") if o.strip()]
 
-cors_origins = _origins if _origins and "*" not in _origins else ["http://localhost:3000"]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_origins if _origins != ["*"] else ["*"],
@@ -579,304 +417,6 @@ def favicon():
 # init_db() moved into _on_startup() handler (fixes #87)
 
 
-
-_quick_info_cache: dict[str, tuple[float, dict]] = {}  # key -> (expiry_timestamp, data)
-_QUICK_INFO_TTL = 900  # 15 minutes (extended from 5 — safe for pre/post market)
-
-# NSE Stock Directory and ticker lookups relocated to services/nse_data_provider (Phase 4+5)
-_NSE_DIRECTORY = [
-    # Nifty 50 / Large Cap
-    {"ticker": "RELIANCE",    "company_name": "Reliance Industries Ltd",        "sector": "Oil & Gas"},
-    {"ticker": "TCS",         "company_name": "Tata Consultancy Services",       "sector": "IT"},
-    {"ticker": "HDFCBANK",    "company_name": "HDFC Bank Ltd",                   "sector": "Banking"},
-    {"ticker": "INFY",        "company_name": "Infosys Ltd",                     "sector": "IT"},
-    {"ticker": "ICICIBANK",   "company_name": "ICICI Bank Ltd",                  "sector": "Banking"},
-    {"ticker": "SBIN",        "company_name": "State Bank of India",             "sector": "Banking"},
-    {"ticker": "BHARTIARTL",  "company_name": "Bharti Airtel Ltd",               "sector": "Telecom"},
-    {"ticker": "KOTAKBANK",   "company_name": "Kotak Mahindra Bank",             "sector": "Banking"},
-    {"ticker": "AXISBANK",    "company_name": "Axis Bank Ltd",                   "sector": "Banking"},
-    {"ticker": "LT",          "company_name": "Larsen & Toubro Ltd",             "sector": "Engineering"},
-    {"ticker": "HCLTECH",     "company_name": "HCL Technologies Ltd",            "sector": "IT"},
-    {"ticker": "WIPRO",       "company_name": "Wipro Ltd",                       "sector": "IT"},
-    {"ticker": "NTPC",        "company_name": "NTPC Ltd",                        "sector": "Power"},
-    {"ticker": "POWERGRID",   "company_name": "Power Grid Corporation",          "sector": "Power"},
-    {"ticker": "MARUTI",      "company_name": "Maruti Suzuki India Ltd",         "sector": "Auto"},
-    {"ticker": "SUNPHARMA",   "company_name": "Sun Pharmaceutical Industries",   "sector": "Pharma"},
-    {"ticker": "ONGC",        "company_name": "Oil & Natural Gas Corporation",   "sector": "Oil & Gas"},
-    {"ticker": "ITC",         "company_name": "ITC Ltd",                         "sector": "FMCG"},
-    {"ticker": "TITAN",       "company_name": "Titan Company Ltd",               "sector": "Consumer"},
-    {"ticker": "BAJFINANCE",  "company_name": "Bajaj Finance Ltd",               "sector": "Finance"},
-    {"ticker": "ASIANPAINT",  "company_name": "Asian Paints Ltd",                "sector": "Paints"},
-    {"ticker": "NESTLEIND",   "company_name": "Nestle India Ltd",                "sector": "FMCG"},
-    {"ticker": "HINDUNILVR",  "company_name": "Hindustan Unilever Ltd",          "sector": "FMCG"},
-    {"ticker": "ULTRACEMCO",  "company_name": "UltraTech Cement Ltd",            "sector": "Cement"},
-    {"ticker": "TATAMOTORS",  "company_name": "Tata Motors Ltd",                 "sector": "Auto"},
-    {"ticker": "TATASTEEL",   "company_name": "Tata Steel Ltd",                  "sector": "Steel"},
-    {"ticker": "M&M",         "company_name": "Mahindra & Mahindra",             "sector": "Auto"},
-    {"ticker": "DRREDDY",     "company_name": "Dr Reddy's Laboratories",         "sector": "Pharma"},
-    {"ticker": "CIPLA",       "company_name": "Cipla Ltd",                       "sector": "Pharma"},
-    {"ticker": "BAJAJ-AUTO",  "company_name": "Bajaj Auto Ltd",                  "sector": "Auto"},
-    {"ticker": "EICHERMOT",   "company_name": "Eicher Motors Ltd",               "sector": "Auto"},
-    {"ticker": "INDUSINDBK",  "company_name": "IndusInd Bank Ltd",               "sector": "Banking"},
-    {"ticker": "HINDALCO",    "company_name": "Hindalco Industries Ltd",         "sector": "Metals"},
-    {"ticker": "JSWSTEEL",    "company_name": "JSW Steel Ltd",                   "sector": "Steel"},
-    {"ticker": "BPCL",        "company_name": "Bharat Petroleum",                "sector": "Oil & Gas"},
-    {"ticker": "TATACONSUM",  "company_name": "Tata Consumer Products",          "sector": "FMCG"},
-    {"ticker": "HEROMOTOCO",  "company_name": "Hero MotoCorp Ltd",               "sector": "Auto"},
-    {"ticker": "ADANIENT",    "company_name": "Adani Enterprises Ltd",           "sector": "Diversified"},
-    {"ticker": "ADANIPOWER",  "company_name": "Adani Power Ltd",                 "sector": "Power"},
-    {"ticker": "GRASIM",      "company_name": "Grasim Industries Ltd",           "sector": "Diversified"},
-    {"ticker": "COALINDIA",   "company_name": "Coal India Ltd",                  "sector": "Mining"},
-    {"ticker": "VEDL",        "company_name": "Vedanta Ltd",                     "sector": "Mining"},
-    # Midcap / Portfolio holdings
-    {"ticker": "SUZLON",      "company_name": "Suzlon Energy Ltd",               "sector": "Renewable Energy"},
-    {"ticker": "HAL",         "company_name": "Hindustan Aeronautics Ltd",       "sector": "Defence"},
-    {"ticker": "BEL",         "company_name": "Bharat Electronics Ltd",          "sector": "Defence"},
-    {"ticker": "BHEL",        "company_name": "Bharat Heavy Electricals Ltd",    "sector": "Engineering"},
-    {"ticker": "IRFC",        "company_name": "Indian Railway Finance Corp",     "sector": "Finance"},
-    {"ticker": "CDSL",        "company_name": "Central Depository Services",     "sector": "Finance"},
-    {"ticker": "BSE",         "company_name": "BSE Ltd",                         "sector": "Finance"},
-    {"ticker": "POLYCAB",     "company_name": "Polycab India Ltd",               "sector": "Electricals"},
-    {"ticker": "TATAELXSI",   "company_name": "Tata Elxsi Ltd",                  "sector": "IT"},
-    {"ticker": "ZOMATO",      "company_name": "Zomato Ltd",                      "sector": "Consumer Tech"},
-    {"ticker": "IRCTC",       "company_name": "Indian Railway Catering & Tourism","sector": "Travel"},
-    {"ticker": "DMART",       "company_name": "Avenue Supermarts",               "sector": "Retail"},
-    {"ticker": "IDEA",        "company_name": "Vodafone Idea Ltd",               "sector": "Telecom"},
-    {"ticker": "ABBOTINDIA",  "company_name": "Abbott India Ltd",                "sector": "Pharma"},
-    {"ticker": "AVANTEL",     "company_name": "Avantel Ltd",                     "sector": "Defence"},
-    {"ticker": "APOLLO",      "company_name": "Apollo Microsystems Ltd",         "sector": "Defence"},
-    {"ticker": "BGRENERGY",   "company_name": "BGR Energy Systems Ltd",          "sector": "Engineering"},
-    {"ticker": "MCLEODRUSS",  "company_name": "McLeod Russel India Ltd",         "sector": "Tea"},
-    {"ticker": "JITFINFRA",   "company_name": "JITF Infralogistics Ltd",         "sector": "Logistics"},
-    {"ticker": "GAUDIUMIVF",  "company_name": "Gaudium IVF and Women Health",    "sector": "Healthcare"},
-    {"ticker": "OMPOWER",     "company_name": "OM Power Trans Ltd",              "sector": "Power"},
-    # Finance & Markets
-    {"ticker": "RECLTD",      "company_name": "REC Ltd",                         "sector": "Finance"},
-    {"ticker": "PFC",         "company_name": "Power Finance Corporation",       "sector": "Finance"},
-    {"ticker": "LICI",        "company_name": "Life Insurance Corporation",      "sector": "Finance"},
-    {"ticker": "JIOFIN",      "company_name": "Jio Financial Services",          "sector": "Finance"},
-    {"ticker": "SBICARD",     "company_name": "SBI Cards and Payment Services",  "sector": "Finance"},
-    {"ticker": "CHOLAFIN",    "company_name": "Cholamandalam Investment",        "sector": "Finance"},
-    {"ticker": "MUTHOOTFIN",  "company_name": "Muthoot Finance Ltd",             "sector": "Finance"},
-    {"ticker": "MANAPPURAM",  "company_name": "Manappuram Finance",              "sector": "Finance"},
-    {"ticker": "CAMS",        "company_name": "Computer Age Management Services","sector": "Finance"},
-    {"ticker": "MCX",         "company_name": "Multi Commodity Exchange",        "sector": "Finance"},
-    {"ticker": "IEX",         "company_name": "Indian Energy Exchange",          "sector": "Finance"},
-    {"ticker": "ANGELONE",    "company_name": "Angel One Ltd",                   "sector": "Finance"},
-    {"ticker": "MOTILALOFS",  "company_name": "Motilal Oswal Financial",         "sector": "Finance"},
-    {"ticker": "360ONE",      "company_name": "360 ONE WAM",                     "sector": "Finance"},
-    {"ticker": "KFINTECH",    "company_name": "KFin Technologies",               "sector": "Finance"},
-    {"ticker": "ABCAPITAL",   "company_name": "Aditya Birla Capital",            "sector": "Finance"},
-    {"ticker": "L&TFH",       "company_name": "L&T Finance Holdings",            "sector": "Finance"},
-    {"ticker": "EDELWEISS",   "company_name": "Edelweiss Financial",             "sector": "Finance"},
-    {"ticker": "PNBHOUSING",  "company_name": "PNB Housing Finance",             "sector": "Finance"},
-    {"ticker": "LICHSGFIN",   "company_name": "LIC Housing Finance",             "sector": "Finance"},
-    {"ticker": "AAVAS",       "company_name": "Aavas Financiers",                "sector": "Finance"},
-    {"ticker": "SUNDARMFIN",  "company_name": "Sundaram Finance",                "sector": "Finance"},
-    {"ticker": "CANFINHOME",  "company_name": "Can Fin Homes",                   "sector": "Finance"},
-    {"ticker": "CREDITACC",   "company_name": "CreditAccess Grameen",            "sector": "Finance"},
-    {"ticker": "FUSION",      "company_name": "Fusion Micro Finance",            "sector": "Finance"},
-    {"ticker": "HUDCO",       "company_name": "HUDCO",                           "sector": "Finance"},
-    {"ticker": "IREDA",       "company_name": "IREDA Ltd",                       "sector": "Finance"},
-    # IT
-    {"ticker": "LTIM",        "company_name": "LTIMindtree",                     "sector": "IT"},
-    {"ticker": "LTTS",        "company_name": "L&T Technology Services",         "sector": "IT"},
-    {"ticker": "MPHASIS",     "company_name": "Mphasis Ltd",                     "sector": "IT"},
-    {"ticker": "PERSISTENT",  "company_name": "Persistent Systems",              "sector": "IT"},
-    {"ticker": "COFORGE",     "company_name": "Coforge Ltd",                     "sector": "IT"},
-    {"ticker": "TECHM",       "company_name": "Tech Mahindra Ltd",               "sector": "IT"},
-    {"ticker": "AFFLE",       "company_name": "Affle India",                     "sector": "Consumer Tech"},
-    {"ticker": "INDIAMART",   "company_name": "IndiaMART InterMESH",             "sector": "IT"},
-    {"ticker": "CEINFO",      "company_name": "CE Info Systems (MapMyIndia)",    "sector": "IT"},
-    {"ticker": "NAZARA",      "company_name": "Nazara Technologies",             "sector": "Consumer Tech"},
-    {"ticker": "TEJASNET",    "company_name": "Tejas Networks",                  "sector": "Telecom"},
-    # Banking (PSU & Private)
-    {"ticker": "PNB",         "company_name": "Punjab National Bank",            "sector": "Banking"},
-    {"ticker": "CANBK",       "company_name": "Canara Bank",                     "sector": "Banking"},
-    {"ticker": "BANKBARODA",  "company_name": "Bank of Baroda",                  "sector": "Banking"},
-    {"ticker": "UNIONBANK",   "company_name": "Union Bank of India",             "sector": "Banking"},
-    {"ticker": "BANKINDIA",   "company_name": "Bank of India",                   "sector": "Banking"},
-    {"ticker": "INDIANB",     "company_name": "Indian Bank",                     "sector": "Banking"},
-    {"ticker": "IDFCFIRSTB",  "company_name": "IDFC First Bank",                 "sector": "Banking"},
-    {"ticker": "YESBANK",     "company_name": "Yes Bank Ltd",                    "sector": "Banking"},
-    {"ticker": "FEDERALBNK",  "company_name": "Federal Bank Ltd",                "sector": "Banking"},
-    {"ticker": "AUBANK",      "company_name": "AU Small Finance Bank",           "sector": "Banking"},
-    {"ticker": "BANDHANBNK",  "company_name": "Bandhan Bank Ltd",                "sector": "Banking"},
-    {"ticker": "EQUITASBNK",  "company_name": "Equitas Small Finance Bank",      "sector": "Banking"},
-    {"ticker": "UJJIVANSFB",  "company_name": "Ujjivan Small Finance Bank",      "sector": "Banking"},
-    {"ticker": "IDBI",        "company_name": "IDBI Bank Ltd",                   "sector": "Banking"},
-    {"ticker": "RBLBANK",     "company_name": "RBL Bank Ltd",                    "sector": "Banking"},
-    {"ticker": "KARURVYSYA",  "company_name": "Karur Vysya Bank",                "sector": "Banking"},
-    {"ticker": "CUB",         "company_name": "City Union Bank",                 "sector": "Banking"},
-    # Pharma
-    {"ticker": "LUPIN",       "company_name": "Lupin Ltd",                       "sector": "Pharma"},
-    {"ticker": "BIOCON",      "company_name": "Biocon Ltd",                      "sector": "Pharma"},
-    {"ticker": "AUROPHARMA",  "company_name": "Aurobindo Pharma",                "sector": "Pharma"},
-    {"ticker": "DIVISLAB",    "company_name": "Divis Laboratories",              "sector": "Pharma"},
-    {"ticker": "TORNTPHARM",  "company_name": "Torrent Pharma",                  "sector": "Pharma"},
-    {"ticker": "ZYDUSLIFE",   "company_name": "Zydus Lifesciences",              "sector": "Pharma"},
-    {"ticker": "ALKEM",       "company_name": "Alkem Laboratories",              "sector": "Pharma"},
-    {"ticker": "LAURUSLABS",  "company_name": "Laurus Labs Ltd",                 "sector": "Pharma"},
-    {"ticker": "SYNGENE",     "company_name": "Syngene International",           "sector": "Pharma"},
-    {"ticker": "GLENMARK",    "company_name": "Glenmark Pharma",                 "sector": "Pharma"},
-    {"ticker": "APLLTD",      "company_name": "Alembic Pharma",                  "sector": "Pharma"},
-    {"ticker": "NATCOPHARM",  "company_name": "Natco Pharma",                    "sector": "Pharma"},
-    {"ticker": "PFIZER",      "company_name": "Pfizer Ltd",                      "sector": "Pharma"},
-    {"ticker": "GLAXO",       "company_name": "GlaxoSmithKline Pharma",          "sector": "Pharma"},
-    {"ticker": "GRANULES",    "company_name": "Granules India",                  "sector": "Pharma"},
-    # Healthcare
-    {"ticker": "APOLLOHOSP",  "company_name": "Apollo Hospitals",                "sector": "Healthcare"},
-    {"ticker": "MAXHEALTH",   "company_name": "Max Healthcare",                  "sector": "Healthcare"},
-    {"ticker": "FORTIS",      "company_name": "Fortis Healthcare",               "sector": "Healthcare"},
-    {"ticker": "KIMS",        "company_name": "Krishna Institute of Medical Sciences","sector": "Healthcare"},
-    {"ticker": "RAINBOW",     "company_name": "Rainbow Childrens Medicare",      "sector": "Healthcare"},
-    {"ticker": "MEDANTA",     "company_name": "Global Health (Medanta)",         "sector": "Healthcare"},
-    {"ticker": "POLYMED",     "company_name": "Poly Medicure Ltd",               "sector": "Healthcare"},
-    # Power & Energy
-    {"ticker": "NHPC",        "company_name": "NHPC Ltd",                        "sector": "Power"},
-    {"ticker": "JSWENERGY",   "company_name": "JSW Energy Ltd",                  "sector": "Power"},
-    {"ticker": "TATAPOWER",   "company_name": "Tata Power Company",              "sector": "Power"},
-    {"ticker": "TORNTPOWER",  "company_name": "Torrent Power Ltd",               "sector": "Power"},
-    {"ticker": "CESC",        "company_name": "CESC Ltd",                        "sector": "Power"},
-    {"ticker": "ADANIGREEN",  "company_name": "Adani Green Energy",              "sector": "Renewable Energy"},
-    {"ticker": "BORORENEW",   "company_name": "Borosil Renewables",              "sector": "Renewable Energy"},
-    {"ticker": "KPIGREEN",    "company_name": "KPI Green Energy",                "sector": "Renewable Energy"},
-    {"ticker": "SWSOLAR",     "company_name": "Sterling & Wilson",               "sector": "Renewable Energy"},
-    # Oil & Gas
-    {"ticker": "HPCL",        "company_name": "Hindustan Petroleum",             "sector": "Oil & Gas"},
-    {"ticker": "IOC",         "company_name": "Indian Oil Corp",                 "sector": "Oil & Gas"},
-    {"ticker": "OIL",         "company_name": "Oil India Ltd",                   "sector": "Oil & Gas"},
-    {"ticker": "GAIL",        "company_name": "GAIL (India) Ltd",                "sector": "Gas"},
-    {"ticker": "PETRONET",    "company_name": "Petronet LNG Ltd",                "sector": "Gas"},
-    {"ticker": "IGL",         "company_name": "Indraprastha Gas Ltd",            "sector": "Gas"},
-    {"ticker": "MGL",         "company_name": "Mahanagar Gas Ltd",               "sector": "Gas"},
-    {"ticker": "GUJGASLTD",   "company_name": "Gujarat Gas Ltd",                 "sector": "Gas"},
-    # Defence
-    {"ticker": "BEML",        "company_name": "BEML Limited",                    "sector": "Defence"},
-    {"ticker": "BDL",         "company_name": "Bharat Dynamics Ltd",             "sector": "Defence"},
-    {"ticker": "MAZDOCK",     "company_name": "Mazagon Dock Shipbuilders",       "sector": "Defence"},
-    {"ticker": "GRSE",        "company_name": "Garden Reach Shipbuilders",       "sector": "Defence"},
-    {"ticker": "COCHINSHIP",  "company_name": "Cochin Shipyard Ltd",             "sector": "Defence"},
-    {"ticker": "DATAPATTNS",  "company_name": "Data Patterns",                   "sector": "Defence"},
-    {"ticker": "MTARTECH",    "company_name": "MTAR Technologies",               "sector": "Defence"},
-    {"ticker": "PARAS",       "company_name": "Paras Defence",                   "sector": "Defence"},
-    {"ticker": "ZENTEC",      "company_name": "Zen Technologies",                "sector": "Defence"},
-    # Infrastructure
-    {"ticker": "RVNL",        "company_name": "Rail Vikas Nigam Ltd",            "sector": "Infrastructure"},
-    {"ticker": "IRCON",       "company_name": "Ircon International",             "sector": "Infrastructure"},
-    {"ticker": "NBCC",        "company_name": "NBCC (India) Ltd",                "sector": "Infrastructure"},
-    {"ticker": "GRINFRA",     "company_name": "G R Infraprojects",               "sector": "Infrastructure"},
-    {"ticker": "ASHOKA",      "company_name": "Ashoka Buildcon",                 "sector": "Infrastructure"},
-    {"ticker": "KNRCON",      "company_name": "KNR Constructions",               "sector": "Infrastructure"},
-    {"ticker": "PNCINFRA",    "company_name": "PNC Infratech Ltd",               "sector": "Infrastructure"},
-    # Chemicals
-    {"ticker": "PIDILITIND",  "company_name": "Pidilite Industries",             "sector": "Chemicals"},
-    {"ticker": "SRF",         "company_name": "SRF Ltd",                         "sector": "Chemicals"},
-    {"ticker": "UPL",         "company_name": "UPL Ltd",                         "sector": "Chemicals"},
-    {"ticker": "AARTIIND",    "company_name": "Aarti Industries Ltd",            "sector": "Chemicals"},
-    {"ticker": "DEEPAKNTR",   "company_name": "Deepak Nitrite Ltd",              "sector": "Chemicals"},
-    {"ticker": "TATACHEM",    "company_name": "Tata Chemicals Ltd",              "sector": "Chemicals"},
-    {"ticker": "VINATIORGA",  "company_name": "Vinati Organics",                 "sector": "Chemicals"},
-    {"ticker": "FINEORG",     "company_name": "Fine Organic Industries",         "sector": "Chemicals"},
-    {"ticker": "GALAXYSURF",  "company_name": "Galaxy Surfactants",              "sector": "Chemicals"},
-    {"ticker": "CLEAN",       "company_name": "Clean Science & Tech",            "sector": "Chemicals"},
-    {"ticker": "ROSSARI",     "company_name": "Rossari Biotech",                 "sector": "Chemicals"},
-    {"ticker": "AETHER",      "company_name": "Aether Industries",               "sector": "Chemicals"},
-    # Consumer / FMCG / Retail
-    {"ticker": "VBL",         "company_name": "Varun Beverages Ltd",             "sector": "FMCG"},
-    {"ticker": "BRITANNIA",   "company_name": "Britannia Industries",            "sector": "FMCG"},
-    {"ticker": "DABUR",       "company_name": "Dabur India Ltd",                 "sector": "FMCG"},
-    {"ticker": "MARICO",      "company_name": "Marico Ltd",                      "sector": "FMCG"},
-    {"ticker": "COLPAL",      "company_name": "Colgate-Palmolive India",         "sector": "FMCG"},
-    {"ticker": "GODREJCP",    "company_name": "Godrej Consumer Products",        "sector": "FMCG"},
-    {"ticker": "AWL",         "company_name": "Adani Wilmar",                    "sector": "FMCG"},
-    {"ticker": "PATANJALI",   "company_name": "Patanjali Foods",                 "sector": "FMCG"},
-    {"ticker": "BIKAJI",      "company_name": "Bikaji Foods",                    "sector": "FMCG"},
-    {"ticker": "TRENT",       "company_name": "Trent Ltd",                       "sector": "Retail"},
-    {"ticker": "KALYANKJIL",  "company_name": "Kalyan Jewellers",                "sector": "Consumer"},
-    {"ticker": "MANYAVAR",    "company_name": "Vedant Fashions",                 "sector": "Retail"},
-    {"ticker": "METROBRAND",  "company_name": "Metro Brands",                    "sector": "Retail"},
-    # Auto
-    {"ticker": "ESCORTS",     "company_name": "Escorts Kubota Ltd",              "sector": "Auto"},
-    {"ticker": "ASHOKLEY",    "company_name": "Ashok Leyland Ltd",               "sector": "Auto"},
-    {"ticker": "TVSMOTOR",    "company_name": "TVS Motor Company",               "sector": "Auto"},
-    {"ticker": "MRF",         "company_name": "MRF Ltd",                         "sector": "Tyres"},
-    {"ticker": "APOLLOTYRE",  "company_name": "Apollo Tyres Ltd",                "sector": "Tyres"},
-    {"ticker": "BALKRISIND",  "company_name": "Balkrishna Industries",           "sector": "Tyres"},
-    {"ticker": "CEATLTD",     "company_name": "CEAT Ltd",                        "sector": "Tyres"},
-    {"ticker": "BHARATFORG",  "company_name": "Bharat Forge Ltd",                "sector": "Auto Ancillary"},
-    {"ticker": "BOSCHLTD",    "company_name": "Bosch Ltd",                       "sector": "Auto Ancillary"},
-    {"ticker": "MOTHERSON",   "company_name": "Samvardhana Motherson",           "sector": "Auto Ancillary"},
-    {"ticker": "SONACOMS",    "company_name": "Sona BLW Precision",              "sector": "Auto Ancillary"},
-    {"ticker": "UNOMINDA",    "company_name": "Uno Minda Ltd",                   "sector": "Auto Ancillary"},
-    # Real Estate
-    {"ticker": "DLF",         "company_name": "DLF Ltd",                         "sector": "Real Estate"},
-    {"ticker": "GODREJPROP",  "company_name": "Godrej Properties",               "sector": "Real Estate"},
-    {"ticker": "OBEROIRLTY",  "company_name": "Oberoi Realty Ltd",               "sector": "Real Estate"},
-    {"ticker": "LODHA",       "company_name": "Macrotech Developers",            "sector": "Real Estate"},
-    {"ticker": "PRESTIGE",    "company_name": "Prestige Estate",                 "sector": "Real Estate"},
-    {"ticker": "PHOENIXLTD",  "company_name": "Phoenix Mills Ltd",               "sector": "Real Estate"},
-    {"ticker": "BRIGADE",     "company_name": "Brigade Enterprises",             "sector": "Real Estate"},
-    # Consumer Tech / Startups
-    {"ticker": "NYKAA",       "company_name": "FSN E-Commerce (Nykaa)",          "sector": "Consumer Tech"},
-    {"ticker": "PAYTM",       "company_name": "One 97 Communications",           "sector": "Consumer Tech"},
-    {"ticker": "POLICYBZR",   "company_name": "PB Fintech (PolicyBazaar)",       "sector": "Consumer Tech"},
-    {"ticker": "DELHIVERY",   "company_name": "Delhivery Ltd",                   "sector": "Logistics"},
-    {"ticker": "ZEEL",        "company_name": "Zee Entertainment",               "sector": "Media"},
-    {"ticker": "SUNTV",       "company_name": "Sun TV Network Ltd",              "sector": "Media"},
-    # Cement
-    {"ticker": "SHREECEM",    "company_name": "Shree Cement Ltd",                "sector": "Cement"},
-    {"ticker": "ACC",         "company_name": "ACC Ltd",                         "sector": "Cement"},
-    {"ticker": "AMBUJACEM",   "company_name": "Ambuja Cements Ltd",              "sector": "Cement"},
-    {"ticker": "DALBHARAT",   "company_name": "Dalmia Bharat Ltd",               "sector": "Cement"},
-    {"ticker": "JKCEMENT",    "company_name": "JK Cement Ltd",                   "sector": "Cement"},
-    {"ticker": "RAMCOCEM",    "company_name": "Ramco Cements",                   "sector": "Cement"},
-    # Steel / Metals / Mining
-    {"ticker": "SAIL",        "company_name": "Steel Authority of India",        "sector": "Steel"},
-    {"ticker": "HINDZINC",    "company_name": "Hindustan Zinc Ltd",              "sector": "Metals"},
-    {"ticker": "NMDC",        "company_name": "NMDC Ltd",                        "sector": "Mining"},
-    # Consumer Durables
-    {"ticker": "HAVELLS",     "company_name": "Havells India Ltd",               "sector": "Consumer Durables"},
-    {"ticker": "VOLTAS",      "company_name": "Voltas Ltd",                      "sector": "Consumer Durables"},
-    {"ticker": "DIXON",       "company_name": "Dixon Technologies",              "sector": "Consumer Durables"},
-    {"ticker": "BLUESTARCO",  "company_name": "Blue Star Ltd",                   "sector": "Consumer Durables"},
-    {"ticker": "WHIRLPOOL",   "company_name": "Whirlpool of India",              "sector": "Consumer Durables"},
-    # Hotels
-    {"ticker": "INDHOTEL",    "company_name": "Indian Hotels Co Ltd",            "sector": "Hotels"},
-    {"ticker": "EIHOTEL",     "company_name": "EIH Ltd (Oberoi Hotels)",         "sector": "Hotels"},
-    {"ticker": "LEMONTREE",   "company_name": "Lemon Tree Hotels",               "sector": "Hotels"},
-    # Fertilizers
-    {"ticker": "COROMANDEL",  "company_name": "Coromandel International",        "sector": "Fertilizers"},
-    {"ticker": "CHAMBLFERT",  "company_name": "Chambal Fertilizers",             "sector": "Fertilizers"},
-    {"ticker": "DEEPAKFERT",  "company_name": "Deepak Fertilisers",              "sector": "Fertilizers"},
-    # Additional prominent names
-    {"ticker": "NAUKRI",      "company_name": "Info Edge (Naukri)",              "sector": "IT"},
-    {"ticker": "SWIGGY",      "company_name": "Bundl Technologies (Swiggy)",     "sector": "Consumer Tech"},
-    {"ticker": "IXIGO",       "company_name": "Le Travenues Technology (ixigo)", "sector": "Consumer Tech"},
-    {"ticker": "KAYNES",      "company_name": "Kaynes Technology",               "sector": "Engineering"},
-    {"ticker": "SYRMA",       "company_name": "Syrma SGS Technology",            "sector": "Engineering"},
-    {"ticker": "AVALON",      "company_name": "Avalon Technologies",             "sector": "Engineering"},
-    {"ticker": "DOMS",        "company_name": "DOMS Industries",                 "sector": "Consumer"},
-    {"ticker": "VARUN",       "company_name": "Varun Beverages Ltd",             "sector": "FMCG"},
-    {"ticker": "PVRINOX",     "company_name": "PVR INOX Ltd",                    "sector": "Media"},
-    {"ticker": "INOXWIND",    "company_name": "Inox Wind Ltd",                   "sector": "Renewable Energy"},
-    {"ticker": "WAAREEENER",  "company_name": "Waaree Energies",                 "sector": "Renewable Energy"},
-    {"ticker": "PREMIERENE",  "company_name": "Premier Energies",                "sector": "Renewable Energy"},
-]
-
-# Pre-process for fast search: lowercase index
-_NSE_DIR_INDEX = [
-    {
-        "ticker": e["ticker"],
-        "company_name": e["company_name"],
-        "sector": e["sector"],
-        "exchange": "NSE",
-        "_t": e["ticker"].lower(),
-        "_n": e["company_name"].lower(),
-        "_s": e["sector"].lower(),
-    }
-    for e in _NSE_DIRECTORY
-]
 
 # Ticker lookups relocated to services/nse_data_provider and helpers.py (Phase 4)
 
@@ -2188,9 +1728,6 @@ def dashboard_data(authorization: str = Header(None)):
 
     cache_stats = {
         "quick_info": len(_quick_info_cache),
-        "morning_brief": len(_morning_cache),
-        "sector_performance": 1 if _sector_cache.get("data") else 0,
-        "asm_gsm": 1 if _asm_gsm_cache.get("data") else 0,
         "scraper": scraper_cache
     }
 
@@ -2216,7 +1753,7 @@ def dashboard_data(authorization: str = Header(None)):
     claude_stats = {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0}
     deepseek_stats = {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0}
     try:
-        if TOKEN_LOG_PATH.exists():
+        if os.path.exists(TOKEN_LOG_PATH):
             HAIKU_INPUT_RATE = 0.001 / 1_000_000
             HAIKU_OUTPUT_RATE = 0.005 / 1_000_000
             SONNET_INPUT_RATE = 0.003 / 1_000_000
@@ -2496,81 +2033,3 @@ def dashboard_user_data(user_id: int, authorization: str = Header(None)):
         result["traceback"] = traceback.format_exc()[:500]
 
     return result
-
-
-# ---------------------------------------------------------------------------
-# Sector Performance
-# ---------------------------------------------------------------------------
-
-_sector_cache: dict = {"data": None, "ts": 0.0}
-_morning_cache: dict = {}  # {user_id: {"data": {...}, "ts": float}}
-_asm_gsm_cache: dict = {"data": {}, "ts": 0}
-
-# Upcoming IPOs (manually tracked)
-UPCOMING_IPOS = [
-    {"company": "Swiggy Ltd", "open_date": "TBD 2026", "price_band": "₹371-390"},
-    {"company": "Bajaj Housing Finance", "open_date": "TBD 2026", "price_band": "₹66-70"},
-    {"company": "Hyundai India", "open_date": "TBD 2026", "price_band": "₹1865-1960"},
-]
-
-SECTOR_TICKERS = [
-    ("^CNXPSUBANK",  "PSU Bank"),
-    ("^CNXFMCG",     "FMCG"),
-    ("^CNXIT",       "IT"),
-    ("^CNXPHARMA",   "Pharma"),
-    ("^CNXAUTO",     "Auto"),
-    ("^CNXREALTY",   "Realty"),
-    ("^CNXENERGY",   "Energy"),
-    ("^CNXMETAL",    "Metal"),
-]
-
-
-# ---------------------------------------------------------------------------
-# v1 Market Intelligence Routes (Firecrawl + fallback scraping, 15-min cache)
-# ---------------------------------------------------------------------------
-
-from services.scraper import (
-    fetch_market_pulse,
-    fetch_momentum,
-    fetch_macro_alternatives,
-    fetch_institutional_flow,
-    fetch_earnings_sync_ratio,
-    fetch_yoy_aggregate_indicators,
-)
-
-# ---------------------------------------------------------------------------
-# Unified dashboard endpoint — returns all 4 market intelligence feeds in one
-# call. Fetchers are cached (15-min TTL) so this is fast after first load.
-# ---------------------------------------------------------------------------
-
-from datetime import datetime as _dt
-import concurrent.futures as _cf
-
-# ---------------------------------------------------------------------------
-# Section 12: FastAPI Routing Layer — new unified endpoints
-# All routes: async def, Pydantic schemas, DB dependency injection
-# ---------------------------------------------------------------------------
-
-from fastapi import Depends as _Depends
-
-
-# ── Pydantic response schemas — imported from schemas/ namespace ─────────────
-
-from schemas import (
-    IndexSnapshot, BreadthData, MomentumSignal,
-    DashboardPulseResponse, MutualFundEntry,
-    InstitutionalLeaderboardResponse, NetWorthSnapshotResponse,
-)
-
-
-# ── DB session dependency (thread-safe SQLAlchemy) ───────────────────────────
-
-def _get_db():
-    """FastAPI dependency: yield a session via get_session() context manager."""
-    from database import get_session
-    with get_session() as db:
-        yield db
-
-
-# ── /api/v1/market/dashboard-pulse ───────────────────────────────────────────
-
