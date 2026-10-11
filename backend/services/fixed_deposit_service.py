@@ -15,6 +15,8 @@ import math
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
+from sqlalchemy.exc import IntegrityError
+
 from database import get_session
 from models.db_models import FixedDepositBooking, FixedDepositScheme
 from services.kyc_consent_service import get_active_consents, verify_device_binding
@@ -237,6 +239,7 @@ def book_fixed_deposit(
     tenure_months: int,
     payment_method: str,
     device_id: Optional[str] = None,
+    idempotency_key: Optional[str] = None,
 ) -> FixedDepositBooking:
     """Book a MOCK fixed deposit against an FD scheme with mock instant
     settlement.
@@ -252,8 +255,18 @@ def book_fixed_deposit(
     fails, the booking is recorded with status="failed" and a
     decision_reason explaining which KYC step is missing — it fails closed,
     it is never silently confirmed.
+
+    idempotency_key (the client's Idempotency-Key header) makes retries
+    safe: a repeated key for the same user returns the original booking.
     """
+    # Blank keys mean "no key": storing "" would collide on UNIQUE(user_id, key).
+    idempotency_key = (idempotency_key or "").strip() or None
     with get_session() as session:
+        if idempotency_key:
+            existing = _booking_for_key(session, user_id, idempotency_key)
+            if existing is not None:
+                return existing
+
         scheme = session.query(FixedDepositScheme).filter(FixedDepositScheme.id == scheme_id).first()
         if scheme is None:
             raise ValueError(f"Fixed deposit scheme {scheme_id} not found")
@@ -290,11 +303,28 @@ def book_fixed_deposit(
             decision_reason=decision_reason,
             booked_at=booked_at,
             matures_at=matures_at,
+            idempotency_key=idempotency_key,
         )
         session.add(booking)
-        session.commit()
+        try:
+            session.commit()
+        except IntegrityError:
+            # A concurrent request with the same key won the insert.
+            session.rollback()
+            existing = _booking_for_key(session, user_id, idempotency_key) if idempotency_key else None
+            if existing is None:
+                raise
+            return existing
         session.refresh(booking)
         return booking
+
+
+def _booking_for_key(session, user_id: int, idempotency_key: str) -> Optional[FixedDepositBooking]:
+    return (
+        session.query(FixedDepositBooking)
+        .filter(FixedDepositBooking.user_id == user_id, FixedDepositBooking.idempotency_key == idempotency_key)
+        .first()
+    )
 
 
 def list_bookings_for_user(user_id: int) -> list[FixedDepositBooking]:

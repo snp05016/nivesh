@@ -10,7 +10,7 @@ NBFC or credit-bureau API is called anywhere behind this router.
 """
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from core.demo_mode import require_demo_mode
@@ -230,7 +230,11 @@ def _serialize_application(app) -> LoanApplicationResponse:
 
 
 @router.post("/loan-applications", response_model=LoanApplicationResponse)
-def create_loan_application(payload: SubmitLoanApplicationRequest, user_id: int = Depends(require_auth)):
+def create_loan_application(
+    payload: SubmitLoanApplicationRequest,
+    user_id: int = Depends(require_auth),
+    idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key", max_length=64),
+):
     """Submit a loan application against a MOCK NBFC offer.
 
     Underwriting is a simplified, clearly-mocked demo rule driven by the
@@ -243,6 +247,7 @@ def create_loan_application(payload: SubmitLoanApplicationRequest, user_id: int 
             requested_amount=payload.requested_amount,
             requested_tenure_months=payload.requested_tenure_months,
             device_id=payload.device_id,
+            idempotency_key=idempotency_key,
         )
     except ProductBoundsError as exc:
         raise HTTPException(status_code=422, detail=str(exc))

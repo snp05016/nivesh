@@ -51,15 +51,21 @@ AI_PROCESSING_CONSENT = "ai_processing"
 MAX_BIND_ATTEMPTS_PER_24H = 5
 
 
+def _iso(value) -> Optional[str]:
+    return value.isoformat() if value is not None else None
+
+
 def _consent_to_dict(consent: KYCConsent) -> dict:
+    # ISO strings, not datetimes: the dict also lands in JSON audit columns
+    # (compliance_service.withdraw_consent). The HTTP wire format is unchanged.
     return {
         "id": consent.id,
         "user_id": consent.user_id,
         "consent_type": consent.consent_type,
         "granted": consent.granted,
-        "granted_at": consent.granted_at,
+        "granted_at": _iso(consent.granted_at),
         "ip_address": consent.ip_address,
-        "revoked_at": consent.revoked_at,
+        "revoked_at": _iso(consent.revoked_at),
     }
 
 
@@ -118,25 +124,34 @@ def revoke_consent(user_id: int, consent_type: str) -> dict:
     preserved. Returns the newest revoked row plus revoked_count.
     """
     with get_session() as session:
-        count = _revoke_active(session, user_id, consent_type, datetime.now(timezone.utc))
-        if count == 0:
-            return {
-                "revoked": False,
-                "reason": f"no active '{consent_type}' consent found for user {user_id}",
-            }
+        result = revoke_consent_in_session(session, user_id, consent_type)
+        if result["revoked"]:
+            session.commit()
+        return result
 
-        session.commit()
-        newest = (
-            session.query(KYCConsent)
-            .filter(
-                KYCConsent.user_id == user_id,
-                KYCConsent.consent_type == consent_type,
-                KYCConsent.granted.is_(True),
-            )
-            .order_by(KYCConsent.granted_at.desc(), KYCConsent.id.desc())
-            .first()
+
+def revoke_consent_in_session(session, user_id: int, consent_type: str) -> dict:
+    """revoke_consent() inside the caller's open session; the caller commits,
+    so another write (e.g. an audit row) can share the transaction.
+    """
+    count = _revoke_active(session, user_id, consent_type, datetime.now(timezone.utc))
+    if count == 0:
+        return {
+            "revoked": False,
+            "reason": f"no active '{consent_type}' consent found for user {user_id}",
+        }
+
+    newest = (
+        session.query(KYCConsent)
+        .filter(
+            KYCConsent.user_id == user_id,
+            KYCConsent.consent_type == consent_type,
+            KYCConsent.granted.is_(True),
         )
-        return {"revoked": True, "revoked_count": count, **_consent_to_dict(newest)}
+        .order_by(KYCConsent.granted_at.desc(), KYCConsent.id.desc())
+        .first()
+    )
+    return {"revoked": True, "revoked_count": count, **_consent_to_dict(newest)}
 
 
 def get_active_consents(user_id: int) -> list[dict]:
@@ -358,27 +373,20 @@ def get_fraud_signals_for_user(user_id: int) -> dict:
     mock heuristics enforced in bind_device().
     """
     with get_session() as session:
+        # Filter in SQL like bind_device(): attempted_at loads as a naive
+        # datetime, so comparing it to this aware cutoff in Python raises.
         window_start = datetime.now(timezone.utc) - timedelta(hours=24)
-        attempts = (
-            session.query(DeviceBindingAttempt)
-            .filter(DeviceBindingAttempt.user_id == user_id)
-            .all()
-        )
+        base = session.query(DeviceBindingAttempt).filter(DeviceBindingAttempt.user_id == user_id)
+        recent = base.filter(DeviceBindingAttempt.attempted_at >= window_start)
 
-        total_bind_attempts_24h = sum(
-            1 for a in attempts if a.attempted_at and a.attempted_at >= window_start
-        )
-        cross_user_rejections_total = sum(
-            1 for a in attempts if a.outcome == "rejected_cross_user"
-        )
-        rate_limit_hits_24h = sum(
-            1
-            for a in attempts
-            if a.outcome == "rejected_rate_limit"
-            and a.attempted_at
-            and a.attempted_at >= window_start
-        )
-        is_flagged = any(a.outcome != "bound" for a in attempts)
+        total_bind_attempts_24h = recent.count()
+        cross_user_rejections_total = base.filter(
+            DeviceBindingAttempt.outcome == "rejected_cross_user"
+        ).count()
+        rate_limit_hits_24h = recent.filter(
+            DeviceBindingAttempt.outcome == "rejected_rate_limit"
+        ).count()
+        is_flagged = base.filter(DeviceBindingAttempt.outcome != "bound").first() is not None
 
         return {
             "user_id": user_id,

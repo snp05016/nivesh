@@ -158,17 +158,25 @@ def withdraw_consent(
     ip_address: Optional[str] = None,
 ) -> dict:
     """Withdraw (revoke) a KYC consent for user_id + consent_type, reusing
-    kyc_consent_service.revoke_consent() rather than duplicating the revoke
-    logic, then log an AuditLogEntry recording the withdrawal.
+    kyc_consent_service's revoke logic rather than duplicating it, and log an
+    AuditLogEntry in the same transaction. Nothing is logged when no active
+    consent existed (revoked False), so the trail records real withdrawals only.
     """
-    revoke_result = kyc_consent_service.revoke_consent(user_id, consent_type)
-
     with get_session() as session:
+        revoke_result = kyc_consent_service.revoke_consent_in_session(session, user_id, consent_type)
+        if not revoke_result["revoked"]:
+            return revoke_result
+
         _log_action(
             session,
             user_id=user_id,
             action="consent_withdrawn",
-            details={"consent_type": consent_type, **revoke_result},
+            details={
+                "consent_type": consent_type,
+                "consent_id": revoke_result["id"],
+                "revoked_count": revoke_result["revoked_count"],
+                "revoked_at": revoke_result["revoked_at"],
+            },
             ip_address=ip_address,
         )
         session.commit()

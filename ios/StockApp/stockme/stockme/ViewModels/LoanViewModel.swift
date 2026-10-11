@@ -120,9 +120,11 @@ class LoanApplicationViewModel: ObservableObject {
     /// Submits the (mock) application. `purpose` is UI-only and not sent —
     /// backend/routers/finance.py's SubmitLoanApplicationRequest has no
     /// `purpose` field. KYC gating happens server-side (see
-    /// services/loan_marketplace_service.py's KYC gate): we send this
-    /// device's vendor identifier as `device_id` so the mock device-binding
-    /// check in services/kyc_consent_service.py can verify it.
+    /// services/loan_marketplace_service.py's KYC gate), which needs an
+    /// active "credit_check" consent and a verified device binding. So the
+    /// consent the user just ticked is recorded server-side and this device
+    /// is bound before the application is sent with this device's vendor
+    /// identifier as `device_id`.
     func submit() async {
         guard kycConsent else {
             submissionError = "Please provide KYC consent to continue."
@@ -130,11 +132,47 @@ class LoanApplicationViewModel: ObservableObject {
         }
         isSubmitting = true
         submissionError = nil
+        defer { isSubmitting = false }
+
+        guard let deviceId = UIDevice.current.identifierForVendor?.uuidString else {
+            submissionError = "Could not identify this device for KYC binding."
+            return
+        }
+
+        // 1. Record the consent the user just gave.
+        do {
+            _ = try await NetworkManager.shared.grantConsent(type: "credit_check", granted: true)
+        } catch {
+            submissionError = "Failed to record KYC consent. Please try again."
+            return
+        }
+
+        // 2. Verify this device, binding it first if needed.
+        do {
+            let firstCheck = try await NetworkManager.shared.verifyDeviceBinding(deviceId: deviceId)
+            if !firstCheck.verified {
+                _ = try await NetworkManager.shared.bindDevice(deviceId: deviceId, isPrimary: true)
+                let secondCheck = try await NetworkManager.shared.verifyDeviceBinding(deviceId: deviceId)
+                guard secondCheck.verified else {
+                    submissionError = "Device binding rejected. Please use your primary registered device."
+                    return
+                }
+            }
+        } catch NetworkError.serverError(409, let message?) {
+            // A mock fraud heuristic rejected the bind.
+            submissionError = message
+            return
+        } catch {
+            submissionError = "Device binding failed. Please try again."
+            return
+        }
+
+        // 3. Submit the application.
         let requestBody = LoanApplicationRequest(
             loanOfferId: offer.id,
             requestedAmount: amount,
             requestedTenureMonths: tenureMonths,
-            deviceId: UIDevice.current.identifierForVendor?.uuidString
+            deviceId: deviceId
         )
         let key = submitKey ?? UUID().uuidString
         submitKey = key
@@ -144,7 +182,6 @@ class LoanApplicationViewModel: ObservableObject {
         } catch {
             submissionError = error.moneyActionMessage(fallback: "Couldn't submit your application. Please try again.")
         }
-        isSubmitting = false
     }
 
     /// "Request Disbursement (Demo)" action — only meaningful once the mock

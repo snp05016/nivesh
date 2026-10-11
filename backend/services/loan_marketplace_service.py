@@ -176,8 +176,12 @@ def submit_loan_application(
     requested_amount: float,
     requested_tenure_months: int,
     device_id: Optional[str] = None,
+    idempotency_key: Optional[str] = None,
 ) -> LoanApplication:
     """Submit a loan application against a mock loan offer.
+
+    idempotency_key (the client's Idempotency-Key header) makes retries
+    safe: a repeated key for the same user returns the original application.
 
     Looks up the user's MOCK credit score (credit_bureau_mock_service) and
     applies a simple deterministic demo underwriting rule to auto-approve,
@@ -191,7 +195,14 @@ def submit_loan_application(
     what the demo underwriting rule would otherwise decide — it is never
     silently auto-approved.
     """
+    # Blank keys mean "no key": storing "" would collide on UNIQUE(user_id, key).
+    idempotency_key = (idempotency_key or "").strip() or None
     with get_session() as session:
+        if idempotency_key:
+            existing = _application_for_key(session, user_id, idempotency_key)
+            if existing is not None:
+                return existing
+
         offer = session.query(LoanOffer).filter(LoanOffer.id == loan_offer_id).first()
         if offer is None:
             raise ValueError(f"Loan offer {loan_offer_id} not found")
@@ -215,11 +226,28 @@ def submit_loan_application(
             mock_credit_score_at_application=score,
             decision_reason=reason,
             decided_at=datetime.now(timezone.utc) if status != "under_review" else None,
+            idempotency_key=idempotency_key,
         )
         session.add(application)
-        session.commit()
+        try:
+            session.commit()
+        except IntegrityError:
+            # A concurrent request with the same key won the insert.
+            session.rollback()
+            existing = _application_for_key(session, user_id, idempotency_key) if idempotency_key else None
+            if existing is None:
+                raise
+            return existing
         session.refresh(application)
         return application
+
+
+def _application_for_key(session, user_id: int, idempotency_key: str) -> Optional[LoanApplication]:
+    return (
+        session.query(LoanApplication)
+        .filter(LoanApplication.user_id == user_id, LoanApplication.idempotency_key == idempotency_key)
+        .first()
+    )
 
 
 def list_applications_for_user(user_id: int) -> list[LoanApplication]:

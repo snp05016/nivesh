@@ -11,7 +11,7 @@ UPI/net-banking payment gateway processes any money.
 """
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from core.demo_mode import require_demo_mode
@@ -176,7 +176,11 @@ def _serialize_booking(booking) -> FDBookingResponse:
 
 
 @router.post("/bookings", response_model=FDBookingResponse)
-def create_fd_booking(payload: CreateFDBookingRequest, user_id: int = Depends(require_auth)):
+def create_fd_booking(
+    payload: CreateFDBookingRequest,
+    user_id: int = Depends(require_auth),
+    idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key", max_length=64),
+):
     """Book a MOCK fixed deposit with mock-instant settlement.
 
     MOCK DATA — simulated for demo purposes, not a real integration. No
@@ -193,6 +197,7 @@ def create_fd_booking(payload: CreateFDBookingRequest, user_id: int = Depends(re
             tenure_months=payload.tenure_months,
             payment_method=payload.payment_method,
             device_id=payload.device_id,
+            idempotency_key=idempotency_key,
         )
     except ProductBoundsError as exc:
         raise HTTPException(status_code=422, detail=str(exc))

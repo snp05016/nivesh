@@ -235,7 +235,7 @@ private struct LoanKYCConsentStep: View {
                 HStack(spacing: Theme.Spacing.standard) {
                     Image(systemName: vm.kycConsent ? "checkmark.square.fill" : "square")
                         .foregroundColor(vm.kycConsent ? Theme.securityGold : Theme.inkTertiary)
-                    Text("I consent to (mock) KYC verification for this demo application.")
+                    Text("I consent to a (mock) credit check and to binding this device for KYC.")
                         .font(Theme.engravedSerif(size: 13, relativeTo: .subheadline))
                         .foregroundColor(Theme.inkPrimary)
                         .multilineTextAlignment(.leading)

@@ -1388,6 +1388,8 @@ class LoanApplication(Base):
     decision_reason = Column(Text, nullable=True)
     submitted_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     decided_at = Column(DateTime, nullable=True)
+    # Client-supplied Idempotency-Key header: a retried POST returns this row.
+    idempotency_key = Column(String(64), nullable=True)
 
     loan_offer = relationship("LoanOffer", back_populates="applications")
 
@@ -1396,6 +1398,7 @@ class LoanApplication(Base):
             "status IN ('submitted','under_review','approved','rejected','disbursed')",
             name="ck_loan_application_status",
         ),
+        UniqueConstraint("user_id", "idempotency_key", name="uq_loan_app_idem"),
     )
 
 
@@ -1597,6 +1600,8 @@ class FixedDepositBooking(Base):
     decision_reason = Column(Text, nullable=True)
     booked_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     matures_at = Column(DateTime, nullable=True)
+    # Client-supplied Idempotency-Key header: a retried POST returns this row.
+    idempotency_key = Column(String(64), nullable=True)
 
     scheme = relationship("FixedDepositScheme", back_populates="bookings")
 
@@ -1609,6 +1614,7 @@ class FixedDepositBooking(Base):
             "payment_method IN ('upi','net_banking')",
             name="ck_fixed_deposit_booking_payment_method",
         ),
+        UniqueConstraint("user_id", "idempotency_key", name="uq_fd_booking_idem"),
     )
 
 
