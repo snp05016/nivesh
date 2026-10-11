@@ -1,97 +1,41 @@
-import pytest
-from decimal import Decimal
+"""MATH-22: FIFO capital gains with a calendar-month LTCG boundary.
+
+Listed equity is long-term only if held *more than* 12 months, so a sale exactly
+12 calendar months after the buy (366 days when it spans 29 Feb) is still STCG.
+"""
 from datetime import date
-from capital_gains_calculator import calculate_capital_gains, calculate_taxes, Transaction, AssetClass
 
-def test_stcg_equity():
-    transactions = [
-        Transaction(
-            asset_class=AssetClass.EQUITY,
-            buy_date=date(2023, 4, 1),
-            buy_price=Decimal("100.00"),
-            buy_qty=100,
-            sell_date=date(2023, 10, 1),
-            sell_price=Decimal("150.00")
-        )
-    ]
-    gains = calculate_capital_gains(transactions)
-    assert gains["STCG"] == Decimal("5000.00")
-    assert gains["LTCG"] == Decimal("0.00")
+import pytest
 
-def test_ltcg_equity_no_grandfathering():
-    transactions = [
-        Transaction(
-            asset_class=AssetClass.EQUITY,
-            buy_date=date(2020, 4, 1),
-            buy_price=Decimal("100.00"),
-            buy_qty=100,
-            sell_date=date(2023, 10, 1),
-            sell_price=Decimal("150.00")
-        )
-    ]
-    gains = calculate_capital_gains(transactions)
-    assert gains["STCG"] == Decimal("0.00")
-    assert gains["LTCG"] == Decimal("5000.00")
+from services.math_engines.capital_gains_calculator import Transaction, calculate_capital_gains
 
-def test_ltcg_equity_grandfathering():
-    # Buy Price: 100, FMV on 31 Jan 2018: 120, Sell Price: 150
-    # Cost of acquisition = higher(100, lower(120, 150)) = higher(100, 120) = 120
-    # Profit = 150 - 120 = 30 per share -> 3000
-    transactions = [
-        Transaction(
-            asset_class=AssetClass.EQUITY,
-            buy_date=date(2017, 4, 1),
-            buy_price=Decimal("100.00"),
-            buy_qty=100,
-            sell_date=date(2023, 10, 1),
-            sell_price=Decimal("150.00"),
-            fmv_31_jan_2018=Decimal("120.00")
-        )
-    ]
-    gains = calculate_capital_gains(transactions)
-    assert gains["STCG"] == Decimal("0.00")
-    assert gains["LTCG"] == Decimal("3000.00")
 
-def test_ltcg_equity_grandfathering_loss():
-    # Buy Price: 100, FMV on 31 Jan 2018: 120, Sell Price: 90
-    # Cost of acquisition = higher(100, lower(120, 90)) = higher(100, 90) = 100
-    # Loss = 90 - 100 = -10 per share -> -1000
-    transactions = [
-        Transaction(
-            asset_class=AssetClass.EQUITY,
-            buy_date=date(2017, 4, 1),
-            buy_price=Decimal("100.00"),
-            buy_qty=100,
-            sell_date=date(2023, 10, 1),
-            sell_price=Decimal("90.00"),
-            fmv_31_jan_2018=Decimal("120.00")
-        )
-    ]
-    gains = calculate_capital_gains(transactions)
-    assert gains["STCG"] == Decimal("0.00")
-    assert gains["LTCG"] == Decimal("-1000.00")
+def _gains(*txns):
+    return calculate_capital_gains([Transaction(*t) for t in txns])
 
-def test_tax_slabs_new_regime():
-    # Example logic using 1.25L exemption and 12.5% LTCG, 20% STCG
-    stcg = Decimal("10000.00")
-    ltcg = Decimal("150000.00")
-    taxes = calculate_taxes(stcg=stcg, ltcg=ltcg)
-    
-    # STCG tax = 10000 * 20% = 2000
-    assert taxes["stcg_tax"] == Decimal("2000.00")
-    
-    # LTCG tax = (150000 - 125000) * 12.5% = 25000 * 0.125 = 3125.00
-    assert taxes["ltcg_tax"] == Decimal("3125.00")
-    assert taxes["total_tax"] == Decimal("5125.00")
 
-def test_tax_slabs_ltcg_below_exemption():
-    stcg = Decimal("10000.00")
-    ltcg = Decimal("100000.00")
-    taxes = calculate_taxes(stcg=stcg, ltcg=ltcg)
-    
-    # STCG tax = 10000 * 20% = 2000
-    assert taxes["stcg_tax"] == Decimal("2000.00")
-    
-    # LTCG tax = 0 (since 100000 < 125000)
-    assert taxes["ltcg_tax"] == Decimal("0.00")
-    assert taxes["total_tax"] == Decimal("2000.00")
+def test_exactly_twelve_months_across_leap_day_is_stcg():
+    gains = _gains((date(2023, 3, 1), "BUY", 10, 100.0), (date(2024, 3, 1), "SELL", 10, 150.0))
+    assert gains.STCG == 500.0
+    assert gains.LTCG == 0.0
+
+
+def test_one_day_past_twelve_months_is_ltcg():
+    gains = _gains((date(2023, 3, 1), "BUY", 10, 100.0), (date(2024, 3, 2), "SELL", 10, 150.0))
+    assert gains.STCG == 0.0
+    assert gains.LTCG == 500.0
+
+
+def test_fifo_splits_a_sale_across_two_buys():
+    gains = _gains(
+        (date(2022, 1, 10), "BUY", 10, 100.0),  # held > 12 months at sale -> LTCG
+        (date(2023, 6, 1), "BUY", 10, 200.0),   # held < 12 months at sale -> STCG
+        (date(2023, 12, 1), "SELL", 15, 250.0),
+    )
+    assert gains.LTCG == 10 * (250.0 - 100.0)
+    assert gains.STCG == 5 * (250.0 - 200.0)
+
+
+def test_oversell_raises():
+    with pytest.raises(ValueError):
+        _gains((date(2023, 1, 1), "BUY", 5, 100.0), (date(2023, 2, 1), "SELL", 6, 110.0))

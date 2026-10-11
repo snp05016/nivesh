@@ -80,5 +80,6 @@ def calculate_implied_volatility(market_price, S, K, T, r, option_type="call", m
         
         if sigma <= 0:
             sigma = 1e-4 # prevent negative IV
-            
-    return ImpliedVolatilityResponse(implied_volatility=sigma)
+
+    # Not converged: a non-converged sigma is not an implied volatility.
+    return ImpliedVolatilityResponse(implied_volatility=None)

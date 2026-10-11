@@ -2273,7 +2273,7 @@ Requires valid JWT. Returns 404 if no snapshot exists yet.
     if row is None:
         raise HTTPException(
             status_code=404,
-            detail="No net-worth snapshot found. Add portfolio holdings to generate one.",
+            detail="No net-worth snapshot yet. Snapshots are recorded daily after market close.",
         )
 
     return NetWorthSnapshotResponse(

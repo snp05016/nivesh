@@ -1,4 +1,5 @@
 import datetime
+import math
 from typing import List, Tuple, Dict, Any, Optional
 from pydantic import BaseModel
 
@@ -37,19 +38,53 @@ def xirr(cashflows: List[Tuple[datetime.date, float]], guess: float = 0.1, tol: 
     cashflows = sorted(cashflows, key=lambda x: x[0])
     
     rate = guess
-    for _ in range(max_iter):
-        f_val = xnpv(rate, cashflows).value
-        # Numerical derivative
-        f_deriv = (xnpv(rate + 1e-5, cashflows).value - f_val) / 1e-5
-        
-        if abs(f_deriv) < 1e-12:
-            break
-            
-        rate_new = rate - f_val / f_deriv
-        
-        if abs(rate_new - rate) < tol:
-            return XIRRResponse(value=rate_new)
-            
-        rate = rate_new
+    try:
+        for _ in range(max_iter):
+            f_val = xnpv(rate, cashflows).value
+            # Numerical derivative
+            f_deriv = (xnpv(rate + 1e-5, cashflows).value - f_val) / 1e-5
 
-    raise RuntimeError("XIRR calculation did not converge after {} iterations".format(max_iter))
+            if abs(f_deriv) < 1e-12 or not math.isfinite(f_deriv):
+                break
+
+            rate_new = rate - f_val / f_deriv
+
+            if rate_new <= -1.0 or not math.isfinite(rate_new):
+                break
+
+            if abs(rate_new - rate) < tol:
+                return XIRRResponse(value=rate_new)
+
+            rate = rate_new
+    except (OverflowError, ZeroDivisionError):
+        pass
+
+    # Newton diverged / stalled: bisection on xnpv is slower but always converges
+    # once the bracket has a sign change.
+    return XIRRResponse(value=_xirr_bisect(cashflows, tol))
+
+
+def _xirr_bisect(cashflows: List[Tuple[datetime.date, float]], tol: float, lo: float = -0.9999, hi: float = 100.0) -> float:
+    def f(r: float) -> float:
+        try:
+            return xnpv(r, cashflows).value
+        except OverflowError:
+            return float("inf")
+
+    f_lo, f_hi = f(lo), f(hi)
+    if f_lo == 0:
+        return lo
+    if f_hi == 0:
+        return hi
+    if (f_lo > 0) == (f_hi > 0):
+        raise ValueError("XIRR has no solution in [{}, {}]".format(lo, hi))
+    for _ in range(200):
+        mid = (lo + hi) / 2
+        f_mid = f(mid)
+        if f_mid == 0 or (hi - lo) / 2 < tol * 1e-2:
+            return mid
+        if (f_mid > 0) == (f_lo > 0):
+            lo, f_lo = mid, f_mid
+        else:
+            hi = mid
+    return (lo + hi) / 2

@@ -59,6 +59,10 @@ struct FixedDepositBookingView: View {
             vm.syncCalculatorInputs()
             Task { await vm.calculator.recalculate() }
         }
+        .onChange(of: vm.isSeniorCitizen) { _, _ in
+            vm.syncCalculatorInputs()
+            Task { await vm.calculator.recalculate() }
+        }
     }
 }
 
@@ -112,6 +116,8 @@ struct FDBookingInputs: View {
             FDAmountInput(vm: vm)
             GuillocheDivider()
             FDTenureInput(vm: vm)
+            GuillocheDivider()
+            FDSeniorCitizenInput(vm: vm)
         }
         .padding(Theme.Spacing.card)
         .banknoteCard()
@@ -165,6 +171,25 @@ private struct FDTenureInput: View {
             .accessibilityLabel("Tenure")
             .accessibilityValue("\(vm.tenureMonths) months")
             Text("Range: \(vm.scheme.tenureRangeDisplay)")
+                .font(Theme.engravedSerif(size: 12, relativeTo: .footnote))
+                .foregroundColor(Theme.inkTertiary)
+        }
+    }
+}
+
+private struct FDSeniorCitizenInput: View {
+    @ObservedObject var vm: FixedDepositBookingViewModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.small) {
+            Toggle(isOn: $vm.isSeniorCitizen) {
+                Text("Senior citizen (60+)")
+                    .font(Theme.engravedSerif(size: 14, relativeTo: .body))
+                    .foregroundColor(Theme.inkPrimary)
+            }
+            .tint(Theme.securityGold)
+            Text(String(format: "Rate: %.2f%% p.a.", vm.effectiveRatePct)
+                 + (vm.isSeniorCitizen ? String(format: " (includes +%.2f%% senior bonus)", vm.scheme.seniorCitizenBonusPct) : ""))
                 .font(Theme.engravedSerif(size: 12, relativeTo: .footnote))
                 .foregroundColor(Theme.inkTertiary)
         }

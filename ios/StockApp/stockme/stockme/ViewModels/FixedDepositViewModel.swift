@@ -120,6 +120,7 @@ class FixedDepositBookingViewModel: ObservableObject {
     @Published var principal: Double { didSet { bookingKey = nil } }
     @Published var tenureMonths: Int { didSet { bookingKey = nil } }
     @Published var paymentMethod: FDPaymentMethod = .upi { didSet { bookingKey = nil } }
+    @Published var isSeniorCitizen: Bool = false { didSet { bookingKey = nil } }
 
     let calculator: FixedDepositCalculatorViewModel
 
@@ -152,6 +153,12 @@ class FixedDepositBookingViewModel: ObservableObject {
 
     var canSubmit: Bool { isAmountValid && isTenureValid && !isSubmitting }
 
+    /// Rate the backend locks on the booking: scheme rate plus the
+    /// senior-citizen bonus when the user declares themselves 60+.
+    var effectiveRatePct: Double {
+        scheme.interestRatePct + (isSeniorCitizen ? scheme.seniorCitizenBonusPct : 0)
+    }
+
     /// Whether the last booking attempt failed closed on a KYC/device-binding
     /// gate — used to steer the user toward Account Settings rather than a
     /// blind retry. This view never calls /api/kyc/... directly; it only
@@ -165,7 +172,7 @@ class FixedDepositBookingViewModel: ObservableObject {
     func syncCalculatorInputs() {
         calculator.principal = principal
         calculator.tenureMonths = tenureMonths
-        calculator.interestRatePct = scheme.interestRatePct
+        calculator.interestRatePct = effectiveRatePct
     }
 
     func submit() async {
@@ -185,7 +192,8 @@ class FixedDepositBookingViewModel: ObservableObject {
             principalAmount: principal,
             tenureMonths: tenureMonths,
             paymentMethod: paymentMethod.rawValue,
-            deviceId: deviceId
+            deviceId: deviceId,
+            isSeniorCitizen: isSeniorCitizen
         )
         let key = bookingKey ?? UUID().uuidString
         bookingKey = key

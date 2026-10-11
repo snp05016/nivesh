@@ -1,3 +1,4 @@
+import calendar
 import datetime
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
@@ -13,13 +14,21 @@ class Transaction:
         self.units = float(units)
         self.price = float(price)
 
-def calculate_capital_gains(transactions: List[Transaction], long_term_days: int = 365) -> CapitalGainsResponse:
+def _add_months(d: datetime.date, months: int) -> datetime.date:
+    """Calendar-month addition, clamped to month end (31 Jan + 1 -> 28/29 Feb)."""
+    y, m = divmod(d.month - 1 + months, 12)
+    y += d.year
+    return datetime.date(y, m + 1, min(d.day, calendar.monthrange(y, m + 1)[1]))
+
+
+def calculate_capital_gains(transactions: List[Transaction], long_term_months: int = 12) -> CapitalGainsResponse:
     """
     Calculate STCG and LTCG using the FIFO (First-In-First-Out) method.
     
     Args:
         transactions: List of Transaction objects (buys and sells)
-        long_term_days: Number of holding days to qualify as Long Term Capital Gains (default 365)
+        long_term_months: Holding must exceed this many calendar months to be Long Term
+            (default 12: listed equity is LTCG only if held *more than* 12 months)
         
     Returns:
         Dict with 'STCG' (Short Term Capital Gains) and 'LTCG' (Long Term Capital Gains)
@@ -47,8 +56,9 @@ def calculate_capital_gains(transactions: List[Transaction], long_term_days: int
                 gain = sell_value - buy_value
                 
                 # Check if long term or short term
-                holding_period = (txn.date - oldest_buy["date"]).days
-                if holding_period > long_term_days:
+                # Calendar months, not days: a 12-month hold spanning 29 Feb is 366
+                # days but still not "more than 12 months".
+                if txn.date > _add_months(oldest_buy["date"], long_term_months):
                     ltcg += gain
                 else:
                     stcg += gain

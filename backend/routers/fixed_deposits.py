@@ -75,6 +75,8 @@ class CreateFDBookingRequest(BaseModel):
     # settlement. Simulated for demo purposes, not a real device/SIM-binding
     # integration.
     device_id: Optional[str] = None
+    # Self-declared (mock): adds the scheme's senior_citizen_bonus_pct.
+    is_senior_citizen: bool = False
 
 
 class FDBookingResponse(BaseModel):
@@ -198,6 +200,7 @@ def create_fd_booking(
             payment_method=payload.payment_method,
             device_id=payload.device_id,
             idempotency_key=idempotency_key,
+            is_senior_citizen=payload.is_senior_citizen,
         )
     except ProductBoundsError as exc:
         raise HTTPException(status_code=422, detail=str(exc))

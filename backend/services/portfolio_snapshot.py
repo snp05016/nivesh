@@ -17,7 +17,8 @@ import json
 from typing import cast
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-from database import get_session, Portfolio, PortfolioValuationHistory, User, AnalysisHistory
+from database import get_session, Portfolio, PortfolioValuationHistory, User, AnalysisHistory, NetWorthLedger
+from schemas.db_json_schemas import PortfolioPositionSchema, PortfolioSnapshotSchema, safe_validate_portfolio_json
 from services.llm_utils import contains_devanagari
 from services.yfinance_client import _yf_price, _to_ns
 from services.kyc_consent_service import AI_PROCESSING_CONSENT, has_active_consent
@@ -54,8 +55,84 @@ def get_current_price(ticker: str) -> float | None:
         return None
 
 
+def _net_worth_ledger_row(db, user_id, today_str, priced, total_value, total_invested, pnl, pnl_pct, nifty_close):
+    """Build today's NetWorthLedger row for one user.
+
+    Daily delta, running peak and per-ticker moves are measured against the
+    user's previous ledger row (the last snapshot), so no extra price calls are
+    made and non-trading days show no phantom moves.
+
+    Args:
+        priced: (Portfolio holding, price) pairs for the holdings valued today.
+    """
+    prev = db.query(NetWorthLedger).filter(
+        NetWorthLedger.user_id == user_id,
+        NetWorthLedger.snapshot_date < today_str,
+    ).order_by(NetWorthLedger.snapshot_date.desc()).first()
+    try:
+        old = safe_validate_portfolio_json(json.loads(prev.portfolio_json)) if prev is not None and prev.portfolio_json else None
+    except ValueError:
+        old = None
+    prev_prices = {p.ticker: p.current_price for p in old.positions} if old else {}
+
+    positions, moves = [], {}
+    for holding, price in priced:
+        ticker = str(holding.ticker)
+        value = float(holding.shares) * price  # type: ignore[arg-type]
+        old_price = prev_prices.get(ticker)
+        if old_price:
+            moves[ticker] = round((price - old_price) / old_price * 100, 2)
+        positions.append(PortfolioPositionSchema(
+            ticker=ticker,
+            company_name=str(holding.company_name or ""),
+            shares=float(holding.shares),  # type: ignore[arg-type]
+            buy_price=float(holding.buy_price),  # type: ignore[arg-type]
+            current_price=price,
+            day_change_pct=moves.get(ticker, 0.0),
+            total_value=round(value, 2),
+            weight_pct=round(value / total_value * 100, 2) if total_value > 0 else 0.0,
+        ))
+    gainer = max(moves, key=lambda t: moves[t]) if moves else None
+    loser = min(moves, key=lambda t: moves[t]) if moves else None
+    if gainer is not None and moves[gainer] <= 0:
+        gainer = None
+    if loser is not None and moves[loser] >= 0:
+        loser = None
+
+    prev_total = float(prev.total_value_inr) if prev is not None else None
+    delta = total_value - prev_total if prev_total is not None else None
+    peak = max(total_value, float(prev.peak_value_inr or prev.total_value_inr)) if prev is not None else total_value
+
+    summary = PortfolioSnapshotSchema(
+        date=today_str,
+        total_value_inr=round(total_value, 2),
+        total_invested_inr=round(total_invested, 2),
+        total_pnl_inr=round(pnl, 2),
+        pnl_pct=round(pnl_pct, 2),
+        positions=positions,
+        nifty_close=nifty_close,
+        top_gainer_ticker=gainer,
+        top_gainer_pct=moves.get(gainer) if gainer else None,
+        top_loser_ticker=loser,
+        top_loser_pct=moves.get(loser) if loser else None,
+    )
+    return NetWorthLedger(
+        user_id=user_id,
+        snapshot_date=today_str,
+        total_value_inr=round(total_value, 2),
+        daily_delta_inr=round(delta, 2) if delta is not None else None,
+        daily_delta_pct=round(delta / prev_total * 100, 2) if delta is not None and prev_total else None,
+        peak_value_inr=round(peak, 2),
+        top_gainer_ticker=summary.top_gainer_ticker,
+        top_gainer_pct=summary.top_gainer_pct,
+        top_loser_ticker=summary.top_loser_ticker,
+        top_loser_pct=summary.top_loser_pct,
+        portfolio_json=summary.model_dump_json(),
+    )
+
+
 async def snapshot_all_users():
-    """Take valuation snapshot for all users and save to the database."""
+    """Take the daily valuation snapshot and net-worth ledger row for all users."""
     today_str = date.today().isoformat()
 
     # Fetch NIFTY close for benchmark outside the per-user loop
@@ -71,12 +148,17 @@ async def snapshot_all_users():
 
         for user in users:
             try:
-                # Skip if snapshot already exists for today
-                existing = db.query(PortfolioValuationHistory).filter(
+                # Skip if both of today's rows exist; checked separately so a
+                # re-run backfills whichever one is missing.
+                valuation_done = db.query(PortfolioValuationHistory.id).filter(
                     PortfolioValuationHistory.user_id == user.id,
                     PortfolioValuationHistory.snapshot_date == today_str
-                ).first()
-                if existing:
+                ).first() is not None
+                ledger_done = db.query(NetWorthLedger.id).filter(
+                    NetWorthLedger.user_id == user.id,
+                    NetWorthLedger.snapshot_date == today_str
+                ).first() is not None
+                if valuation_done and ledger_done:
                     continue
 
                 holdings = db.query(Portfolio).filter(
@@ -90,6 +172,7 @@ async def snapshot_all_users():
                 total_invested = 0.0
                 total_value = 0.0
                 missing = []
+                priced = []
 
                 for holding in holdings:
                     ticker = str(holding.ticker)
@@ -98,6 +181,7 @@ async def snapshot_all_users():
                     if price:
                         total_value += shares * price
                         total_invested += shares * float(holding.buy_price)  # type: ignore[arg-type]
+                        priced.append((holding, price))
                     else:
                         missing.append(ticker)
 
@@ -123,16 +207,20 @@ async def snapshot_all_users():
                 pnl = total_value - total_invested
                 pnl_pct = (pnl / total_invested * 100) if total_invested > 0 else 0.0
 
-                snapshot = PortfolioValuationHistory(
-                    user_id=user.id,
-                    snapshot_date=today_str,
-                    total_value=round(total_value, 2),
-                    total_invested=round(total_invested, 2),
-                    total_pnl=round(pnl, 2),
-                    pnl_percent=round(pnl_pct, 2),
-                    nifty_close=nifty_close,
-                )
-                db.add(snapshot)
+                if not valuation_done:
+                    db.add(PortfolioValuationHistory(
+                        user_id=user.id,
+                        snapshot_date=today_str,
+                        total_value=round(total_value, 2),
+                        total_invested=round(total_invested, 2),
+                        total_pnl=round(pnl, 2),
+                        pnl_percent=round(pnl_pct, 2),
+                        nifty_close=nifty_close,
+                    ))
+                if not ledger_done:
+                    db.add(_net_worth_ledger_row(
+                        db, user.id, today_str, priced, total_value, total_invested, pnl, pnl_pct, nifty_close,
+                    ))
                 db.commit()
                 logger.info(f"Snapshot saved: user={user.id} value=₹{total_value:,.0f}")
 

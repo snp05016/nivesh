@@ -12,9 +12,10 @@ demo data. Bookings settle instantly in-process — no real UPI/net-banking
 payment gateway is called anywhere in this module.
 """
 import math
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Optional
 
+import pandas as pd
 from sqlalchemy.exc import IntegrityError
 
 from database import get_session
@@ -240,6 +241,7 @@ def book_fixed_deposit(
     payment_method: str,
     device_id: Optional[str] = None,
     idempotency_key: Optional[str] = None,
+    is_senior_citizen: bool = False,
 ) -> FixedDepositBooking:
     """Book a MOCK fixed deposit against an FD scheme with mock instant
     settlement.
@@ -258,6 +260,9 @@ def book_fixed_deposit(
 
     idempotency_key (the client's Idempotency-Key header) makes retries
     safe: a repeated key for the same user returns the original booking.
+
+    is_senior_citizen (self-declared, mock) adds the scheme's
+    senior_citizen_bonus_pct to the rate locked on the booking.
     """
     # Blank keys mean "no key": storing "" would collide on UNIQUE(user_id, key).
     idempotency_key = (idempotency_key or "").strip() or None
@@ -270,7 +275,7 @@ def book_fixed_deposit(
         scheme = session.query(FixedDepositScheme).filter(FixedDepositScheme.id == scheme_id).first()
         if scheme is None:
             raise ValueError(f"Fixed deposit scheme {scheme_id} not found")
-        # Also caps tenure, so the matures_at timedelta below cannot overflow.
+        # Also caps tenure, so the matures_at date below cannot overflow.
         check_product_bounds(scheme, principal_amount, tenure_months, "FD scheme")
 
         kyc_ok, kyc_reason = _check_kyc_gate(user_id, device_id)
@@ -282,21 +287,26 @@ def book_fixed_deposit(
             status = "failed"
             decision_reason = f"MOCK DECISION: booking failed — KYC gate failed: {kyc_reason}"
 
+        rate_pct = float(scheme.interest_rate_pct)
+        if is_senior_citizen:
+            rate_pct = round(rate_pct + float(scheme.senior_citizen_bonus_pct), 2)  # type: ignore[arg-type]
+
         maturity = calculate_fd_maturity(
             principal=principal_amount,
             tenure_months=tenure_months,
-            interest_rate_pct=float(scheme.interest_rate_pct),
+            interest_rate_pct=rate_pct,
         )
 
         booked_at = datetime.now(timezone.utc)
-        matures_at = booked_at + timedelta(days=int(tenure_months * 30.44))
+        # Calendar months (month-end clamped), the contractual maturity date.
+        matures_at = (pd.Timestamp(booked_at) + pd.DateOffset(months=tenure_months)).to_pydatetime()
 
         booking = FixedDepositBooking(
             user_id=user_id,
             scheme_id=scheme_id,
             principal_amount=principal_amount,
             tenure_months=tenure_months,
-            interest_rate_pct=scheme.interest_rate_pct,
+            interest_rate_pct=rate_pct,
             maturity_amount=maturity["maturity_amount"],
             payment_method=payment_method,
             status=status,

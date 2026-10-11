@@ -169,6 +169,8 @@ struct FDBookingRequest: Codable {
     let tenureMonths: Int
     let paymentMethod: String
     let deviceId: String
+    /// Self-declared (mock); the backend adds the scheme's senior-citizen bonus.
+    let isSeniorCitizen: Bool
 
     enum CodingKeys: String, CodingKey {
         case schemeId = "scheme_id"
@@ -176,6 +178,7 @@ struct FDBookingRequest: Codable {
         case tenureMonths = "tenure_months"
         case paymentMethod = "payment_method"
         case deviceId = "device_id"
+        case isSeniorCitizen = "is_senior_citizen"
     }
 }
 
