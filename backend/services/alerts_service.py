@@ -284,6 +284,36 @@ def _claim_alert(alert_id: int, user_id: int, ticker: str, direction: str,
         return True
 
 
+def _crossed(direction: str, current_price: float, target_price: float) -> bool:
+    return ((direction == "above" and current_price >= target_price)
+            or (direction == "below" and current_price <= target_price))
+
+
+def check_alerts(user_id: int) -> list:
+    """Claim this user's untriggered alerts whose price has crossed the target (GH-656).
+
+    Same atomic claim and inbox row as the poller, minus the push (the user is
+    in-app). Only alerts this call claimed are returned, each with a price, so a
+    second call returns []; unknown prices are skipped and stay untriggered.
+    """
+    with get_session() as session:
+        pending = (
+            session.query(PriceTarget.id, PriceTarget.ticker,
+                          PriceTarget.target_price, PriceTarget.direction)
+            .filter_by(user_id=user_id, triggered=False).all()
+        )
+    prices = _current_prices(row[1] for row in pending)
+    newly = []
+    for alert_id, ticker, target_price, direction in pending:
+        current_price = prices.get(ticker)
+        if current_price is None or not _crossed(direction, current_price, target_price):
+            continue
+        if _claim_alert(alert_id, user_id, ticker, direction, target_price, current_price):
+            newly.append({"id": alert_id, "ticker": ticker, "target_price": target_price,
+                          "direction": direction, "current_price": current_price})
+    return newly
+
+
 async def _poll_once() -> None:
     """One poller pass: trigger crossed alerts, write the inbox row, push best-effort.
 
@@ -306,11 +336,7 @@ async def _poll_once() -> None:
         current_price = prices.get(ticker)
         if current_price is None:
             continue
-        crossed = (
-            (direction == "above" and current_price >= target_price)
-            or (direction == "below" and current_price <= target_price)
-        )
-        if not crossed:
+        if not _crossed(direction, current_price, target_price):
             continue
         if not _claim_alert(alert_id, user_id, ticker, direction, target_price, current_price):
             continue

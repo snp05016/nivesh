@@ -487,7 +487,6 @@ class HomeViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var dashboard: MarketDashboardResponse? = nil
     @Published var dashboardLoading = false
-    @Published var sessionExpired = false
 
     private var indicesTimer: Timer?
 
@@ -504,36 +503,28 @@ class HomeViewModel: ObservableObject {
         isLoading = true
         defer { isLoading = false }
         // Independent requests run concurrently; one failing no longer blocks the others.
+        // An expired token signs out centrally (AuthAwareSession -> AuthManager, IOSCORE-05).
         async let holdings = NetworkManager.shared.getPortfolio(userId: userId)
         async let brief = NetworkManager.shared.getMorningSummary(userId: userId)
         async let watch: Void = fetchWatchlist(userId: userId)
-        var unauthorized = false
 
         do {
             stockCount = try await holdings.count
-        } catch NetworkError.unauthorized {
-            unauthorized = true
         } catch {
             print("Home fetch error: \(error)")
         }
 
         do {
             morningBriefData = try await brief
-        } catch NetworkError.unauthorized {
-            unauthorized = true
         } catch {
             morningBriefData = nil
         }
 
         do {
             try await watch
-        } catch NetworkError.unauthorized {
-            unauthorized = true
         } catch {
             // watchlist unavailable — non-fatal
         }
-
-        if unauthorized { sessionExpired = true }
     }
 
     func fetchWatchlist(userId: Int) async throws {
@@ -749,8 +740,6 @@ struct HomeScreen: View {
                 Task {
                     do {
                         try await viewModel.fetchWatchlist(userId: user.userId)
-                    } catch NetworkError.unauthorized {
-                        viewModel.sessionExpired = true
                     } catch {
                         print("Home watchlist refresh error: \(error)")
                     }
@@ -853,11 +842,6 @@ struct HomeScreen: View {
         }
         .onDisappear {
             viewModel.stopIndicesTimer()
-        }
-        .onChange(of: viewModel.sessionExpired) { _, expired in
-            if expired {
-                authManager.logout()
-            }
         }
     }
 }

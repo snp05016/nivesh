@@ -3,6 +3,7 @@
 Split out of routers/portfolio.py (ARCH-14); path, handler name and tags are unchanged.
 """
 import json
+import logging
 import time
 from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, Header
@@ -21,12 +22,21 @@ from config.settings import MORNING_BRIEF_TTL as _MORNING_CACHE_TTL
 
 router = APIRouter(tags=["Portfolio"])
 
+# Canned text when no AI brief could be built; the push route refuses to send it.
+FALLBACK_SUMMARY = "• Market data loaded. AI brief unavailable at this time."
+
 
 # ---------------------------------------------------------------------------
 # 4. GET /morning-summary/{user_id}
 # ---------------------------------------------------------------------------
 @router.get("/morning-summary/{user_id}")
 def morning_summary_endpoint(user_id: int, _caller: int = Depends(require_user_match)):
+    return build_morning_summary(user_id)
+
+
+def build_morning_summary(user_id: int) -> dict:
+    """The brief for user_id, no auth: callers check ownership. Shared by the
+    route and services.user_service.push_morning_summary (GH-651)."""
     # FINSEC-04: holdings go to the LLM processor only with the opt-in consent.
     # Not cached, so granting consent takes effect on the next request.
     if not has_active_consent(user_id, AI_PROCESSING_CONSENT):
@@ -48,7 +58,7 @@ def morning_summary_endpoint(user_id: int, _caller: int = Depends(require_user_m
     generated_at = datetime.now(timezone.utc).strftime("%H:%M")
 
     fallback = {
-        "summary": "• Market data loaded. AI brief unavailable at this time.",
+        "summary": FALLBACK_SUMMARY,
         "movers": [],
         "mood": "cautious",
         "generated_at": generated_at,
@@ -84,7 +94,6 @@ def morning_summary_endpoint(user_id: int, _caller: int = Depends(require_user_m
             try:
                 current_price, prev_close = _yf_price(ns)
             except Exception as e:
-                import logging
                 logging.warning(f"Caught exception: {e}")
                 current_price, prev_close = None, None
 
@@ -125,7 +134,6 @@ def morning_summary_endpoint(user_id: int, _caller: int = Depends(require_user_m
                     chg_str = (f"+{chg:.2f}%" if chg >= 0 else f"{chg:.2f}%")
                     indices_lines.append(f"{idx['name']}: {idx['value']:.2f} ({chg_str})")
         except Exception as e:
-            import logging
             logging.error(f"Error occurred: {e}", exc_info=True)
             raise HTTPException(status_code=500, detail="Internal server error")
 

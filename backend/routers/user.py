@@ -104,6 +104,9 @@ def notifications_morning_summary_push(req: MorningSummaryPushRequest, token_use
         return result
     except HTTPException:
         raise
+    except RuntimeError:
+        # GH-651: no brief could be built; nothing was pushed.
+        raise HTTPException(status_code=503, detail="Morning summary unavailable")
     except Exception as e:
         raise HTTPException(status_code=500, detail="Internal server error")
 

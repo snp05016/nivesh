@@ -7,6 +7,7 @@ from services.alerts_service import (
     add_price_alert,
     remove_price_alert,
     get_alerts_data,
+    check_alerts,
     price_alert_poller as _price_alert_poller
 )
 
@@ -35,11 +36,21 @@ def alerts_remove_endpoint(req: AlertRemoveRequest, token_user: int = Depends(re
     except Exception:
         raise HTTPException(status_code=500, detail="Internal server error")
 
+# GH-656: iOS decodes AlertsResponse {"alerts": [...]} and
+# AlertCheckResponse {"newly_triggered": [...]}; a bare list decodes as empty.
 @router.get("/alerts/{user_id}")
-@router.get("/alerts/check/{user_id}")
 def alerts_get_endpoint(user_id: int, _caller: int = Depends(require_user_match)):
     try:
-        return get_alerts_data(user_id)
+        return {"alerts": get_alerts_data(user_id)}
     except Exception:
         logger.exception("Failed to fetch alerts for user %s", user_id)
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.get("/alerts/check/{user_id}")
+def alerts_check_endpoint(user_id: int, _caller: int = Depends(require_user_match)):
+    try:
+        return {"newly_triggered": check_alerts(user_id)}
+    except Exception:
+        logger.exception("Failed to check alerts for user %s", user_id)
         raise HTTPException(status_code=500, detail="Internal server error")

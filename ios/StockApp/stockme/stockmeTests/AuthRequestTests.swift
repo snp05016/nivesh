@@ -29,7 +29,7 @@ final class AuthRequestTests: XCTestCase {
         nm.authToken = "a.b.c"
         let config = URLSessionConfiguration.ephemeral
         config.protocolClasses = [CaptureProtocol.self]
-        nm.session = URLSession(configuration: config)
+        nm.session = AuthAwareSession(base: URLSession(configuration: config))
         CaptureProtocol.reset()
 
         _ = try? await nm.startAnalysisJob(ticker: "TCS", exchange: "NSE", userId: 7, scanType: "standard")

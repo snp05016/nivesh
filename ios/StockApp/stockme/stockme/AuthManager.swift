@@ -12,6 +12,8 @@ class AuthManager: ObservableObject {
     private let disclaimerRecordedKey = "nivesh_disclaimerRecordedVersion"
     /// Written by NotificationManager when APNs hands over the device token.
     private static let apnsTokenKey = "apns_device_token"
+    /// FINSEC-06: posted by logout() so per-user stores (saved reports) wipe themselves.
+    static let didLogout = Notification.Name("niveshUserDidLogout")
 
     init() {
         if let user = Self.loadPersistedUser() {
@@ -19,6 +21,20 @@ class AuthManager: ObservableObject {
             NetworkManager.shared.authToken = user.token
             recordDisclaimerIfNeeded()
         }
+        // IOSCORE-05: any authenticated 401 (AuthAwareSession) ends the session here.
+        NotificationCenter.default.addObserver(forName: .niveshSessionExpired, object: nil, queue: .main) { [weak self] note in
+            let bearer = note.object as? String
+            Task { @MainActor in self?.handleSessionExpired(bearer: bearer) }
+        }
+    }
+
+    /// Signs out once per session and tells the login screen why. A 401 for a
+    /// token that is no longer current (in flight across logout or a re-login)
+    /// is ignored.
+    func handleSessionExpired(bearer: String?) {
+        guard let user = currentUser, bearer == "Bearer \(user.token)" else { return }
+        logout()
+        loginError = NetworkError.unauthorized.errorDescription
     }
 
     /// The persisted session, read from the Keychain. Installs that stored it
@@ -131,8 +147,6 @@ class AuthManager: ObservableObject {
            let token = UserDefaults.standard.string(forKey: Self.apnsTokenKey) {
             Task { await NetworkManager.shared.unregisterDeviceToken(token: token, bearer: bearer) }
         }
-        // Fix 3.30: Destructive cleanup — cancel network session and clear state
-        URLSession.shared.invalidateAndCancel()
         // GH-695: NetworkManager's default config caches to URLCache.shared (Cache.db);
         // wipe holdings/watchlist responses so they don't outlive the session.
         URLCache.shared.removeAllCachedResponses()
@@ -146,5 +160,6 @@ class AuthManager: ObservableObject {
         UserDefaults.standard.removeObject(forKey: "nivesh_profileEmail")
         UserDefaults.standard.removeObject(forKey: "nivesh_profilePhone")
         WidgetSnapshotStore.clear()
+        NotificationCenter.default.post(name: Self.didLogout, object: nil)
     }
 }

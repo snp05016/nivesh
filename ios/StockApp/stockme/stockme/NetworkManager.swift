@@ -158,6 +158,38 @@ enum NetworkError: Error, LocalizedError {
     }
 }
 
+extension Notification.Name {
+    /// IOSCORE-05: an authenticated request got a 401. `object` is the request's
+    /// Authorization header, so AuthManager signs out only if it is still current.
+    static let niveshSessionExpired = Notification.Name("niveshSessionExpired")
+}
+
+/// IOSCORE-05: the one URLSession every NetworkManager call goes through. Any 401
+/// on a request that carried a bearer posts `.niveshSessionExpired`, so an expired
+/// or revoked token signs the user out instead of leaving empty screens. Login
+/// (no Authorization header) is excluded: its 401 means wrong credentials.
+struct AuthAwareSession {
+    let base: URLSession
+
+    func data(for request: URLRequest) async throws -> (Data, URLResponse) {
+        let result = try await base.data(for: request)
+        Self.check(request, result.1)
+        return result
+    }
+
+    func download(for request: URLRequest) async throws -> (URL, URLResponse) {
+        let result = try await base.download(for: request)
+        Self.check(request, result.1)
+        return result
+    }
+
+    static func check(_ request: URLRequest, _ response: URLResponse) {
+        guard (response as? HTTPURLResponse)?.statusCode == 401,
+              let bearer = request.value(forHTTPHeaderField: "Authorization") else { return }
+        NotificationCenter.default.post(name: .niveshSessionExpired, object: bearer)
+    }
+}
+
 private struct LoginRequest: Encodable {
     let username: String
     let password: String
@@ -184,13 +216,13 @@ class NetworkManager: ObservableObject {
     var authToken: String? = nil
 
     /// `var` only so unit tests can swap in a stub-protocol session (AuthRequestTests).
-    var session: URLSession
+    var session: AuthAwareSession
 
     private init() {
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 30   // was 1200 — connection-tied; v2 engine runs server-side
         config.timeoutIntervalForResource = 120
-        self.session = URLSession(configuration: config)
+        self.session = AuthAwareSession(base: URLSession(configuration: config))
     }
 
     private var currentUserId: Int? {
@@ -466,6 +498,7 @@ class NetworkManager: ObservableObject {
         guard let url = URL(string: "\(baseURL)/portfolio/\(userId)") else { throw NetworkError.invalidURL }
         let req = authRequest(url)
         let (data, response) = try await dataWithRetry(for: req)
+        if (response as? HTTPURLResponse)?.statusCode == 401 { throw NetworkError.unauthorized }
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
             throw NetworkError.invalidResponse
         }
@@ -653,7 +686,8 @@ class NetworkManager: ObservableObject {
         let request = authRequest(url)
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { throw NetworkError.invalidResponse }
-        return (try? JSONDecoder().decode(AlertsResponse.self, from: data))?.alerts ?? []
+        // GH-656: a shape mismatch throws instead of rendering as "NO ALERTS SET".
+        return try JSONDecoder().decode(AlertsResponse.self, from: data).alerts
     }
 
     func removeAlert(userId: Int, alertId: Int) async throws {
@@ -673,7 +707,7 @@ class NetworkManager: ObservableObject {
         req.timeoutInterval = 20
         let (data, response) = try await session.data(for: req)
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { throw NetworkError.invalidResponse }
-        return (try? JSONDecoder().decode(AlertCheckResponse.self, from: data))?.newlyTriggered ?? []
+        return try JSONDecoder().decode(AlertCheckResponse.self, from: data).newlyTriggered
     }
 
     // MARK: - Sector Performance

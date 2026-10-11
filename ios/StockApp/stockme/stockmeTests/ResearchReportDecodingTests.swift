@@ -262,7 +262,7 @@ final class ResearchReportDecodingTests: XCTestCase {
         nm.authToken = "a.b.c"
         let config = URLSessionConfiguration.ephemeral
         config.protocolClasses = [ResearchStubProtocol.self]
-        nm.session = URLSession(configuration: config)
+        nm.session = AuthAwareSession(base: URLSession(configuration: config))
 
         let base = "/api/v1/research/stocks/"
         ResearchStubProtocol.reset(routes: [

@@ -189,12 +189,16 @@ def push_morning_summary(user_id: int) -> Optional[dict]:
             return None
         display_name = user.display_name
 
+    # GH-651: build the real brief; never push canned text as if it were one.
+    # Lazy import: the builder lives with its route and imports the helpers stack.
+    from routers import morning_brief
     try:
-        from routers.analysis import morning_summary_endpoint
-        summary_data = morning_summary_endpoint(user_id)
+        summary_data = morning_brief.build_morning_summary(user_id)
     except Exception as e:
-        logging.warning(f"Caught exception: {e}")
-        summary_data = {"summary": "Check your portfolio today.", "mood": "cautious", "priority_items": []}
+        logging.error("[morning_push] summary build failed for user %s", user_id, exc_info=True)
+        raise RuntimeError("Morning summary unavailable") from e
+    if summary_data.get("summary") == morning_brief.FALLBACK_SUMMARY:
+        raise RuntimeError("Morning summary unavailable")
 
     mood = summary_data.get("mood", "cautious")
     mood_label = "UP" if mood == "positive" else "DOWN" if mood == "negative" else "NEUTRAL"

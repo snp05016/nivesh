@@ -91,7 +91,11 @@ struct LoggedInUser: Codable {
 
 @MainActor
 class LocalReportManager: ObservableObject {
-    @Published var savedReports: [StockAnalysis] = []
+    /// Every mutation is written to disk (FINSEC-06), so "Void all records" and
+    /// swipe-to-delete in ReportManagerView no longer come back on next launch.
+    @Published var savedReports: [StockAnalysis] = [] {
+        didSet { persist() }
+    }
 
     private let fileURL: URL = {
         let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
@@ -100,6 +104,16 @@ class LocalReportManager: ObservableObject {
 
     init() {
         loadReports()
+        // FINSEC-06: saved reports belong to the signed-in user; wipe them on logout.
+        NotificationCenter.default.addObserver(forName: AuthManager.didLogout, object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in self?.savedReports = [] }
+        }
+    }
+
+    private func persist() {
+        if let encoded = try? JSONEncoder().encode(savedReports) {
+            try? encoded.write(to: fileURL)
+        }
     }
 
     func loadReports() {
@@ -110,19 +124,11 @@ class LocalReportManager: ObservableObject {
     }
 
     func saveReport(_ report: StockAnalysis) {
-        savedReports.removeAll { $0.ticker == report.ticker }
-        savedReports.insert(report, at: 0)
-
-        if let encoded = try? JSONEncoder().encode(savedReports) {
-            try? encoded.write(to: fileURL)
-        }
+        savedReports = [report] + savedReports.filter { $0.ticker != report.ticker }
     }
 
     func deleteReport(ticker: String) {
         savedReports.removeAll { $0.ticker == ticker }
-        if let encoded = try? JSONEncoder().encode(savedReports) {
-            try? encoded.write(to: fileURL)
-        }
     }
 
     func getReport(for ticker: String) -> StockAnalysis? {
