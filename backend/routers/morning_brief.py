@@ -121,7 +121,7 @@ def build_morning_summary(user_id: int) -> dict:
         # Get signals text
         signal_lines = []
         for h in holdings:
-            sig = last_signals.get(h.ticker, "No analysis yet")
+            sig = last_signals.get(str(h.ticker), "No analysis yet")
             signal_lines.append(f"{h.ticker}: {sig}")
 
         # Get market indices
