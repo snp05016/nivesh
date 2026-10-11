@@ -128,50 +128,16 @@ struct CorrelationMatrixScreen: View {
         }
         
         do {
-            guard let token = authManager.currentUser?.token else {
+            guard authManager.currentUser?.token != nil else {
                 await MainActor.run {
                     self.errorMessage = "Sign in required to view portfolio correlation."
                     self.isLoading = false
                 }
                 return
             }
-            
-            let url = URL(string: "\(NetworkManager.shared.baseURL)/portfolio/correlation?portfolio_id=holdings")!
-            var req = URLRequest(url: url, timeoutInterval: 90)
-            req.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-            
-            let (respData, res) = try await URLSession.shared.data(for: req)
-            
-            guard let http = res as? HTTPURLResponse else {
-                throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid server response."])
-            }
-            
-            if http.statusCode == 401 {
-                throw NSError(domain: "", code: 401, userInfo: [NSLocalizedDescriptionKey: "Session expired. Please sign in again."])
-            }
-            
-            guard http.statusCode == 200 else {
-                // Try to extract server error detail from response body
-                var serverDetail = ""
-                if let body = String(data: respData, encoding: .utf8) {
-                    // Try JSON error detail
-                    if let json = try? JSONSerialization.jsonObject(with: respData) as? [String: Any],
-                       let detail = json["detail"] as? String {
-                        serverDetail = detail
-                    } else if let json = try? JSONSerialization.jsonObject(with: respData) as? [String: Any],
-                              let errorMsg = json["error"] as? String {
-                        serverDetail = errorMsg
-                    } else {
-                        // Use first 200 chars of raw body
-                        serverDetail = String(body.prefix(200))
-                    }
-                }
-                let detail = serverDetail.isEmpty ? "No details from server." : serverDetail
-                throw NSError(domain: "", code: http.statusCode, 
-                    userInfo: [NSLocalizedDescriptionKey: "Server error \(http.statusCode): \(detail)"])
-            }
-            
-            let decoded = try JSONDecoder().decode(CorrelationResponse.self, from: respData)
+
+            // 401/402 typed, other non-2xx carry the server `detail` (NetworkError.ensureOK).
+            let decoded = try await NetworkManager.shared.fetchPortfolioCorrelation()
             await MainActor.run {
                 self.data = decoded
                 self.isLoading = false

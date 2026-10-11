@@ -44,6 +44,7 @@ struct EarningsCalendarResponse: Codable {
 
 // MARK: - ViewModel
 
+@MainActor
 class EarningsSurpriseViewModel: ObservableObject {
     @Published var surprises: [EarningsSurprise] = []
     @Published var calendarDays: [EarningsCalendarDay] = []
@@ -54,39 +55,26 @@ class EarningsSurpriseViewModel: ObservableObject {
     @Published var showHelp: Bool = false
 
     func fetchSurprises() {
-        guard let url = URL(string: "\(NetworkManager.shared.baseURL)/api/v1/earnings/surprises?period=current_quarter") else { return }
         isLoading = true; errorMessage = nil
-        URLSession.shared.dataTask(with: url) { [weak self] data, _, error in
-            DispatchQueue.main.async {
-                guard let self = self else { return }
-                self.isLoading = false
-                if let error = error { self.errorMessage = error.localizedDescription; return }
-                guard let data = data else { self.errorMessage = "No data."; return }
-                do {
-                    self.surprises = try JSONDecoder().decode([EarningsSurprise].self, from: data)
-                    self.surprises.sort { abs($0.surprise_pct ?? 0) > abs($1.surprise_pct ?? 0) }
-                } catch { self.errorMessage = error.localizedDescription }
-            }
-        }.resume()
+        Task { [weak self] in
+            do {
+                let rows = try await NetworkManager.shared.fetchEarningsSurprises()
+                self?.surprises = rows.sorted { abs($0.surprise_pct ?? 0) > abs($1.surprise_pct ?? 0) }
+            } catch { self?.errorMessage = error.localizedDescription }
+            self?.isLoading = false
+        }
     }
     
     func fetchCalendar() {
         let df = DateFormatter(); df.dateFormat = "yyyy-MM-dd"
         let dateStr = df.string(from: selectedCalendarDate)
-        guard let url = URL(string: "\(NetworkManager.shared.baseURL)/api/v1/earnings/calendar?date=\(dateStr)") else { return }
         isLoading = true; errorMessage = nil
-        URLSession.shared.dataTask(with: url) { [weak self] data, _, error in
-            DispatchQueue.main.async {
-                guard let self = self else { return }
-                self.isLoading = false
-                if let error = error { self.errorMessage = error.localizedDescription; return }
-                guard let data = data else { self.errorMessage = "No data."; return }
-                do {
-                    let resp = try JSONDecoder().decode(EarningsCalendarResponse.self, from: data)
-                    self.calendarDays = resp.results
-                } catch { self.errorMessage = error.localizedDescription }
-            }
-        }.resume()
+        Task { [weak self] in
+            do {
+                self?.calendarDays = try await NetworkManager.shared.fetchEarningsSurpriseCalendar(date: dateStr).results
+            } catch { self?.errorMessage = error.localizedDescription }
+            self?.isLoading = false
+        }
     }
 }
 

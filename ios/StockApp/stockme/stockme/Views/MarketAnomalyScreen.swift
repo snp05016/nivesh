@@ -37,12 +37,8 @@ class MarketAnomalyViewModel: ObservableObject {
         isLoading = true
         errorMessage = nil
         
-        guard let url = URL(string: "\(NetworkManager.shared.baseURL)/api/v1/market/anomalies?limit=20") else { return }
-        
         do {
-            let (data, _) = try await URLSession.shared.data(from: url)
-            let decoded = try JSONDecoder().decode([MarketAnomaly].self, from: data)
-            self.anomalies = decoded
+            self.anomalies = try await NetworkManager.shared.fetchMarketAnomalies(limit: 20)
         } catch {
             self.errorMessage = error.localizedDescription
         }

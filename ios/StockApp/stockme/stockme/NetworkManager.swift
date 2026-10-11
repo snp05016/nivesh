@@ -1377,7 +1377,7 @@ class NetworkManager: ObservableObject {
         guard let url = components.url else { return nil }
 
         do {
-            let (data, _) = try await URLSession.shared.data(from: url)
+            let (data, _) = try await session.data(for: authRequest(url))
             return try JSONDecoder().decode(MacroContextData.self, from: data)
         } catch {
             print("[MacroContext] Fetch failed: \(error)")

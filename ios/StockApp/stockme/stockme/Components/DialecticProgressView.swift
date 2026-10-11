@@ -37,15 +37,8 @@ final class AgentStreamClient: ObservableObject {
         isConnected = true
         connectionFailed = false
         task = Task {
-            let urlString = "\(NetworkManager.shared.baseURL)/api/v1/dashboard/stream?user_id=\(userId)&ticker=\(ticker.urlQueryValue)"
-            guard let url = URL(string: urlString) else {
-                await MainActor.run { self.connectionFailed = true; self.isConnected = false }
-                return
-            }
-            var request = NetworkManager.shared.authRequest(url)
-            request.timeoutInterval = 120
             do {
-                let (bytes, _) = try await URLSession.shared.bytes(for: request)
+                let bytes = try await NetworkManager.shared.dashboardStreamBytes(userId: userId, ticker: ticker)
                 for try await line in bytes.lines {
                     guard !Task.isCancelled else { break }
                     guard line.hasPrefix("data: ") else { continue }

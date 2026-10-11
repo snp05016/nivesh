@@ -204,7 +204,7 @@ class StressTestViewModel: ObservableObject {
         HapticManager.selection()
     }
 
-    func runTest(userId: Int, token: String) {
+    func runTest(userId: Int) {
         guard !selectedScenarios.isEmpty else { return }
         isLoading = true
         errorMessage = nil
@@ -223,31 +223,9 @@ class StressTestViewModel: ObservableObject {
         Task { [weak self] in
             guard let self = self else { return }
             do {
-                let body: [String: Any] = [
-                    "portfolio_id": "holdings",
-                    "scenarios": Array(self.selectedScenarios)
-                ]
-
-                var request = URLRequest(url: URL(string: endpoint)!)
-                request.httpMethod = "POST"
-                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-                request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-                request.timeoutInterval = 30
-                request.httpBody = try JSONSerialization.data(withJSONObject: body)
-
-                let (data, postResponse) = try await URLSession.shared.data(for: request)
-
-                guard let httpResponse = postResponse as? HTTPURLResponse else {
-                    let diag = StressDiagnostic(urlAttempted: endpoint, httpStatus: nil,
-                                               errorDomain: nil, errorCode: nil, rawBody: nil)
-                    await MainActor.run {
-                        self.diagnostic = diag
-                        self.errorMessage = "Invalid response from server."
-                        self.isLoading = false
-                        HapticManager.error()
-                    }
-                    return
-                }
+                // Bearer comes from NetworkManager.authRequest (same token AuthManager holds).
+                let (data, httpResponse) = try await NetworkManager.shared.startStressTest(
+                    scenarios: Array(self.selectedScenarios))
 
                 let bodyPreview = String(data: data, encoding: .utf8).map { String($0.prefix(400)) }
 
@@ -284,7 +262,7 @@ class StressTestViewModel: ObservableObject {
                     return
                 }
 
-                await self.startPolling(jobId: job.jobId, token: token, serverURL: serverURL)
+                await self.startPolling(jobId: job.jobId, serverURL: serverURL)
             } catch {
                 let nsErr = error as NSError
                 let diag = StressDiagnostic(urlAttempted: endpoint, httpStatus: nil,
@@ -300,7 +278,7 @@ class StressTestViewModel: ObservableObject {
         }
     }
 
-    private func startPolling(jobId: String, token: String, serverURL: String) {
+    private func startPolling(jobId: String, serverURL: String) {
         pollingTask = Task { [weak self] in
             guard let self = self else { return }
             let maxRetries = 300
@@ -309,13 +287,7 @@ class StressTestViewModel: ObservableObject {
 
             while attempts < maxRetries && !Task.isCancelled {
                 do {
-                    var request = URLRequest(url: URL(string: pollEndpoint)!)
-                    request.httpMethod = "GET"
-                    request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-
-                    let (data, response) = try await URLSession.shared.data(for: request)
-
-                    guard let httpResponse = response as? HTTPURLResponse else { continue }
+                    let (data, httpResponse) = try await NetworkManager.shared.pollStressTest(jobId: jobId)
 
                     if httpResponse.statusCode >= 400 {
                         var detail = String(data: data, encoding: .utf8).map { String($0.prefix(400)) }
@@ -665,7 +637,7 @@ struct StressTestScreen: View {
                 } else {
                     Button { HapticManager.selection(); 
     HapticManager.selection()
-                        vm.runTest(userId: authManager.currentUser?.userId ?? 0, token: authManager.currentUser?.token ?? "")
+                        vm.runTest(userId: authManager.currentUser?.userId ?? 0)
                         HapticManager.impact(.medium)
                     } label: {
                         Text("Run Simulation")

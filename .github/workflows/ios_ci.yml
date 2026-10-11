@@ -9,6 +9,7 @@ on:
       - 'scripts/ios_release_checks.sh'
       - 'scripts/ios_static_checks.sh'
       - 'scripts/lint_ios_release_config.py'
+      - 'scripts/lint_ios_networking.sh'
       - '.github/workflows/ios_ci.yml'
     branches: [ "main" ]
   # No paths filter on pull_request: both checks must always report so they
@@ -41,7 +42,7 @@ jobs:
         ios=true
         if [ "$EVENT" = "pull_request" ]; then
           files=$(git -c core.quotePath=false diff --no-renames --name-only "origin/$BASE_REF...HEAD")
-          if ! printf '%s\n' "$files" | grep -E '^(ios/|scripts/find_unreferenced_swift\.py|scripts/ios_lint_gates\.sh|scripts/ios_release_checks\.sh|scripts/ios_static_checks\.sh|scripts/lint_ios_release_config\.py|\.github/workflows/ios_ci\.yml)' >/dev/null; then
+          if ! printf '%s\n' "$files" | grep -E '^(ios/|scripts/find_unreferenced_swift\.py|scripts/ios_lint_gates\.sh|scripts/ios_release_checks\.sh|scripts/ios_static_checks\.sh|scripts/lint_ios_release_config\.py|scripts/lint_ios_networking\.sh|\.github/workflows/ios_ci\.yml)' >/dev/null; then
             ios=false
           fi
         fi
@@ -52,6 +53,9 @@ jobs:
 
     - name: iOS lint gates
       run: bash scripts/ios_lint_gates.sh
+
+    - name: iOS networking and file-size lint
+      run: bash scripts/lint_ios_networking.sh
 
     - name: Info.plist purpose-string lint
       run: python3 scripts/lint_ios_release_config.py

@@ -2,10 +2,6 @@ import SwiftUI
 import Combine
 
 // MARK: - Models
-struct NLScreenerRequest: Codable {
-    let query: String
-}
-
 struct NLScreenerResponse: Codable {
     let parsedFilters: [String: String]?
     let results: [NLScreenerResult]
@@ -33,7 +29,6 @@ struct NLScreenerResult: Codable, Identifiable {
 @MainActor
 class NLScreenerViewModel: ObservableObject {
     private static let endpointPath = "/api/v1/screener/natural-language"
-    private static let requestTimeout: TimeInterval = 120
 
     @Published var query: String = ""
     @Published var parsedFilters: [String: String] = [:]
@@ -79,25 +74,10 @@ class NLScreenerViewModel: ObservableObject {
             let endpoint = "\(NetworkManager.shared.baseURL)\(Self.endpointPath)"
             let correlationId = NetworkManager.shared.generateCorrelationID(subsystem: "nl_screener")
             do {
-                guard let url = URL(string: endpoint) else {
-                    throw NetworkError.invalidURL
-                }
-                var request = NetworkManager.shared.authRequest(url)
-                request.httpMethod = "POST"
-                request.timeoutInterval = Self.requestTimeout
-                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
                 // Keep the ID shown in errorDiagnostic equal to the one the server logged.
-                request.setValue(correlationId, forHTTPHeaderField: "X-Correlation-ID")
-                
-                let reqBody = NLScreenerRequest(query: textToSearch)
-                request.httpBody = try JSONEncoder().encode(reqBody)
-                
-                let (data, response) = try await NetworkManager.shared.session.data(for: request)
-                
-                guard let httpResponse = response as? HTTPURLResponse else {
-                    throw URLError(.badServerResponse)
-                }
-                
+                let (data, httpResponse) = try await NetworkManager.shared.nlScreenerSearch(
+                    query: textToSearch, correlationId: correlationId)
+
                 #if DEBUG
                 if let jsonString = String(data: data, encoding: .utf8) {
                     print("NLScreener API Response (\(httpResponse.statusCode)): \(jsonString)")

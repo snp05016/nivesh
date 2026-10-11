@@ -65,7 +65,7 @@ extension NetworkManager {
             return nil
         }
         do {
-            let (data, resp) = try await URLSession.shared.data(from: url)
+            let (data, resp) = try await session.data(for: authRequest(url))
             guard let http = resp as? HTTPURLResponse, http.statusCode == 200 else {
                 let statusCode = (resp as? HTTPURLResponse)?.statusCode ?? -1
                 let bodyPrefix = String(data: data, encoding: .utf8)?.prefix(500) ?? "<non-utf8>"
@@ -90,7 +90,7 @@ extension NetworkManager {
             return nil
         }
         do {
-            let (data, resp) = try await URLSession.shared.data(from: url)
+            let (data, resp) = try await session.data(for: authRequest(url))
             guard let http = resp as? HTTPURLResponse, http.statusCode == 200 else {
                 let statusCode = (resp as? HTTPURLResponse)?.statusCode ?? -1
                 let bodyPrefix = String(data: data, encoding: .utf8)?.prefix(500) ?? "<non-utf8>"
@@ -115,7 +115,7 @@ extension NetworkManager {
             return nil
         }
         do {
-            let (data, resp) = try await URLSession.shared.data(from: url)
+            let (data, resp) = try await session.data(for: authRequest(url))
             guard let http = resp as? HTTPURLResponse, http.statusCode == 200 else {
                 let statusCode = (resp as? HTTPURLResponse)?.statusCode ?? -1
                 let bodyPrefix = String(data: data, encoding: .utf8)?.prefix(500) ?? "<non-utf8>"
@@ -140,7 +140,7 @@ extension NetworkManager {
             return nil
         }
         do {
-            let (data, resp) = try await URLSession.shared.data(from: url)
+            let (data, resp) = try await session.data(for: authRequest(url))
             guard let http = resp as? HTTPURLResponse, http.statusCode == 200 else {
                 let statusCode = (resp as? HTTPURLResponse)?.statusCode ?? -1
                 let bodyPrefix = String(data: data, encoding: .utf8)?.prefix(500) ?? "<non-utf8>"
@@ -165,7 +165,7 @@ extension NetworkManager {
             return nil
         }
         do {
-            let (data, resp) = try await URLSession.shared.data(from: url)
+            let (data, resp) = try await session.data(for: authRequest(url))
             guard let http = resp as? HTTPURLResponse, http.statusCode == 200 else {
                 let statusCode = (resp as? HTTPURLResponse)?.statusCode ?? -1
                 let bodyPrefix = String(data: data, encoding: .utf8)?.prefix(500) ?? "<non-utf8>"
@@ -191,7 +191,7 @@ extension NetworkManager {
             return nil
         }
         do {
-            let (data, response) = try await URLSession.shared.data(from: url)
+            let (data, response) = try await session.data(for: authRequest(url))
             if let httpResp = response as? HTTPURLResponse, httpResp.statusCode != 200 {
                 let bodyPrefix = String(data: data, encoding: .utf8)?.prefix(500) ?? "<non-utf8>"
                 os_log(.error, "[Nivesh/Fetch] ExtendedMarketDashboard: HTTP %{public}d, body: %{public}@", httpResp.statusCode, String(bodyPrefix))
@@ -213,12 +213,9 @@ extension NetworkManager {
             print("[Nivesh/Fetch] MarketErrorLogs: INVALID URL")
             return nil
         }
-        var request = URLRequest(url: url)
-        if let token = authToken {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
+        let request = authRequest(url)
         do {
-            let (data, resp) = try await URLSession.shared.data(for: request)
+            let (data, resp) = try await session.data(for: request)
             guard let http = resp as? HTTPURLResponse, http.statusCode == 200 else {
                 let statusCode = (resp as? HTTPURLResponse)?.statusCode ?? -1
                 let bodyPrefix = String(data: data, encoding: .utf8)?.prefix(500) ?? "<non-utf8>"
@@ -247,9 +244,9 @@ extension NetworkManager {
             print("[Nivesh/Fetch] EarningsCalendar: INVALID URL")
             return nil
         }
-        var req = URLRequest(url: url); req.timeoutInterval = 25
+        var req = authRequest(url); req.timeoutInterval = 25
         do {
-            let (data, resp) = try await URLSession.shared.data(for: req)
+            let (data, resp) = try await session.data(for: req)
             guard let http = resp as? HTTPURLResponse, http.statusCode == 200 else {
                 let statusCode = (resp as? HTTPURLResponse)?.statusCode ?? -1
                 let bodyPrefix = String(data: data, encoding: .utf8)?.prefix(500) ?? "<non-utf8>"
@@ -276,9 +273,9 @@ extension NetworkManager {
             print("[Nivesh/Fetch] EarningsFeed: INVALID URL — baseURL=\(baseURL), sort=\(sort)")
             return nil
         }
-        var req = URLRequest(url: url); req.timeoutInterval = 90
+        var req = authRequest(url); req.timeoutInterval = 90
         do {
-            let (data, resp) = try await URLSession.shared.data(for: req)
+            let (data, resp) = try await session.data(for: req)
             guard let http = resp as? HTTPURLResponse, http.statusCode == 200 else {
                 let statusCode = (resp as? HTTPURLResponse)?.statusCode ?? -1
                 let bodyPrefix = String(data: data, encoding: .utf8)?.prefix(500) ?? "<non-utf8>"
@@ -303,12 +300,9 @@ extension NetworkManager {
             print("[Nivesh/Fetch] EarningsErrorLogs: INVALID URL")
             return nil
         }
-        var request = URLRequest(url: url)
-        if let token = authToken {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
+        let request = authRequest(url)
         do {
-            let (data, resp) = try await URLSession.shared.data(for: request)
+            let (data, resp) = try await session.data(for: request)
             guard let http = resp as? HTTPURLResponse, http.statusCode == 200 else {
                 let statusCode = (resp as? HTTPURLResponse)?.statusCode ?? -1
                 let bodyPrefix = String(data: data, encoding: .utf8)?.prefix(500) ?? "<non-utf8>"
@@ -331,7 +325,7 @@ extension NetworkManager {
     func fetchAdvisors() async -> AdvisorsResponse? {
         guard let url = URL(string: "\(baseURL)/api/v1/ideas/advisors") else { return nil }
         do {
-            let (data, resp) = try await URLSession.shared.data(for: URLRequest(url: url))
+            let (data, resp) = try await session.data(for: authRequest(url))
             guard let http = resp as? HTTPURLResponse, http.statusCode == 200 else { return nil }
             return _diagnosticDecode(AdvisorsResponse.self, from: data, label: "Advisors")
         } catch {
@@ -343,7 +337,7 @@ extension NetworkManager {
     func fetchIdeasFeed(limit: Int = 20, sentiment: String = "all") async -> IdeasFeedResponse? {
         guard let url = URL(string: "\(baseURL)/api/v1/ideas/feed?limit=\(limit)&sentiment=\(sentiment)") else { return nil }
         do {
-            let (data, resp) = try await URLSession.shared.data(for: URLRequest(url: url))
+            let (data, resp) = try await session.data(for: authRequest(url))
             guard let http = resp as? HTTPURLResponse, http.statusCode == 200 else { return nil }
             return _diagnosticDecode(IdeasFeedResponse.self, from: data, label: "IdeasFeed")
         } catch {

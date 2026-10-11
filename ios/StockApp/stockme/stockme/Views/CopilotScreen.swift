@@ -499,26 +499,7 @@ struct CopilotScreen: View {
             "current_context": (currentContext ?? [:]).merging(Self.appNavigationContext) { _, new in new }
         ]
 
-        guard let url = URL(string: "\(NetworkManager.shared.baseURL)/api/v1/copilot/chat") else {
-            throw URLError(.badURL)
-        }
-
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        if let token = authManager.currentUser?.token {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
-        request.httpBody = try JSONSerialization.data(withJSONObject: requestBody, options: [])
-
-        // Shared session: 30s request timeout instead of URLSession.shared's 60s.
-        let (data, response) = try await NetworkManager.shared.session.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
-        guard httpResponse.statusCode == 200 else {
-            throw NetworkError.fromHTTP(status: httpResponse.statusCode, data: data, endpoint: "/api/v1/copilot/chat")
-        }
-
-        return try JSONDecoder().decode(CopilotResponse.self, from: data)
+        return try await NetworkManager.shared.copilotChat(requestBody)
     }
 }
 

@@ -146,35 +146,8 @@ class StrategyLabViewModel: ObservableObject {
     }
     
     private func fetchBacktest(ticker: String, strategyId: String, years: Int) async throws -> StrategyBacktestResult {
-        let endpoint = "/analysis/backtest"
-        guard let url = URL(string: "\(NetworkManager.shared.baseURL)\(endpoint)") else {
-            throw URLError(.badURL)
-        }
-
-        var request = NetworkManager.shared.authRequest(url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        
-        let body: [String: Any] = [
-            "ticker": ticker,
-            "strategy_id": strategyId,
-            "years": years
-        ]
-        
-        request.httpBody = try JSONSerialization.data(withJSONObject: body)
-        
-        let (data, response) = try await NetworkManager.shared.session.data(for: request)
-        
-        guard let httpResponse = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
-        guard (200...299).contains(httpResponse.statusCode) else {
-            if httpResponse.statusCode == 402 {
-                throw NetworkError.fromHTTP(status: 402, data: data, endpoint: endpoint)
-            }
-            // Keep the server's short reason (e.g. insufficient price history on 400).
-            throw NetworkError.serverError(httpResponse.statusCode, NetworkError.serverDetail(from: data))
-        }
-        
-        return try JSONDecoder().decode(StrategyBacktestResult.self, from: data)
+        // Keeps the server's short reason (e.g. insufficient price history on 400); 402 -> paymentRequired.
+        try await NetworkManager.shared.runStrategyBacktest(ticker: ticker, strategyId: strategyId, years: years)
     }
 }
 

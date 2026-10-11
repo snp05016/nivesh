@@ -10,6 +10,8 @@ struct TechnicalMomentumView: View {
     @State private var isLoading = false
     @State private var topMovers: TopMoversResponse? = nil
     @State private var isLoadingMovers = false
+    @State private var dashboardError: String? = nil
+    @State private var moversError: String? = nil
 
     let subTabs = ["Technical Trends", "Sectors", "Top Gainers", "Top Losers", "Active by Value", "Active by Volume"]
     let momentumFilters = ["Bullish", "Turning Bullish", "Bearish", "Turning Bearish"]
@@ -104,7 +106,7 @@ struct TechnicalMomentumView: View {
                 } else {
                     let tickers = momentumTickers(for: selectedMomentum)
                     if tickers.isEmpty {
-                        Text("No \(selectedMomentum.lowercased()) signals detected.")
+                        Text(dashboardError ?? "No \(selectedMomentum.lowercased()) signals detected.")
                             .font(Theme.officialStampFont(size: 12))
                             .foregroundStyle(Theme.inkTertiary)
                             .padding(Theme.Spacing.xLarge)
@@ -262,7 +264,7 @@ struct TechnicalMomentumView: View {
                         .padding(.horizontal, Theme.screenPadding)
                     }
                 } else {
-                    Text("No data available.")
+                    Text(moversError ?? "No data available.")
                         .font(Theme.officialStampFont(size: 12))
                         .foregroundStyle(Theme.inkTertiary)
                         .padding(Theme.Spacing.xLarge)
@@ -293,14 +295,11 @@ struct TechnicalMomentumView: View {
     private func loadTopMovers() async {
         guard topMovers == nil else { return }
         isLoadingMovers = true
-        guard let url = URL(string: "\(NetworkManager.shared.baseURL)/api/v1/market/top-movers") else {
-            isLoadingMovers = false
-            return
-        }
-        var req = URLRequest(url: url); req.timeoutInterval = 30
-        if let (data, resp) = try? await URLSession.shared.data(for: req),
-           let http = resp as? HTTPURLResponse, http.statusCode == 200 {
-            topMovers = try? JSONDecoder().decode(TopMoversResponse.self, from: data)
+        moversError = nil
+        do {
+            topMovers = try await NetworkManager.shared.fetchTopMovers()
+        } catch {
+            moversError = error.localizedDescription
         }
         isLoadingMovers = false
     }
@@ -342,14 +341,11 @@ struct TechnicalMomentumView: View {
 
     private func loadDashboard() async {
         isLoading = true
-        guard let url = URL(string: "\(NetworkManager.shared.baseURL)/api/v1/market/dashboard-pulse") else {
-            isLoading = false
-            return
-        }
-        var req = URLRequest(url: url); req.timeoutInterval = 20
-        if let (data, resp) = try? await URLSession.shared.data(for: req),
-           let http = resp as? HTTPURLResponse, http.statusCode == 200 {
-            dashboard = try? JSONDecoder().decode(MarketDashboardResponse.self, from: data)
+        dashboardError = nil
+        do {
+            dashboard = try await NetworkManager.shared.fetchDashboardPulse()
+        } catch {
+            dashboardError = error.localizedDescription
         }
         isLoading = false
     }
