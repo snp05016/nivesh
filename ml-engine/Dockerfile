@@ -1,4 +1,4 @@
-FROM python:3.10-slim
+FROM python:3.12-slim
 
 WORKDIR /app
 
@@ -8,8 +8,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Create non-root user for security. /app itself must be writable:
-# config.py creates data/ and cache/ under it at import time.
+# Create non-root user for security (default USER when run without --user).
 RUN useradd --create-home --shell /bin/bash mluser && \
     chown mluser:mluser /app
 
@@ -17,6 +16,17 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY --chown=mluser:mluser . .
+
+# config.py runs os.makedirs(/app/data, /app/cache) at import time, and
+# .dockerignore keeps both out of the image. The deploy script runs the
+# container as the host user (--user "$(id -u):$(id -g)"), whose uid need not
+# match mluser's, so pre-create them world-writable (sticky) for any uid.
+# Nothing else under /app is writable by a non-mluser uid.
+RUN mkdir -p /app/data /app/cache && chmod 1777 /app/data /app/cache
+
+# Research data (raw bhavcopies, curated panel, models, runs): a host volume
+# mounted at /data by scripts/deploy_ml_microservice.sh.
+ENV RESEARCH_DATA_DIR=/data
 
 EXPOSE 8001
 

@@ -52,6 +52,7 @@ from pipeline.feature_computer import (
     InvalidOHLCVError,
 )
 from pipeline.inference import InferenceEngine
+from research.api import router as research_router
 
 _LOG = logging.getLogger("ml-engine")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(name)s] %(levelname)s: %(message)s")
@@ -363,6 +364,7 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
+app.include_router(research_router)
 
 
 # ── Health ─────────────────────────────────────────────────────────────────────

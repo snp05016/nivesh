@@ -12,7 +12,16 @@
 # Usage:
 #   chmod +x scripts/deploy_ml_engine.sh
 #   ./scripts/deploy_ml_engine.sh
-#   DEPLOY_SHA=<commit> ML_MEMORY=2g ML_CPUS=2 ./scripts/deploy_ml_engine.sh
+#   DEPLOY_SHA=<commit> ML_MEMORY=4g ML_CPUS=3 ./scripts/deploy_ml_engine.sh
+#
+# Container (research engine, spec 2.7). deploy_ml_microservice.sh starts it as
+#   docker run -d --name ml-engine --restart unless-stopped --cpus=3 --memory=4g \
+#     --user "$(id -u):$(id -g)" -p 127.0.0.1:8001:8001 \
+#     -v ~/nivesh-data/research:/data --env-file ~/nivesh-data/ml-engine.env \
+#     -e RESEARCH_DATA_DIR=/data -e HOME=/data ml-engine:latest
+# ~/nivesh-data/research is mode 700. ~/nivesh-data/ml-engine.env is mode 600
+# and holds ML_ENGINE_API_KEY and RESEARCH_HTTP_CONTACT (create it once by hand
+# on the server; never commit it). The backend reads the same key from backend/.env.
 #
 # Prerequisites (local machine):
 #   • SSH key-based auth configured for saumyapatel@192.168.1.122
@@ -30,8 +39,8 @@ REMOTE_HOST="192.168.1.122"
 REMOTE="$REMOTE_USER@$REMOTE_HOST"
 REMOTE_PROJECT="/home/$REMOTE_USER/Desktop/nivesh"
 DEPLOY_SHA="${DEPLOY_SHA:-$(git rev-parse HEAD)}"
-ML_MEMORY="${ML_MEMORY:-2g}"
-ML_CPUS="${ML_CPUS:-2}"
+ML_MEMORY="${ML_MEMORY:-4g}"
+ML_CPUS="${ML_CPUS:-3}"
 
 ML_PORT="8001"
 BACKEND_PORT="8000"
@@ -127,7 +136,21 @@ remote "
 log_info "Code updated to $DEPLOY_SHA."
 
 # ---------------------------------------------------------------------------
-# Step 3 — Build, swap and health-check the ml-engine container on the server
+# Step 3 — Research data directory (700) and env file (600), before docker run
+# ---------------------------------------------------------------------------
+log_info "Preparing ~/nivesh-data on $REMOTE ..."
+if ! remote "
+    set -euo pipefail
+    mkdir -p ~/nivesh-data/research && chmod 700 ~/nivesh-data/research
+    test -f ~/nivesh-data/ml-engine.env
+    chmod 600 ~/nivesh-data/ml-engine.env
+"; then
+    log_error "~/nivesh-data/ml-engine.env is missing on $REMOTE (ML_ENGINE_API_KEY, RESEARCH_HTTP_CONTACT; mode 600)."
+    exit 1
+fi
+
+# ---------------------------------------------------------------------------
+# Step 4 — Build, swap and health-check the ml-engine container on the server
 # ---------------------------------------------------------------------------
 log_info "Running deploy_ml_microservice.sh on $REMOTE ..."
 remote "ML_MEMORY='$ML_MEMORY' ML_CPUS='$ML_CPUS' bash '$REMOTE_PROJECT/scripts/deploy_ml_microservice.sh'"

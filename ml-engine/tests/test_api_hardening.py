@@ -72,7 +72,7 @@ def test_deploy_scripts_publish_ml_port_on_loopback_only() -> None:
     # deploy_ml_engine.sh delegates the docker run to deploy_ml_microservice.sh.
     for name in ("deploy_ml_engine.sh", "deploy_ml_microservice.sh"):
         text = (scripts / name).read_text()
-        mappings = re.findall(r"""\s-p\s+['"]?([^'"\s]+)""", text)
+        mappings = re.findall(r"""(?<!mkdir)\s-p\s+['"]?([^'"\s]+)""", text)  # not `mkdir -p`
         found += len(mappings)
         for m in mappings:
             assert m.startswith("127.0.0.1:"), f"{name} publishes {m} beyond loopback"
