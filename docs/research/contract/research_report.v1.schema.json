@@ -1,0 +1,1814 @@
+{
+  "$defs": {
+    "AsOf": {
+      "additionalProperties": false,
+      "properties": {
+        "computed_at": {
+          "format": "date-time",
+          "title": "Computed At",
+          "type": "string"
+        },
+        "market_date": {
+          "format": "date",
+          "title": "Market Date",
+          "type": "string"
+        }
+      },
+      "required": [
+        "market_date",
+        "computed_at"
+      ],
+      "title": "AsOf",
+      "type": "object"
+    },
+    "Beta": {
+      "additionalProperties": false,
+      "properties": {
+        "benchmark_id": {
+          "const": "NIFTY50_PR",
+          "title": "Benchmark Id",
+          "type": "string"
+        },
+        "blume_adjusted": {
+          "$ref": "#/$defs/Fact"
+        },
+        "method": {
+          "const": "dimson_lag1_daily_252",
+          "title": "Method",
+          "type": "string"
+        },
+        "raw": {
+          "$ref": "#/$defs/Fact"
+        },
+        "se": {
+          "$ref": "#/$defs/Fact"
+        }
+      },
+      "required": [
+        "benchmark_id",
+        "method",
+        "raw",
+        "se",
+        "blume_adjusted"
+      ],
+      "title": "Beta",
+      "type": "object"
+    },
+    "Cohort": {
+      "additionalProperties": false,
+      "description": "Reserved: no v1 UI; served only under an effective cohort_frequency (D9).",
+      "properties": {
+        "bucket": {
+          "maximum": 5,
+          "minimum": 1,
+          "title": "Bucket",
+          "type": "integer"
+        },
+        "cases": {
+          "$ref": "#/$defs/Fact"
+        },
+        "ci_high": {
+          "$ref": "#/$defs/Fact"
+        },
+        "ci_low": {
+          "$ref": "#/$defs/Fact"
+        },
+        "frequency": {
+          "$ref": "#/$defs/Fact"
+        },
+        "neutral": {
+          "title": "Neutral",
+          "type": "boolean"
+        },
+        "period": {
+          "title": "Period",
+          "type": "string"
+        }
+      },
+      "required": [
+        "bucket",
+        "frequency",
+        "ci_low",
+        "ci_high",
+        "cases",
+        "period",
+        "neutral"
+      ],
+      "title": "Cohort",
+      "type": "object"
+    },
+    "Compliance": {
+      "additionalProperties": false,
+      "properties": {
+        "ai_disclosure": {
+          "title": "Ai Disclosure",
+          "type": "string"
+        },
+        "disclaimer_id": {
+          "const": "research_v1",
+          "title": "Disclaimer Id",
+          "type": "string"
+        },
+        "disclaimer_text": {
+          "title": "Disclaimer Text",
+          "type": "string"
+        },
+        "lexicon_version": {
+          "const": "lx-1",
+          "title": "Lexicon Version",
+          "type": "string"
+        },
+        "mode": {
+          "const": "unregistered_educational",
+          "title": "Mode",
+          "type": "string"
+        },
+        "outlook_display": {
+          "enum": [
+            "tier_only",
+            "cohort_frequency"
+          ],
+          "title": "Outlook Display",
+          "type": "string"
+        },
+        "track_record_visible": {
+          "title": "Track Record Visible",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "mode",
+        "disclaimer_id",
+        "disclaimer_text",
+        "ai_disclosure",
+        "outlook_display",
+        "track_record_visible",
+        "lexicon_version"
+      ],
+      "title": "Compliance",
+      "type": "object"
+    },
+    "Coverage": {
+      "additionalProperties": false,
+      "description": "Universe membership of the symbol (not a statistical coverage figure).",
+      "properties": {
+        "in_universe": {
+          "title": "In Universe",
+          "type": "boolean"
+        },
+        "outlook_eligible": {
+          "title": "Outlook Eligible",
+          "type": "boolean"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "enum": [
+                "source_unavailable",
+                "stale_source",
+                "insufficient_history",
+                "data_quality_flag",
+                "not_applicable_financials",
+                "source_not_integrated",
+                "not_in_universe",
+                "backtest_failed",
+                "policy_hidden"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Reason"
+        },
+        "turnover_rank": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Turnover Rank"
+        },
+        "universe_id": {
+          "const": "NSE_LIQ200",
+          "title": "Universe Id",
+          "type": "string"
+        },
+        "universe_quality": {
+          "enum": [
+            "pit",
+            "survivorship_biased"
+          ],
+          "title": "Universe Quality",
+          "type": "string"
+        }
+      },
+      "required": [
+        "universe_id",
+        "in_universe",
+        "universe_quality",
+        "turnover_rank",
+        "outlook_eligible",
+        "reason"
+      ],
+      "title": "Coverage",
+      "type": "object"
+    },
+    "Drawdown": {
+      "additionalProperties": false,
+      "properties": {
+        "current_pct": {
+          "$ref": "#/$defs/Fact"
+        },
+        "days_since_peak": {
+          "$ref": "#/$defs/Fact"
+        },
+        "max_1y_pct": {
+          "$ref": "#/$defs/Fact"
+        },
+        "max_3y_pct": {
+          "$ref": "#/$defs/Fact"
+        },
+        "max_5y_pct": {
+          "$ref": "#/$defs/Fact"
+        },
+        "ulcer_1y": {
+          "$ref": "#/$defs/Fact"
+        }
+      },
+      "required": [
+        "max_1y_pct",
+        "max_3y_pct",
+        "max_5y_pct",
+        "current_pct",
+        "days_since_peak",
+        "ulcer_1y"
+      ],
+      "title": "Drawdown",
+      "type": "object"
+    },
+    "DrawdownSeries": {
+      "additionalProperties": false,
+      "properties": {
+        "freq": {
+          "const": "W",
+          "title": "Freq",
+          "type": "string"
+        },
+        "points": {
+          "items": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array"
+          },
+          "maxItems": 160,
+          "title": "Points",
+          "type": "array"
+        },
+        "unit": {
+          "const": "pct",
+          "title": "Unit",
+          "type": "string"
+        }
+      },
+      "required": [
+        "freq",
+        "unit",
+        "points"
+      ],
+      "title": "DrawdownSeries",
+      "type": "object"
+    },
+    "Fact": {
+      "additionalProperties": false,
+      "properties": {
+        "as_of": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "As Of"
+        },
+        "decimals": {
+          "maximum": 4,
+          "minimum": 0,
+          "title": "Decimals",
+          "type": "integer"
+        },
+        "display": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Display"
+        },
+        "id": {
+          "pattern": "^[a-z0-9_.]+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "label": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "method": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Method"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "enum": [
+                "source_unavailable",
+                "stale_source",
+                "insufficient_history",
+                "data_quality_flag",
+                "not_applicable_financials",
+                "source_not_integrated",
+                "not_in_universe",
+                "backtest_failed",
+                "policy_hidden"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Reason"
+        },
+        "signed": {
+          "title": "Signed",
+          "type": "boolean"
+        },
+        "source": {
+          "enum": [
+            "nse_bhavcopy",
+            "yfinance",
+            "computed",
+            "model"
+          ],
+          "title": "Source",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "ok",
+            "stale",
+            "unavailable"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "unit": {
+          "enum": [
+            "inr",
+            "inr_cr",
+            "pct",
+            "pp",
+            "prob",
+            "pctl",
+            "ratio",
+            "x",
+            "count",
+            "sessions"
+          ],
+          "title": "Unit",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Value"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "value",
+        "unit",
+        "decimals",
+        "signed",
+        "display",
+        "status",
+        "reason",
+        "source",
+        "as_of",
+        "method"
+      ],
+      "title": "Fact",
+      "type": "object"
+    },
+    "FactorFamily": {
+      "additionalProperties": false,
+      "properties": {
+        "family": {
+          "enum": [
+            "momentum",
+            "reversal",
+            "risk",
+            "liquidity",
+            "trend"
+          ],
+          "title": "Family",
+          "type": "string"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "metrics": {
+          "items": {
+            "$ref": "#/$defs/FactorMetric"
+          },
+          "title": "Metrics",
+          "type": "array"
+        },
+        "pctl": {
+          "$ref": "#/$defs/Fact"
+        }
+      },
+      "required": [
+        "family",
+        "label",
+        "pctl",
+        "metrics"
+      ],
+      "title": "FactorFamily",
+      "type": "object"
+    },
+    "FactorMetric": {
+      "additionalProperties": false,
+      "properties": {
+        "feature_id": {
+          "title": "Feature Id",
+          "type": "string"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "pctl": {
+          "$ref": "#/$defs/Fact"
+        },
+        "value": {
+          "$ref": "#/$defs/Fact"
+        }
+      },
+      "required": [
+        "feature_id",
+        "label",
+        "value",
+        "pctl"
+      ],
+      "title": "FactorMetric",
+      "type": "object"
+    },
+    "FactorProfile": {
+      "additionalProperties": false,
+      "properties": {
+        "families": {
+          "items": {
+            "$ref": "#/$defs/FactorFamily"
+          },
+          "title": "Families",
+          "type": "array"
+        },
+        "universe_id": {
+          "const": "NSE_LIQ200",
+          "title": "Universe Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "universe_id",
+        "families"
+      ],
+      "title": "FactorProfile",
+      "type": "object"
+    },
+    "Fundamentals": {
+      "additionalProperties": false,
+      "properties": {
+        "altman_z_em": {
+          "$ref": "#/$defs/ScoreValue"
+        },
+        "beneish_m": {
+          "$ref": "#/$defs/ScoreValue"
+        },
+        "fetched_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Fetched At"
+        },
+        "fiscal_period_end": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Fiscal Period End"
+        },
+        "is_financial": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Is Financial"
+        },
+        "piotroski": {
+          "$ref": "#/$defs/Piotroski"
+        },
+        "point_in_time": {
+          "const": false,
+          "title": "Point In Time",
+          "type": "boolean"
+        },
+        "quality": {
+          "$ref": "#/$defs/Quality"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "enum": [
+                "source_unavailable",
+                "stale_source",
+                "insufficient_history",
+                "data_quality_flag",
+                "not_applicable_financials",
+                "source_not_integrated",
+                "not_in_universe",
+                "backtest_failed",
+                "policy_hidden"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Reason"
+        },
+        "source": {
+          "const": "yfinance",
+          "title": "Source",
+          "type": "string"
+        },
+        "statement_basis": {
+          "enum": [
+            "consolidated",
+            "standalone",
+            "unknown"
+          ],
+          "title": "Statement Basis",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "ok",
+            "stale",
+            "unavailable"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "valuation": {
+          "$ref": "#/$defs/Valuation"
+        }
+      },
+      "required": [
+        "status",
+        "reason",
+        "source",
+        "fetched_at",
+        "fiscal_period_end",
+        "point_in_time",
+        "statement_basis",
+        "is_financial",
+        "valuation",
+        "quality",
+        "piotroski",
+        "altman_z_em",
+        "beneish_m"
+      ],
+      "title": "Fundamentals",
+      "type": "object"
+    },
+    "HorizonOutlook": {
+      "additionalProperties": false,
+      "properties": {
+        "cohort": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Cohort"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "event": {
+          "title": "Event",
+          "type": "string"
+        },
+        "evidence_tier": {
+          "enum": [
+            "validated_edge",
+            "weak_evidence",
+            "no_reliable_edge",
+            "out_of_universe",
+            "unavailable"
+          ],
+          "title": "Evidence Tier",
+          "type": "string"
+        },
+        "horizon_days": {
+          "enum": [
+            21,
+            63
+          ],
+          "title": "Horizon Days",
+          "type": "integer"
+        },
+        "horizon_label": {
+          "enum": [
+            "about 1 month (21 trading days)",
+            "about 3 months (63 trading days)"
+          ],
+          "title": "Horizon Label",
+          "type": "string"
+        },
+        "model_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Model Id"
+        },
+        "prediction_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Prediction Id"
+        },
+        "procedure_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Procedure Id"
+        },
+        "reason_codes": {
+          "items": {
+            "pattern": "^(gate_failed:G[0-6]|survivorship_biased_universe|manifest_invalid|insufficient_history|data_quality_flag|not_in_universe|live_under_review|live_shadow_collecting|snapshot_expired|policy_hidden|prices_fallback_yfinance)$",
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "tier_text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tier Text"
+        }
+      },
+      "required": [
+        "horizon_days",
+        "horizon_label",
+        "event",
+        "evidence_tier",
+        "reason_codes",
+        "procedure_id",
+        "model_id"
+      ],
+      "title": "HorizonOutlook",
+      "type": "object"
+    },
+    "LiveHorizon": {
+      "additionalProperties": false,
+      "properties": {
+        "horizon_days": {
+          "enum": [
+            21,
+            63
+          ],
+          "title": "Horizon Days",
+          "type": "integer"
+        },
+        "independent_periods": {
+          "minimum": 0,
+          "title": "Independent Periods",
+          "type": "integer"
+        },
+        "matured_dates": {
+          "minimum": 0,
+          "title": "Matured Dates",
+          "type": "integer"
+        },
+        "min_periods_required": {
+          "const": 12,
+          "title": "Min Periods Required",
+          "type": "integer"
+        },
+        "since": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Since"
+        },
+        "state": {
+          "enum": [
+            "collecting",
+            "ok",
+            "under_review"
+          ],
+          "title": "State",
+          "type": "string"
+        }
+      },
+      "required": [
+        "horizon_days",
+        "state",
+        "since",
+        "matured_dates",
+        "independent_periods",
+        "min_periods_required"
+      ],
+      "title": "LiveHorizon",
+      "type": "object"
+    },
+    "LiveTrackRecord": {
+      "additionalProperties": false,
+      "description": "States only; never rates or IC (8.6).",
+      "properties": {
+        "horizons": {
+          "items": {
+            "$ref": "#/$defs/LiveHorizon"
+          },
+          "title": "Horizons",
+          "type": "array"
+        },
+        "visible": {
+          "title": "Visible",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "visible",
+        "horizons"
+      ],
+      "title": "LiveTrackRecord",
+      "type": "object"
+    },
+    "ModelCard": {
+      "additionalProperties": false,
+      "description": "Summary only; gates are admin-only (GET /model-card?detail=full).",
+      "properties": {
+        "data_period": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Data Period"
+        },
+        "feature_version": {
+          "const": "fv1",
+          "title": "Feature Version",
+          "type": "string"
+        },
+        "horizons": {
+          "items": {
+            "$ref": "#/$defs/ModelCardHorizon"
+          },
+          "title": "Horizons",
+          "type": "array"
+        },
+        "label_definition": {
+          "title": "Label Definition",
+          "type": "string"
+        },
+        "limitations": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Limitations",
+          "type": "array"
+        },
+        "manifest_sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Manifest Sha256"
+        },
+        "procedure_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Procedure Id"
+        },
+        "trained_through": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Trained Through"
+        },
+        "universe_id": {
+          "const": "NSE_LIQ200",
+          "title": "Universe Id",
+          "type": "string"
+        },
+        "universe_quality": {
+          "enum": [
+            "pit",
+            "survivorship_biased"
+          ],
+          "title": "Universe Quality",
+          "type": "string"
+        }
+      },
+      "required": [
+        "procedure_id",
+        "feature_version",
+        "universe_id",
+        "universe_quality",
+        "label_definition",
+        "data_period",
+        "trained_through",
+        "manifest_sha256",
+        "limitations",
+        "horizons"
+      ],
+      "title": "ModelCard",
+      "type": "object"
+    },
+    "ModelCardHorizon": {
+      "additionalProperties": false,
+      "properties": {
+        "horizon_days": {
+          "enum": [
+            21,
+            63
+          ],
+          "title": "Horizon Days",
+          "type": "integer"
+        },
+        "tier_text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tier Text"
+        }
+      },
+      "required": [
+        "horizon_days"
+      ],
+      "title": "ModelCardHorizon",
+      "type": "object"
+    },
+    "Narrative": {
+      "additionalProperties": false,
+      "properties": {
+        "attempts": {
+          "minimum": 0,
+          "title": "Attempts",
+          "type": "integer"
+        },
+        "facts_hash": {
+          "title": "Facts Hash",
+          "type": "string"
+        },
+        "language": {
+          "const": "en",
+          "title": "Language",
+          "type": "string"
+        },
+        "prompt_version": {
+          "const": "rf-1",
+          "title": "Prompt Version",
+          "type": "string"
+        },
+        "sections": {
+          "items": {
+            "$ref": "#/$defs/NarrativeSection"
+          },
+          "title": "Sections",
+          "type": "array"
+        },
+        "status": {
+          "enum": [
+            "llm_validated",
+            "template"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "summary": {
+          "title": "Summary",
+          "type": "string"
+        },
+        "validator_version": {
+          "const": "gv-1",
+          "title": "Validator Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "status",
+        "language",
+        "summary",
+        "sections",
+        "prompt_version",
+        "validator_version",
+        "attempts",
+        "facts_hash"
+      ],
+      "title": "Narrative",
+      "type": "object"
+    },
+    "NarrativeSection": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "enum": [
+            "risk",
+            "factor_profile",
+            "fundamentals"
+          ],
+          "title": "Id",
+          "type": "string"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "text"
+      ],
+      "title": "NarrativeSection",
+      "type": "object"
+    },
+    "Piotroski": {
+      "additionalProperties": false,
+      "description": "Shown as \"f of max_possible available checks\"; no grade (4.7).",
+      "properties": {
+        "f_score": {
+          "$ref": "#/$defs/Fact"
+        },
+        "max_possible": {
+          "$ref": "#/$defs/Fact"
+        },
+        "signals": {
+          "items": {
+            "$ref": "#/$defs/PiotroskiCheck"
+          },
+          "title": "Signals",
+          "type": "array"
+        }
+      },
+      "required": [
+        "f_score",
+        "max_possible",
+        "signals"
+      ],
+      "title": "Piotroski",
+      "type": "object"
+    },
+    "PiotroskiCheck": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "enum": [
+                0,
+                1
+              ],
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Value"
+        }
+      },
+      "required": [
+        "id",
+        "value"
+      ],
+      "title": "PiotroskiCheck",
+      "type": "object"
+    },
+    "PipelineStage": {
+      "additionalProperties": false,
+      "properties": {
+        "detail": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Detail"
+        },
+        "stage": {
+          "enum": [
+            "prices",
+            "universe",
+            "features",
+            "scores",
+            "risk",
+            "fundamentals",
+            "assemble"
+          ],
+          "title": "Stage",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "ok",
+            "degraded",
+            "failed",
+            "skipped"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "stage",
+        "status",
+        "detail"
+      ],
+      "title": "PipelineStage",
+      "type": "object"
+    },
+    "Provenance": {
+      "additionalProperties": false,
+      "properties": {
+        "config_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Config Sha256",
+          "type": "string"
+        },
+        "cost_model_version": {
+          "title": "Cost Model Version",
+          "type": "string"
+        },
+        "data_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Data Sha256",
+          "type": "string"
+        },
+        "data_snapshot_id": {
+          "pattern": "^snap-\\d{8}-[0-9a-f]{8}$",
+          "title": "Data Snapshot Id",
+          "type": "string"
+        },
+        "engine_version": {
+          "title": "Engine Version",
+          "type": "string"
+        },
+        "feature_version": {
+          "const": "fv1",
+          "title": "Feature Version",
+          "type": "string"
+        },
+        "git_sha": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Git Sha"
+        },
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/SourceStatus"
+          },
+          "title": "Sources",
+          "type": "array"
+        }
+      },
+      "required": [
+        "engine_version",
+        "git_sha",
+        "data_snapshot_id",
+        "data_sha256",
+        "feature_version",
+        "cost_model_version",
+        "config_sha256",
+        "sources"
+      ],
+      "title": "Provenance",
+      "type": "object"
+    },
+    "Quality": {
+      "additionalProperties": false,
+      "properties": {
+        "cfo_to_pat": {
+          "$ref": "#/$defs/Fact"
+        },
+        "debt_to_equity": {
+          "$ref": "#/$defs/Fact"
+        },
+        "operating_margin_pct": {
+          "$ref": "#/$defs/Fact"
+        },
+        "roe_pct": {
+          "$ref": "#/$defs/Fact"
+        }
+      },
+      "required": [
+        "roe_pct",
+        "operating_margin_pct",
+        "debt_to_equity",
+        "cfo_to_pat"
+      ],
+      "title": "Quality",
+      "type": "object"
+    },
+    "ReturnRange": {
+      "additionalProperties": false,
+      "description": "Descriptive historical range (4.5, D11). No coverage figure, not a forecast.",
+      "properties": {
+        "high_pct": {
+          "$ref": "#/$defs/Fact"
+        },
+        "horizon_days": {
+          "enum": [
+            21,
+            63
+          ],
+          "title": "Horizon Days",
+          "type": "integer"
+        },
+        "low_pct": {
+          "$ref": "#/$defs/Fact"
+        },
+        "method": {
+          "const": "empirical_rolling_756d",
+          "title": "Method",
+          "type": "string"
+        },
+        "text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Text"
+        },
+        "window_sessions": {
+          "minimum": 0,
+          "title": "Window Sessions",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "horizon_days",
+        "low_pct",
+        "high_pct",
+        "window_sessions",
+        "text",
+        "method"
+      ],
+      "title": "ReturnRange",
+      "type": "object"
+    },
+    "Risk": {
+      "additionalProperties": false,
+      "properties": {
+        "beta": {
+          "$ref": "#/$defs/Beta"
+        },
+        "drawdown": {
+          "$ref": "#/$defs/Drawdown"
+        },
+        "drawdown_series": {
+          "$ref": "#/$defs/DrawdownSeries"
+        },
+        "return_ranges": {
+          "items": {
+            "$ref": "#/$defs/ReturnRange"
+          },
+          "title": "Return Ranges",
+          "type": "array"
+        },
+        "var_1d": {
+          "items": {
+            "$ref": "#/$defs/VarRow"
+          },
+          "title": "Var 1D",
+          "type": "array"
+        },
+        "var_status": {
+          "enum": [
+            "ok",
+            "backtest_failed",
+            "unavailable"
+          ],
+          "title": "Var Status",
+          "type": "string"
+        },
+        "vol_252d_ann_pct": {
+          "$ref": "#/$defs/Fact"
+        },
+        "vol_63d_ann_pct": {
+          "$ref": "#/$defs/Fact"
+        },
+        "vol_ewma_ann_pct": {
+          "$ref": "#/$defs/Fact"
+        },
+        "vol_pctl": {
+          "$ref": "#/$defs/Fact"
+        }
+      },
+      "required": [
+        "vol_ewma_ann_pct",
+        "vol_63d_ann_pct",
+        "vol_252d_ann_pct",
+        "vol_pctl",
+        "beta",
+        "var_status",
+        "var_1d",
+        "drawdown",
+        "drawdown_series",
+        "return_ranges"
+      ],
+      "title": "Risk",
+      "type": "object"
+    },
+    "ScoreValue": {
+      "additionalProperties": false,
+      "description": "Altman / Beneish value only; zones and thresholds are never emitted.",
+      "properties": {
+        "applicable": {
+          "title": "Applicable",
+          "type": "boolean"
+        },
+        "value": {
+          "$ref": "#/$defs/Fact"
+        }
+      },
+      "required": [
+        "applicable",
+        "value"
+      ],
+      "title": "ScoreValue",
+      "type": "object"
+    },
+    "Snapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "benchmark_id": {
+          "const": "NIFTY50_PR",
+          "title": "Benchmark Id",
+          "type": "string"
+        },
+        "day_change_pct": {
+          "$ref": "#/$defs/Fact"
+        },
+        "excess_12m_vs_nifty50_pp": {
+          "$ref": "#/$defs/Fact"
+        },
+        "high_52w": {
+          "$ref": "#/$defs/Fact"
+        },
+        "last_close": {
+          "$ref": "#/$defs/Fact"
+        },
+        "low_52w": {
+          "$ref": "#/$defs/Fact"
+        },
+        "market_cap_cr": {
+          "$ref": "#/$defs/Fact"
+        },
+        "median_turnover_63d_cr": {
+          "$ref": "#/$defs/Fact"
+        },
+        "nifty50_r_12m_pct": {
+          "$ref": "#/$defs/Fact"
+        },
+        "pct_below_52w_high": {
+          "$ref": "#/$defs/Fact"
+        },
+        "r_12m_pct": {
+          "$ref": "#/$defs/Fact"
+        },
+        "r_1m_pct": {
+          "$ref": "#/$defs/Fact"
+        },
+        "r_3m_pct": {
+          "$ref": "#/$defs/Fact"
+        },
+        "r_6m_pct": {
+          "$ref": "#/$defs/Fact"
+        }
+      },
+      "required": [
+        "benchmark_id",
+        "last_close",
+        "day_change_pct",
+        "r_1m_pct",
+        "r_3m_pct",
+        "r_6m_pct",
+        "r_12m_pct",
+        "nifty50_r_12m_pct",
+        "excess_12m_vs_nifty50_pp",
+        "high_52w",
+        "low_52w",
+        "pct_below_52w_high",
+        "median_turnover_63d_cr",
+        "market_cap_cr"
+      ],
+      "title": "Snapshot",
+      "type": "object"
+    },
+    "SourceStatus": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "enum": [
+            "nse_bhavcopy",
+            "yfinance",
+            "computed",
+            "model"
+          ],
+          "title": "Id",
+          "type": "string"
+        },
+        "last_success": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Last Success"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Note"
+        },
+        "status": {
+          "enum": [
+            "ok",
+            "fallback",
+            "failed"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "last_success",
+        "status",
+        "note"
+      ],
+      "title": "SourceStatus",
+      "type": "object"
+    },
+    "Staleness": {
+      "additionalProperties": false,
+      "properties": {
+        "sessions_old": {
+          "minimum": 0,
+          "title": "Sessions Old",
+          "type": "integer"
+        },
+        "state": {
+          "enum": [
+            "fresh",
+            "stale",
+            "expired"
+          ],
+          "title": "State",
+          "type": "string"
+        }
+      },
+      "required": [
+        "sessions_old",
+        "state"
+      ],
+      "title": "Staleness",
+      "type": "object"
+    },
+    "Valuation": {
+      "additionalProperties": false,
+      "properties": {
+        "dividend_yield_pct": {
+          "$ref": "#/$defs/Fact"
+        },
+        "ev_ebitda": {
+          "$ref": "#/$defs/Fact"
+        },
+        "pb": {
+          "$ref": "#/$defs/Fact"
+        },
+        "pe_sector_pctl": {
+          "$ref": "#/$defs/Fact"
+        },
+        "pe_ttm": {
+          "$ref": "#/$defs/Fact"
+        }
+      },
+      "required": [
+        "pe_ttm",
+        "pb",
+        "ev_ebitda",
+        "dividend_yield_pct",
+        "pe_sector_pctl"
+      ],
+      "title": "Valuation",
+      "type": "object"
+    },
+    "VarBacktest": {
+      "additionalProperties": false,
+      "properties": {
+        "christoffersen_p": {
+          "title": "Christoffersen P",
+          "type": "number"
+        },
+        "exceptions": {
+          "minimum": 0,
+          "title": "Exceptions",
+          "type": "integer"
+        },
+        "expected": {
+          "title": "Expected",
+          "type": "number"
+        },
+        "kupiec_p": {
+          "title": "Kupiec P",
+          "type": "number"
+        },
+        "window_days": {
+          "const": 250,
+          "title": "Window Days",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "window_days",
+        "exceptions",
+        "expected",
+        "kupiec_p",
+        "christoffersen_p"
+      ],
+      "title": "VarBacktest",
+      "type": "object"
+    },
+    "VarRow": {
+      "additionalProperties": false,
+      "properties": {
+        "backtest": {
+          "$ref": "#/$defs/VarBacktest"
+        },
+        "cvar_pct": {
+          "$ref": "#/$defs/Fact"
+        },
+        "level": {
+          "title": "Level",
+          "type": "number"
+        },
+        "method": {
+          "enum": [
+            "historical_500d",
+            "fhs_ewma"
+          ],
+          "title": "Method",
+          "type": "string"
+        },
+        "var_pct": {
+          "$ref": "#/$defs/Fact"
+        }
+      },
+      "required": [
+        "level",
+        "method",
+        "var_pct",
+        "cvar_pct",
+        "backtest"
+      ],
+      "title": "VarRow",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "as_of": {
+      "$ref": "#/$defs/AsOf"
+    },
+    "company_name": {
+      "title": "Company Name",
+      "type": "string"
+    },
+    "compliance": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Compliance"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "coverage": {
+      "$ref": "#/$defs/Coverage"
+    },
+    "degraded_reasons": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Degraded Reasons",
+      "type": "array"
+    },
+    "engine_version": {
+      "pattern": "^re-\\d+\\.\\d+\\.\\d+\\+fv\\d+$",
+      "title": "Engine Version",
+      "type": "string"
+    },
+    "exchange": {
+      "const": "NSE",
+      "title": "Exchange",
+      "type": "string"
+    },
+    "factor_profile": {
+      "$ref": "#/$defs/FactorProfile"
+    },
+    "fundamentals": {
+      "$ref": "#/$defs/Fundamentals"
+    },
+    "isin": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Isin"
+    },
+    "live_track_record": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/LiveTrackRecord"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "model_card": {
+      "$ref": "#/$defs/ModelCard"
+    },
+    "narrative": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Narrative"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "origin": {
+      "enum": [
+        "nightly",
+        "on_demand"
+      ],
+      "title": "Origin",
+      "type": "string"
+    },
+    "outlooks": {
+      "items": {
+        "$ref": "#/$defs/HorizonOutlook"
+      },
+      "title": "Outlooks",
+      "type": "array"
+    },
+    "pipeline": {
+      "items": {
+        "$ref": "#/$defs/PipelineStage"
+      },
+      "title": "Pipeline",
+      "type": "array"
+    },
+    "provenance": {
+      "$ref": "#/$defs/Provenance"
+    },
+    "report_id": {
+      "format": "uuid4",
+      "title": "Report Id",
+      "type": "string"
+    },
+    "risk": {
+      "$ref": "#/$defs/Risk"
+    },
+    "schema_version": {
+      "const": "research.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "sector": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Sector"
+    },
+    "snapshot": {
+      "$ref": "#/$defs/Snapshot"
+    },
+    "staleness": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Staleness"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "status": {
+      "enum": [
+        "ok",
+        "degraded"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "symbol": {
+      "pattern": "^[A-Z0-9&-]{1,20}$",
+      "title": "Symbol",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "report_id",
+    "engine_version",
+    "origin",
+    "status",
+    "degraded_reasons",
+    "symbol",
+    "exchange",
+    "isin",
+    "company_name",
+    "sector",
+    "as_of",
+    "coverage",
+    "snapshot",
+    "outlooks",
+    "factor_profile",
+    "risk",
+    "fundamentals",
+    "model_card",
+    "provenance",
+    "pipeline"
+  ],
+  "title": "ResearchReport",
+  "type": "object"
+}

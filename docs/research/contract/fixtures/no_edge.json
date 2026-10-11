@@ -1,0 +1,1868 @@
+{
+  "as_of": {
+    "computed_at": "2026-10-09T14:20:00Z",
+    "market_date": "2026-10-09"
+  },
+  "company_name": "Demo Industries Ltd",
+  "compliance": {
+    "ai_disclosure": "An AI language model (DeepSeek) turns the computed figures into sentences. It does not compute or choose any number; an automated checker verifies every sentence, and a fixed template is shown if the check fails. Only public market data is sent to the AI provider.",
+    "disclaimer_id": "research_v1",
+    "disclaimer_text": "Nivesh is not registered with SEBI as a research analyst or investment adviser. This stock report is general, educational information computed from public market data. It is not investment advice, a research report or a recommendation to buy, sell or hold any security, and it does not consider your finances or goals. Figures describe the past; statistical patterns can weaken or vanish. Investments in the securities market are subject to market risks. Read all related documents carefully before investing.",
+    "lexicon_version": "lx-1",
+    "mode": "unregistered_educational",
+    "outlook_display": "tier_only",
+    "track_record_visible": false
+  },
+  "coverage": {
+    "in_universe": true,
+    "outlook_eligible": true,
+    "reason": null,
+    "turnover_rank": 37,
+    "universe_id": "NSE_LIQ200",
+    "universe_quality": "pit"
+  },
+  "degraded_reasons": [],
+  "engine_version": "re-1.0.0+fv1",
+  "exchange": "NSE",
+  "factor_profile": {
+    "families": [
+      {
+        "family": "momentum",
+        "label": "Momentum (higher = rose more over the past 3 to 12 months)",
+        "metrics": [
+          {
+            "feature_id": "mom_12_1",
+            "label": "Price return from 12 months to 1 month ago",
+            "pctl": {
+              "as_of": "2026-10-09",
+              "decimals": 0,
+              "display": "71st percentile",
+              "id": "factor.mom_12_1.pctl",
+              "label": "Price return from 12 months to 1 month ago, percentile",
+              "method": "fv1",
+              "reason": null,
+              "signed": false,
+              "source": "computed",
+              "status": "ok",
+              "unit": "pctl",
+              "value": 71.0
+            },
+            "value": {
+              "as_of": "2026-10-09",
+              "decimals": 1,
+              "display": "+18.4%",
+              "id": "factor.mom_12_1.value",
+              "label": "Price return from 12 months to 1 month ago",
+              "method": "fv1",
+              "reason": null,
+              "signed": true,
+              "source": "computed",
+              "status": "ok",
+              "unit": "pct",
+              "value": 18.4
+            }
+          },
+          {
+            "feature_id": "mom_6_1",
+            "label": "Price return from 6 months to 1 month ago",
+            "pctl": {
+              "as_of": "2026-10-09",
+              "decimals": 0,
+              "display": "66th percentile",
+              "id": "factor.mom_6_1.pctl",
+              "label": "Price return from 6 months to 1 month ago, percentile",
+              "method": "fv1",
+              "reason": null,
+              "signed": false,
+              "source": "computed",
+              "status": "ok",
+              "unit": "pctl",
+              "value": 66.0
+            },
+            "value": {
+              "as_of": "2026-10-09",
+              "decimals": 1,
+              "display": "+11.2%",
+              "id": "factor.mom_6_1.value",
+              "label": "Price return from 6 months to 1 month ago",
+              "method": "fv1",
+              "reason": null,
+              "signed": true,
+              "source": "computed",
+              "status": "ok",
+              "unit": "pct",
+              "value": 11.2
+            }
+          },
+          {
+            "feature_id": "mom_3_1",
+            "label": "Price return from 3 months to 1 month ago",
+            "pctl": {
+              "as_of": "2026-10-09",
+              "decimals": 0,
+              "display": "62nd percentile",
+              "id": "factor.mom_3_1.pctl",
+              "label": "Price return from 3 months to 1 month ago, percentile",
+              "method": "fv1",
+              "reason": null,
+              "signed": false,
+              "source": "computed",
+              "status": "ok",
+              "unit": "pctl",
+              "value": 62.0
+            },
+            "value": {
+              "as_of": "2026-10-09",
+              "decimals": 1,
+              "display": "+7.9%",
+              "id": "factor.mom_3_1.value",
+              "label": "Price return from 3 months to 1 month ago",
+              "method": "fv1",
+              "reason": null,
+              "signed": true,
+              "source": "computed",
+              "status": "ok",
+              "unit": "pct",
+              "value": 7.9
+            }
+          },
+          {
+            "feature_id": "mom_12_1_vs",
+            "label": "12-to-1-month return per unit of volatility",
+            "pctl": {
+              "as_of": "2026-10-09",
+              "decimals": 0,
+              "display": "68th percentile",
+              "id": "factor.mom_12_1_vs.pctl",
+              "label": "12-to-1-month return per unit of volatility, percentile",
+              "method": "fv1",
+              "reason": null,
+              "signed": false,
+              "source": "computed",
+              "status": "ok",
+              "unit": "pctl",
+              "value": 68.0
+            },
+            "value": {
+              "as_of": "2026-10-09",
+              "decimals": 2,
+              "display": "+0.71",
+              "id": "factor.mom_12_1_vs.value",
+              "label": "12-to-1-month return per unit of volatility",
+              "method": "fv1",
+              "reason": null,
+              "signed": true,
+              "source": "computed",
+              "status": "ok",
+              "unit": "ratio",
+              "value": 0.71
+            }
+          },
+          {
+            "feature_id": "dist_52wh",
+            "label": "Distance from the 52-week high",
+            "pctl": {
+              "as_of": "2026-10-09",
+              "decimals": 0,
+              "display": "58th percentile",
+              "id": "factor.dist_52wh.pctl",
+              "label": "Distance from the 52-week high, percentile",
+              "method": "fv1",
+              "reason": null,
+              "signed": false,
+              "source": "computed",
+              "status": "ok",
+              "unit": "pctl",
+              "value": 58.0
+            },
+            "value": {
+              "as_of": "2026-10-09",
+              "decimals": 1,
+              "display": "−7.9%",
+              "id": "factor.dist_52wh.value",
+              "label": "Distance from the 52-week high",
+              "method": "fv1",
+              "reason": null,
+              "signed": true,
+              "source": "computed",
+              "status": "ok",
+              "unit": "pct",
+              "value": -7.9
+            }
+          }
+        ],
+        "pctl": {
+          "as_of": "2026-10-09",
+          "decimals": 0,
+          "display": "68th percentile",
+          "id": "factor.momentum.pctl",
+          "label": "Momentum compared with the 200 most-traded NSE stocks",
+          "method": "fv1",
+          "reason": null,
+          "signed": false,
+          "source": "computed",
+          "status": "ok",
+          "unit": "pctl",
+          "value": 68.0
+        }
+      },
+      {
+        "family": "reversal",
+        "label": "Recent short-term move (higher = rose more)",
+        "metrics": [
+          {
+            "feature_id": "rev_5",
+            "label": "Price return, last 5 trading days",
+            "pctl": {
+              "as_of": "2026-10-09",
+              "decimals": 0,
+              "display": "34th percentile",
+              "id": "factor.rev_5.pctl",
+              "label": "Price return, last 5 trading days, percentile",
+              "method": "fv1",
+              "reason": null,
+              "signed": false,
+              "source": "computed",
+              "status": "ok",
+              "unit": "pctl",
+              "value": 34.0
+            },
+            "value": {
+              "as_of": "2026-10-09",
+              "decimals": 1,
+              "display": "−1.8%",
+              "id": "factor.rev_5.value",
+              "label": "Price return, last 5 trading days",
+              "method": "fv1",
+              "reason": null,
+              "signed": true,
+              "source": "computed",
+              "status": "ok",
+              "unit": "pct",
+              "value": -1.8
+            }
+          },
+          {
+            "feature_id": "rev_21",
+            "label": "Price return, last 21 trading days",
+            "pctl": {
+              "as_of": "2026-10-09",
+              "decimals": 0,
+              "display": "29th percentile",
+              "id": "factor.rev_21.pctl",
+              "label": "Price return, last 21 trading days, percentile",
+              "method": "fv1",
+              "reason": null,
+              "signed": false,
+              "source": "computed",
+              "status": "ok",
+              "unit": "pctl",
+              "value": 29.0
+            },
+            "value": {
+              "as_of": "2026-10-09",
+              "decimals": 1,
+              "display": "−3.1%",
+              "id": "factor.rev_21.value",
+              "label": "Price return, last 21 trading days",
+              "method": "fv1",
+              "reason": null,
+              "signed": true,
+              "source": "computed",
+              "status": "ok",
+              "unit": "pct",
+              "value": -3.1
+            }
+          }
+        ],
+        "pctl": {
+          "as_of": "2026-10-09",
+          "decimals": 0,
+          "display": "31st percentile",
+          "id": "factor.reversal.pctl",
+          "label": "Recent short-term move compared with the 200 most-traded NSE stocks",
+          "method": "fv1",
+          "reason": null,
+          "signed": false,
+          "source": "computed",
+          "status": "ok",
+          "unit": "pctl",
+          "value": 31.0
+        }
+      },
+      {
+        "family": "risk",
+        "label": "Risk (higher = more volatile)",
+        "metrics": [
+          {
+            "feature_id": "vol_21",
+            "label": "Annualised volatility, last 21 trading days",
+            "pctl": {
+              "as_of": "2026-10-09",
+              "decimals": 0,
+              "display": "55th percentile",
+              "id": "factor.vol_21.pctl",
+              "label": "Annualised volatility, last 21 trading days, percentile",
+              "method": "fv1",
+              "reason": null,
+              "signed": false,
+              "source": "computed",
+              "status": "ok",
+              "unit": "pctl",
+              "value": 55.0
+            },
+            "value": {
+              "as_of": "2026-10-09",
+              "decimals": 1,
+              "display": "22.4%",
+              "id": "factor.vol_21.value",
+              "label": "Annualised volatility, last 21 trading days",
+              "method": "fv1",
+              "reason": null,
+              "signed": false,
+              "source": "computed",
+              "status": "ok",
+              "unit": "pct",
+              "value": 22.4
+            }
+          },
+          {
+            "feature_id": "vol_63",
+            "label": "Annualised volatility, last 63 trading days",
+            "pctl": {
+              "as_of": "2026-10-09",
+              "decimals": 0,
+              "display": "52nd percentile",
+              "id": "factor.vol_63.pctl",
+              "label": "Annualised volatility, last 63 trading days, percentile",
+              "method": "fv1",
+              "reason": null,
+              "signed": false,
+              "source": "computed",
+              "status": "ok",
+              "unit": "pctl",
+              "value": 52.0
+            },
+            "value": {
+              "as_of": "2026-10-09",
+              "decimals": 1,
+              "display": "24.1%",
+              "id": "factor.vol_63.value",
+              "label": "Annualised volatility, last 63 trading days",
+              "method": "fv1",
+              "reason": null,
+              "signed": false,
+              "source": "computed",
+              "status": "ok",
+              "unit": "pct",
+              "value": 24.1
+            }
+          },
+          {
+            "feature_id": "vol_252",
+            "label": "Annualised volatility, last 252 trading days",
+            "pctl": {
+              "as_of": "2026-10-09",
+              "decimals": 0,
+              "display": "49th percentile",
+              "id": "factor.vol_252.pctl",
+              "label": "Annualised volatility, last 252 trading days, percentile",
+              "method": "fv1",
+              "reason": null,
+              "signed": false,
+              "source": "computed",
+              "status": "ok",
+              "unit": "pctl",
+              "value": 49.0
+            },
+            "value": {
+              "as_of": "2026-10-09",
+              "decimals": 1,
+              "display": "26.3%",
+              "id": "factor.vol_252.value",
+              "label": "Annualised volatility, last 252 trading days",
+              "method": "fv1",
+              "reason": null,
+              "signed": false,
+              "source": "computed",
+              "status": "ok",
+              "unit": "pct",
+              "value": 26.3
+            }
+          },
+          {
+            "feature_id": "beta_252",
+            "label": "Beta to the average of the 200 most-traded NSE stocks",
+            "pctl": {
+              "as_of": "2026-10-09",
+              "decimals": 0,
+              "display": "47th percentile",
+              "id": "factor.beta_252.pctl",
+              "label": "Beta to the average of the 200 most-traded NSE stocks, percentile",
+              "method": "fv1",
+              "reason": null,
+              "signed": false,
+              "source": "computed",
+              "status": "ok",
+              "unit": "pctl",
+              "value": 47.0
+            },
+            "value": {
+              "as_of": "2026-10-09",
+              "decimals": 2,
+              "display": "0.94",
+              "id": "factor.beta_252.value",
+              "label": "Beta to the average of the 200 most-traded NSE stocks",
+              "method": "fv1",
+              "reason": null,
+              "signed": false,
+              "source": "computed",
+              "status": "ok",
+              "unit": "ratio",
+              "value": 0.94
+            }
+          },
+          {
+            "feature_id": "idio_vol_63",
+            "label": "Stock-specific volatility, last 63 trading days",
+            "pctl": {
+              "as_of": "2026-10-09",
+              "decimals": 0,
+              "display": "51st percentile",
+              "id": "factor.idio_vol_63.pctl",
+              "label": "Stock-specific volatility, last 63 trading days, percentile",
+              "method": "fv1",
+              "reason": null,
+              "signed": false,
+              "source": "computed",
+              "status": "ok",
+              "unit": "pctl",
+              "value": 51.0
+            },
+            "value": {
+              "as_of": "2026-10-09",
+              "decimals": 1,
+              "display": "18.7%",
+              "id": "factor.idio_vol_63.value",
+              "label": "Stock-specific volatility, last 63 trading days",
+              "method": "fv1",
+              "reason": null,
+              "signed": false,
+              "source": "computed",
+              "status": "ok",
+              "unit": "pct",
+              "value": 18.7
+            }
+          },
+          {
+            "feature_id": "max_ret_21",
+            "label": "Largest one-day return, last 21 trading days",
+            "pctl": {
+              "as_of": "2026-10-09",
+              "decimals": 0,
+              "display": "44th percentile",
+              "id": "factor.max_ret_21.pctl",
+              "label": "Largest one-day return, last 21 trading days, percentile",
+              "method": "fv1",
+              "reason": null,
+              "signed": false,
+              "source": "computed",
+              "status": "ok",
+              "unit": "pctl",
+              "value": 44.0
+            },
+            "value": {
+              "as_of": "2026-10-09",
+              "decimals": 1,
+              "display": "+3.4%",
+              "id": "factor.max_ret_21.value",
+              "label": "Largest one-day return, last 21 trading days",
+              "method": "fv1",
+              "reason": null,
+              "signed": true,
+              "source": "computed",
+              "status": "ok",
+              "unit": "pct",
+              "value": 3.4
+            }
+          },
+          {
+            "feature_id": "downside_vol_63",
+            "label": "Downside volatility, last 63 trading days",
+            "pctl": {
+              "as_of": "2026-10-09",
+              "decimals": 0,
+              "display": "50th percentile",
+              "id": "factor.downside_vol_63.pctl",
+              "label": "Downside volatility, last 63 trading days, percentile",
+              "method": "fv1",
+              "reason": null,
+              "signed": false,
+              "source": "computed",
+              "status": "ok",
+              "unit": "pctl",
+              "value": 50.0
+            },
+            "value": {
+              "as_of": "2026-10-09",
+              "decimals": 1,
+              "display": "15.2%",
+              "id": "factor.downside_vol_63.value",
+              "label": "Downside volatility, last 63 trading days",
+              "method": "fv1",
+              "reason": null,
+              "signed": false,
+              "source": "computed",
+              "status": "ok",
+              "unit": "pct",
+              "value": 15.2
+            }
+          }
+        ],
+        "pctl": {
+          "as_of": "2026-10-09",
+          "decimals": 0,
+          "display": "50th percentile",
+          "id": "factor.risk.pctl",
+          "label": "Risk compared with the 200 most-traded NSE stocks",
+          "method": "fv1",
+          "reason": null,
+          "signed": false,
+          "source": "computed",
+          "status": "ok",
+          "unit": "pctl",
+          "value": 50.0
+        }
+      },
+      {
+        "family": "liquidity",
+        "label": "Liquidity (higher = easier to trade)",
+        "metrics": [
+          {
+            "feature_id": "log_adv_63",
+            "label": "Median daily value traded, last 63 trading days",
+            "pctl": {
+              "as_of": "2026-10-09",
+              "decimals": 0,
+              "display": "81st percentile",
+              "id": "factor.log_adv_63.pctl",
+              "label": "Median daily value traded, last 63 trading days, percentile",
+              "method": "fv1",
+              "reason": null,
+              "signed": false,
+              "source": "computed",
+              "status": "ok",
+              "unit": "pctl",
+              "value": 81.0
+            },
+            "value": {
+              "as_of": "2026-10-09",
+              "decimals": 1,
+              "display": "₹412.6 crore",
+              "id": "factor.log_adv_63.value",
+              "label": "Median daily value traded, last 63 trading days",
+              "method": "fv1",
+              "reason": null,
+              "signed": false,
+              "source": "computed",
+              "status": "ok",
+              "unit": "inr_cr",
+              "value": 412.6
+            }
+          },
+          {
+            "feature_id": "amihud_63",
+            "label": "Average price move per ₹100 crore traded",
+            "pctl": {
+              "as_of": "2026-10-09",
+              "decimals": 0,
+              "display": "79th percentile",
+              "id": "factor.amihud_63.pctl",
+              "label": "Average price move per ₹100 crore traded, percentile",
+              "method": "fv1",
+              "reason": null,
+              "signed": false,
+              "source": "computed",
+              "status": "ok",
+              "unit": "pctl",
+              "value": 79.0
+            },
+            "value": {
+              "as_of": "2026-10-09",
+              "decimals": 2,
+              "display": "0.42%",
+              "id": "factor.amihud_63.value",
+              "label": "Average price move per ₹100 crore traded",
+              "method": "fv1",
+              "reason": null,
+              "signed": false,
+              "source": "computed",
+              "status": "ok",
+              "unit": "pct",
+              "value": 0.42
+            }
+          },
+          {
+            "feature_id": "turnover_ratio_21_126",
+            "label": "Recent value traded compared with the 6-month median",
+            "pctl": {
+              "as_of": "2026-10-09",
+              "decimals": 0,
+              "display": "61st percentile",
+              "id": "factor.turnover_ratio_21_126.pctl",
+              "label": "Recent value traded compared with the 6-month median, percentile",
+              "method": "fv1",
+              "reason": null,
+              "signed": false,
+              "source": "computed",
+              "status": "ok",
+              "unit": "pctl",
+              "value": 61.0
+            },
+            "value": {
+              "as_of": "2026-10-09",
+              "decimals": 1,
+              "display": "+6.3%",
+              "id": "factor.turnover_ratio_21_126.value",
+              "label": "Recent value traded compared with the 6-month median",
+              "method": "fv1",
+              "reason": null,
+              "signed": true,
+              "source": "computed",
+              "status": "ok",
+              "unit": "pct",
+              "value": 6.3
+            }
+          }
+        ],
+        "pctl": {
+          "as_of": "2026-10-09",
+          "decimals": 0,
+          "display": "80th percentile",
+          "id": "factor.liquidity.pctl",
+          "label": "Liquidity compared with the 200 most-traded NSE stocks",
+          "method": "fv1",
+          "reason": null,
+          "signed": false,
+          "source": "computed",
+          "status": "ok",
+          "unit": "pctl",
+          "value": 80.0
+        }
+      },
+      {
+        "family": "trend",
+        "label": "Trend (higher = stronger recent uptrend)",
+        "metrics": [
+          {
+            "feature_id": "ma50_ma200",
+            "label": "50-day average price above or below the 200-day average",
+            "pctl": {
+              "as_of": "2026-10-09",
+              "decimals": 0,
+              "display": "63rd percentile",
+              "id": "factor.ma50_ma200.pctl",
+              "label": "50-day average price above or below the 200-day average, percentile",
+              "method": "fv1",
+              "reason": null,
+              "signed": false,
+              "source": "computed",
+              "status": "ok",
+              "unit": "pctl",
+              "value": 63.0
+            },
+            "value": {
+              "as_of": "2026-10-09",
+              "decimals": 1,
+              "display": "+4.1%",
+              "id": "factor.ma50_ma200.value",
+              "label": "50-day average price above or below the 200-day average",
+              "method": "fv1",
+              "reason": null,
+              "signed": true,
+              "source": "computed",
+              "status": "ok",
+              "unit": "pct",
+              "value": 4.1
+            }
+          },
+          {
+            "feature_id": "rsi_14",
+            "label": "Relative strength index, 14 days",
+            "pctl": {
+              "as_of": "2026-10-09",
+              "decimals": 0,
+              "display": "41st percentile",
+              "id": "factor.rsi_14.pctl",
+              "label": "Relative strength index, 14 days, percentile",
+              "method": "fv1",
+              "reason": null,
+              "signed": false,
+              "source": "computed",
+              "status": "ok",
+              "unit": "pctl",
+              "value": 41.0
+            },
+            "value": {
+              "as_of": "2026-10-09",
+              "decimals": 0,
+              "display": "46",
+              "id": "factor.rsi_14.value",
+              "label": "Relative strength index, 14 days",
+              "method": "fv1",
+              "reason": null,
+              "signed": false,
+              "source": "computed",
+              "status": "ok",
+              "unit": "ratio",
+              "value": 46.0
+            }
+          }
+        ],
+        "pctl": {
+          "as_of": "2026-10-09",
+          "decimals": 0,
+          "display": "54th percentile",
+          "id": "factor.trend.pctl",
+          "label": "Trend compared with the 200 most-traded NSE stocks",
+          "method": "fv1",
+          "reason": null,
+          "signed": false,
+          "source": "computed",
+          "status": "ok",
+          "unit": "pctl",
+          "value": 54.0
+        }
+      }
+    ],
+    "universe_id": "NSE_LIQ200"
+  },
+  "fundamentals": {
+    "altman_z_em": {
+      "applicable": true,
+      "value": {
+        "as_of": "2026-10-07",
+        "decimals": 2,
+        "display": "5.12",
+        "id": "fund.altman_z_em",
+        "label": "Altman Z″-score, emerging markets",
+        "method": null,
+        "reason": null,
+        "signed": false,
+        "source": "computed",
+        "status": "ok",
+        "unit": "ratio",
+        "value": 5.12
+      }
+    },
+    "beneish_m": {
+      "applicable": true,
+      "value": {
+        "as_of": "2026-10-07",
+        "decimals": 2,
+        "display": "−2.41",
+        "id": "fund.beneish_m",
+        "label": "Beneish M-score",
+        "method": null,
+        "reason": null,
+        "signed": false,
+        "source": "computed",
+        "status": "ok",
+        "unit": "ratio",
+        "value": -2.41
+      }
+    },
+    "fetched_at": "2026-10-07T03:00:00Z",
+    "fiscal_period_end": "2026-03-31",
+    "is_financial": false,
+    "piotroski": {
+      "f_score": {
+        "as_of": "2026-10-07",
+        "decimals": 0,
+        "display": "6",
+        "id": "fund.piotroski.f_score",
+        "label": "Piotroski F-score",
+        "method": null,
+        "reason": null,
+        "signed": false,
+        "source": "computed",
+        "status": "ok",
+        "unit": "count",
+        "value": 6.0
+      },
+      "max_possible": {
+        "as_of": "2026-10-07",
+        "decimals": 0,
+        "display": "8",
+        "id": "fund.piotroski.max_possible",
+        "label": "Piotroski checks available",
+        "method": null,
+        "reason": null,
+        "signed": false,
+        "source": "computed",
+        "status": "ok",
+        "unit": "count",
+        "value": 8.0
+      },
+      "signals": [
+        {
+          "id": "roa_positive",
+          "value": 1
+        },
+        {
+          "id": "cfo_positive",
+          "value": 1
+        },
+        {
+          "id": "roa_improving",
+          "value": 1
+        },
+        {
+          "id": "accruals",
+          "value": 0
+        },
+        {
+          "id": "leverage_down",
+          "value": 1
+        },
+        {
+          "id": "liquidity_up",
+          "value": null
+        },
+        {
+          "id": "no_dilution",
+          "value": 1
+        },
+        {
+          "id": "gross_margin_up",
+          "value": 0
+        },
+        {
+          "id": "asset_turnover_up",
+          "value": 1
+        }
+      ]
+    },
+    "point_in_time": false,
+    "quality": {
+      "cfo_to_pat": {
+        "as_of": "2026-10-07",
+        "decimals": 2,
+        "display": "1.08",
+        "id": "fund.cfo_to_pat",
+        "label": "Operating cash flow to net profit",
+        "method": null,
+        "reason": null,
+        "signed": false,
+        "source": "yfinance",
+        "status": "ok",
+        "unit": "ratio",
+        "value": 1.08
+      },
+      "debt_to_equity": {
+        "as_of": "2026-10-07",
+        "decimals": 2,
+        "display": "0.42",
+        "id": "fund.debt_to_equity",
+        "label": "Debt to equity",
+        "method": null,
+        "reason": null,
+        "signed": false,
+        "source": "yfinance",
+        "status": "ok",
+        "unit": "ratio",
+        "value": 0.42
+      },
+      "operating_margin_pct": {
+        "as_of": "2026-10-07",
+        "decimals": 1,
+        "display": "18.9%",
+        "id": "fund.operating_margin_pct",
+        "label": "Operating margin",
+        "method": null,
+        "reason": null,
+        "signed": false,
+        "source": "yfinance",
+        "status": "ok",
+        "unit": "pct",
+        "value": 18.9
+      },
+      "roe_pct": {
+        "as_of": "2026-10-07",
+        "decimals": 1,
+        "display": "16.4%",
+        "id": "fund.roe_pct",
+        "label": "Return on equity",
+        "method": null,
+        "reason": null,
+        "signed": false,
+        "source": "yfinance",
+        "status": "ok",
+        "unit": "pct",
+        "value": 16.4
+      }
+    },
+    "reason": null,
+    "source": "yfinance",
+    "statement_basis": "consolidated",
+    "status": "ok",
+    "valuation": {
+      "dividend_yield_pct": {
+        "as_of": "2026-10-07",
+        "decimals": 2,
+        "display": "0.85%",
+        "id": "fund.dividend_yield_pct",
+        "label": "Dividend yield",
+        "method": null,
+        "reason": null,
+        "signed": false,
+        "source": "yfinance",
+        "status": "ok",
+        "unit": "pct",
+        "value": 0.85
+      },
+      "ev_ebitda": {
+        "as_of": "2026-10-07",
+        "decimals": 1,
+        "display": "14.2x",
+        "id": "fund.ev_ebitda",
+        "label": "Enterprise value to EBITDA",
+        "method": null,
+        "reason": null,
+        "signed": false,
+        "source": "yfinance",
+        "status": "ok",
+        "unit": "x",
+        "value": 14.2
+      },
+      "pb": {
+        "as_of": "2026-10-07",
+        "decimals": 1,
+        "display": "3.8x",
+        "id": "fund.pb",
+        "label": "Price to book value",
+        "method": null,
+        "reason": null,
+        "signed": false,
+        "source": "yfinance",
+        "status": "ok",
+        "unit": "x",
+        "value": 3.8
+      },
+      "pe_sector_pctl": {
+        "as_of": "2026-10-07",
+        "decimals": 0,
+        "display": "58th percentile",
+        "id": "fund.pe_sector_pctl",
+        "label": "Price to earnings compared with sector peers",
+        "method": null,
+        "reason": null,
+        "signed": false,
+        "source": "computed",
+        "status": "ok",
+        "unit": "pctl",
+        "value": 58.0
+      },
+      "pe_ttm": {
+        "as_of": "2026-10-07",
+        "decimals": 1,
+        "display": "24.6x",
+        "id": "fund.pe_ttm",
+        "label": "Price to earnings, trailing 12 months",
+        "method": null,
+        "reason": null,
+        "signed": false,
+        "source": "yfinance",
+        "status": "ok",
+        "unit": "x",
+        "value": 24.6
+      }
+    }
+  },
+  "isin": "INE000D01019",
+  "live_track_record": {
+    "horizons": [
+      {
+        "horizon_days": 21,
+        "independent_periods": 2,
+        "matured_dates": 47,
+        "min_periods_required": 12,
+        "since": "2026-07-06",
+        "state": "collecting"
+      },
+      {
+        "horizon_days": 63,
+        "independent_periods": 0,
+        "matured_dates": 6,
+        "min_periods_required": 12,
+        "since": "2026-07-06",
+        "state": "collecting"
+      }
+    ],
+    "visible": false
+  },
+  "model_card": {
+    "data_period": "2008-01-01 to 2026-06-30",
+    "feature_version": "fv1",
+    "horizons": [
+      {
+        "horizon_days": 21,
+        "tier_text": "No reliable edge at this horizon: in testing, the model did not rank stocks better than simple rules with enough confidence, so no stock-level estimate is shown. This says nothing good or bad about this stock."
+      },
+      {
+        "horizon_days": 63,
+        "tier_text": "No reliable edge at this horizon: in testing, the model did not rank stocks better than simple rules with enough confidence, so no stock-level estimate is shown. This says nothing good or bad about this stock."
+      }
+    ],
+    "label_definition": "Centred percentile rank of the next 21- or 63-trading-day log price return (dividends excluded) within the 200 most-traded NSE stocks",
+    "limitations": [
+      "Prices exclude dividends.",
+      "Fundamentals come from Yahoo Finance and are not point-in-time.",
+      "Statistical patterns found in past data can weaken or vanish."
+    ],
+    "manifest_sha256": "a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3",
+    "procedure_id": "rg-lgbm-v1",
+    "trained_through": "2026-06-30",
+    "universe_id": "NSE_LIQ200",
+    "universe_quality": "pit"
+  },
+  "narrative": {
+    "attempts": 1,
+    "facts_hash": "f2faf0a5e92595205f82f710276797e40a32916c85265192be537eea84322570",
+    "language": "en",
+    "prompt_version": "rf-1",
+    "sections": [
+      {
+        "id": "risk",
+        "text": "Annualised volatility (recent-weighted): 23.8%. Volatility was around the middle of the 200 most-traded NSE stocks. Largest fall from a peak, last 3 years: −27.4%."
+      },
+      {
+        "id": "factor_profile",
+        "text": "Liquidity was among the highest fifth of the 200 most-traded NSE stocks. Momentum was above the middle of the 200 most-traded NSE stocks."
+      },
+      {
+        "id": "fundamentals",
+        "text": "Price to earnings, trailing 12 months: 24.6x. Return on equity: 16.4%. Piotroski F-score: 6 of 8 available checks."
+      }
+    ],
+    "status": "llm_validated",
+    "summary": "Demo Industries Ltd last closed at ₹2,875.40 on 9 Oct 2026. Its price return over the past year was +14.2%, against +8.4% for the Nifty 50.",
+    "validator_version": "gv-1"
+  },
+  "origin": "nightly",
+  "outlooks": [
+    {
+      "cohort": null,
+      "event": "finishes in the top half of the 200 most-traded NSE stocks by price return (dividends excluded) over the next 21 trading days",
+      "evidence_tier": "no_reliable_edge",
+      "horizon_days": 21,
+      "horizon_label": "about 1 month (21 trading days)",
+      "model_id": "rg-lgbm-v1-h21-20260630",
+      "prediction_id": 120481,
+      "procedure_id": "rg-lgbm-v1",
+      "reason_codes": [
+        "gate_failed:G1",
+        "gate_failed:G2"
+      ],
+      "tier_text": "No reliable edge at this horizon: in testing, the model did not rank stocks better than simple rules with enough confidence, so no stock-level estimate is shown. This says nothing good or bad about this stock."
+    },
+    {
+      "cohort": null,
+      "event": "finishes in the top half of the 200 most-traded NSE stocks by price return (dividends excluded) over the next 63 trading days",
+      "evidence_tier": "no_reliable_edge",
+      "horizon_days": 63,
+      "horizon_label": "about 3 months (63 trading days)",
+      "model_id": "rg-lgbm-v1-h63-20260630",
+      "prediction_id": 120482,
+      "procedure_id": "rg-lgbm-v1",
+      "reason_codes": [
+        "gate_failed:G1",
+        "gate_failed:G2"
+      ],
+      "tier_text": "No reliable edge at this horizon: in testing, the model did not rank stocks better than simple rules with enough confidence, so no stock-level estimate is shown. This says nothing good or bad about this stock."
+    }
+  ],
+  "pipeline": [
+    {
+      "detail": null,
+      "stage": "prices",
+      "status": "ok"
+    },
+    {
+      "detail": null,
+      "stage": "universe",
+      "status": "ok"
+    },
+    {
+      "detail": null,
+      "stage": "features",
+      "status": "ok"
+    },
+    {
+      "detail": null,
+      "stage": "scores",
+      "status": "ok"
+    },
+    {
+      "detail": null,
+      "stage": "risk",
+      "status": "ok"
+    },
+    {
+      "detail": null,
+      "stage": "fundamentals",
+      "status": "ok"
+    },
+    {
+      "detail": null,
+      "stage": "assemble",
+      "status": "ok"
+    }
+  ],
+  "provenance": {
+    "config_sha256": "087ea137d486b3baceddd575fab994a2f01417743f253435073f1dfdd2aaf4f9",
+    "cost_model_version": "nse_delivery_2026_v1",
+    "data_sha256": "5e8c1f2a9b3d4e6f9b3d4e6f9b3d4e6f9b3d4e6f9b3d4e6f9b3d4e6f9b3d4e6f",
+    "data_snapshot_id": "snap-20261009-5e8c1f2a",
+    "engine_version": "re-1.0.0+fv1",
+    "feature_version": "fv1",
+    "git_sha": "4f1d2c3b5a6e7f8091a2b3c4d5e6f708192a3b4c",
+    "sources": [
+      {
+        "id": "nse_bhavcopy",
+        "last_success": "2026-10-09",
+        "note": null,
+        "status": "ok"
+      },
+      {
+        "id": "yfinance",
+        "last_success": "2026-10-09",
+        "note": null,
+        "status": "ok"
+      }
+    ]
+  },
+  "report_id": "3f1c2a9e-5b7d-4e2a-9c1f-0a6b8d4e2f71",
+  "risk": {
+    "beta": {
+      "benchmark_id": "NIFTY50_PR",
+      "blume_adjusted": {
+        "as_of": "2026-10-09",
+        "decimals": 2,
+        "display": "0.98",
+        "id": "risk.beta.blume_adjusted",
+        "label": "Beta to the Nifty 50, adjusted towards 1",
+        "method": "blume_0.67",
+        "reason": null,
+        "signed": false,
+        "source": "computed",
+        "status": "ok",
+        "unit": "ratio",
+        "value": 0.98
+      },
+      "method": "dimson_lag1_daily_252",
+      "raw": {
+        "as_of": "2026-10-09",
+        "decimals": 2,
+        "display": "0.97",
+        "id": "risk.beta.raw",
+        "label": "Beta to the Nifty 50",
+        "method": "dimson_lag1_daily_252",
+        "reason": null,
+        "signed": false,
+        "source": "computed",
+        "status": "ok",
+        "unit": "ratio",
+        "value": 0.97
+      },
+      "se": {
+        "as_of": "2026-10-09",
+        "decimals": 2,
+        "display": "0.06",
+        "id": "risk.beta.se",
+        "label": "Standard error of the beta to the Nifty 50",
+        "method": "dimson_lag1_daily_252",
+        "reason": null,
+        "signed": false,
+        "source": "computed",
+        "status": "ok",
+        "unit": "ratio",
+        "value": 0.06
+      }
+    },
+    "drawdown": {
+      "current_pct": {
+        "as_of": "2026-10-09",
+        "decimals": 1,
+        "display": "−7.9%",
+        "id": "risk.drawdown.current_pct",
+        "label": "Current distance from the last peak",
+        "method": null,
+        "reason": null,
+        "signed": true,
+        "source": "computed",
+        "status": "ok",
+        "unit": "pct",
+        "value": -7.9
+      },
+      "days_since_peak": {
+        "as_of": "2026-10-09",
+        "decimals": 0,
+        "display": "14 trading days",
+        "id": "risk.drawdown.days_since_peak",
+        "label": "Trading days since the last peak",
+        "method": null,
+        "reason": null,
+        "signed": false,
+        "source": "computed",
+        "status": "ok",
+        "unit": "sessions",
+        "value": 14.0
+      },
+      "max_1y_pct": {
+        "as_of": "2026-10-09",
+        "decimals": 1,
+        "display": "−18.6%",
+        "id": "risk.drawdown.max_1y_pct",
+        "label": "Largest fall from a peak, last 1 year",
+        "method": null,
+        "reason": null,
+        "signed": true,
+        "source": "computed",
+        "status": "ok",
+        "unit": "pct",
+        "value": -18.6
+      },
+      "max_3y_pct": {
+        "as_of": "2026-10-09",
+        "decimals": 1,
+        "display": "−27.4%",
+        "id": "risk.drawdown.max_3y_pct",
+        "label": "Largest fall from a peak, last 3 years",
+        "method": null,
+        "reason": null,
+        "signed": true,
+        "source": "computed",
+        "status": "ok",
+        "unit": "pct",
+        "value": -27.4
+      },
+      "max_5y_pct": {
+        "as_of": "2026-10-09",
+        "decimals": 1,
+        "display": "−35.2%",
+        "id": "risk.drawdown.max_5y_pct",
+        "label": "Largest fall from a peak, last 5 years",
+        "method": null,
+        "reason": null,
+        "signed": true,
+        "source": "computed",
+        "status": "ok",
+        "unit": "pct",
+        "value": -35.2
+      },
+      "ulcer_1y": {
+        "as_of": "2026-10-09",
+        "decimals": 1,
+        "display": "6.2",
+        "id": "risk.drawdown.ulcer_1y",
+        "label": "Ulcer index, last 1 year",
+        "method": null,
+        "reason": null,
+        "signed": false,
+        "source": "computed",
+        "status": "ok",
+        "unit": "ratio",
+        "value": 6.2
+      }
+    },
+    "drawdown_series": {
+      "freq": "W",
+      "points": [
+        [
+          "2026-04-17",
+          -12.4
+        ],
+        [
+          "2026-04-24",
+          -10.9
+        ],
+        [
+          "2026-05-01",
+          -9.8
+        ],
+        [
+          "2026-05-08",
+          -11.6
+        ],
+        [
+          "2026-05-15",
+          -14.2
+        ],
+        [
+          "2026-05-22",
+          -16.8
+        ],
+        [
+          "2026-05-29",
+          -18.6
+        ],
+        [
+          "2026-06-05",
+          -15.3
+        ],
+        [
+          "2026-06-12",
+          -12.1
+        ],
+        [
+          "2026-06-19",
+          -9.4
+        ],
+        [
+          "2026-06-26",
+          -7.2
+        ],
+        [
+          "2026-07-03",
+          -5.1
+        ],
+        [
+          "2026-07-10",
+          -3.8
+        ],
+        [
+          "2026-07-17",
+          -2.2
+        ],
+        [
+          "2026-07-24",
+          0.0
+        ],
+        [
+          "2026-07-31",
+          -1.4
+        ],
+        [
+          "2026-08-07",
+          -3.6
+        ],
+        [
+          "2026-08-14",
+          -2.9
+        ],
+        [
+          "2026-08-21",
+          -0.8
+        ],
+        [
+          "2026-08-28",
+          0.0
+        ],
+        [
+          "2026-09-04",
+          -1.9
+        ],
+        [
+          "2026-09-11",
+          -4.4
+        ],
+        [
+          "2026-09-18",
+          -6.1
+        ],
+        [
+          "2026-09-25",
+          -5.3
+        ],
+        [
+          "2026-10-02",
+          -6.8
+        ],
+        [
+          "2026-10-09",
+          -7.9
+        ]
+      ],
+      "unit": "pct"
+    },
+    "return_ranges": [
+      {
+        "high_pct": {
+          "as_of": "2026-10-09",
+          "decimals": 1,
+          "display": "+8.9%",
+          "id": "risk.range.21.high_pct",
+          "label": "High end of this stock's past 21-trading-day returns (90th percentile)",
+          "method": "empirical_rolling_756d",
+          "reason": null,
+          "signed": true,
+          "source": "computed",
+          "status": "ok",
+          "unit": "pct",
+          "value": 8.9
+        },
+        "horizon_days": 21,
+        "low_pct": {
+          "as_of": "2026-10-09",
+          "decimals": 1,
+          "display": "−6.2%",
+          "id": "risk.range.21.low_pct",
+          "label": "Low end of this stock's past 21-trading-day returns (10th percentile)",
+          "method": "empirical_rolling_756d",
+          "reason": null,
+          "signed": true,
+          "source": "computed",
+          "status": "ok",
+          "unit": "pct",
+          "value": -6.2
+        },
+        "method": "empirical_rolling_756d",
+        "text": "Over the last 3 years, 8 in 10 of this stock's 21-trading-day returns fell between −6.2% and +8.9%. This is not a forecast.",
+        "window_sessions": 756
+      },
+      {
+        "high_pct": {
+          "as_of": "2026-10-09",
+          "decimals": 1,
+          "display": "+17.3%",
+          "id": "risk.range.63.high_pct",
+          "label": "High end of this stock's past 63-trading-day returns (90th percentile)",
+          "method": "empirical_rolling_756d",
+          "reason": null,
+          "signed": true,
+          "source": "computed",
+          "status": "ok",
+          "unit": "pct",
+          "value": 17.3
+        },
+        "horizon_days": 63,
+        "low_pct": {
+          "as_of": "2026-10-09",
+          "decimals": 1,
+          "display": "−10.8%",
+          "id": "risk.range.63.low_pct",
+          "label": "Low end of this stock's past 63-trading-day returns (10th percentile)",
+          "method": "empirical_rolling_756d",
+          "reason": null,
+          "signed": true,
+          "source": "computed",
+          "status": "ok",
+          "unit": "pct",
+          "value": -10.8
+        },
+        "method": "empirical_rolling_756d",
+        "text": "Over the last 3 years, 8 in 10 of this stock's 63-trading-day returns fell between −10.8% and +17.3%. This is not a forecast.",
+        "window_sessions": 756
+      }
+    ],
+    "var_1d": [
+      {
+        "backtest": {
+          "christoffersen_p": 0.41,
+          "exceptions": 13,
+          "expected": 12.5,
+          "kupiec_p": 0.89,
+          "window_days": 250
+        },
+        "cvar_pct": {
+          "as_of": "2026-10-09",
+          "decimals": 2,
+          "display": "−3.18%",
+          "id": "risk.var_1d.95.historical_500d.cvar_pct",
+          "label": "Average loss beyond the one-day threshold, 95%",
+          "method": "historical_500d",
+          "reason": null,
+          "signed": true,
+          "source": "computed",
+          "status": "ok",
+          "unit": "pct",
+          "value": -3.18
+        },
+        "level": 0.95,
+        "method": "historical_500d",
+        "var_pct": {
+          "as_of": "2026-10-09",
+          "decimals": 2,
+          "display": "−2.31%",
+          "id": "risk.var_1d.95.historical_500d.var_pct",
+          "label": "One-day loss threshold, 95%",
+          "method": "historical_500d",
+          "reason": null,
+          "signed": true,
+          "source": "computed",
+          "status": "ok",
+          "unit": "pct",
+          "value": -2.31
+        }
+      },
+      {
+        "backtest": {
+          "christoffersen_p": 0.52,
+          "exceptions": 14,
+          "expected": 12.5,
+          "kupiec_p": 0.67,
+          "window_days": 250
+        },
+        "cvar_pct": {
+          "as_of": "2026-10-09",
+          "decimals": 2,
+          "display": "−2.97%",
+          "id": "risk.var_1d.95.fhs_ewma.cvar_pct",
+          "label": "Average loss beyond the one-day threshold, 95%",
+          "method": "fhs_ewma",
+          "reason": null,
+          "signed": true,
+          "source": "computed",
+          "status": "ok",
+          "unit": "pct",
+          "value": -2.97
+        },
+        "level": 0.95,
+        "method": "fhs_ewma",
+        "var_pct": {
+          "as_of": "2026-10-09",
+          "decimals": 2,
+          "display": "−2.18%",
+          "id": "risk.var_1d.95.fhs_ewma.var_pct",
+          "label": "One-day loss threshold, 95%",
+          "method": "fhs_ewma",
+          "reason": null,
+          "signed": true,
+          "source": "computed",
+          "status": "ok",
+          "unit": "pct",
+          "value": -2.18
+        }
+      },
+      {
+        "backtest": {
+          "christoffersen_p": 0.79,
+          "exceptions": 3,
+          "expected": 2.5,
+          "kupiec_p": 0.76,
+          "window_days": 250
+        },
+        "cvar_pct": {
+          "as_of": "2026-10-09",
+          "decimals": 2,
+          "display": "−4.85%",
+          "id": "risk.var_1d.99.historical_500d.cvar_pct",
+          "label": "Average loss beyond the one-day threshold, 99%",
+          "method": "historical_500d",
+          "reason": null,
+          "signed": true,
+          "source": "computed",
+          "status": "ok",
+          "unit": "pct",
+          "value": -4.85
+        },
+        "level": 0.99,
+        "method": "historical_500d",
+        "var_pct": {
+          "as_of": "2026-10-09",
+          "decimals": 2,
+          "display": "−3.92%",
+          "id": "risk.var_1d.99.historical_500d.var_pct",
+          "label": "One-day loss threshold, 99%",
+          "method": "historical_500d",
+          "reason": null,
+          "signed": true,
+          "source": "computed",
+          "status": "ok",
+          "unit": "pct",
+          "value": -3.92
+        }
+      },
+      {
+        "backtest": {
+          "christoffersen_p": 0.72,
+          "exceptions": 4,
+          "expected": 2.5,
+          "kupiec_p": 0.37,
+          "window_days": 250
+        },
+        "cvar_pct": {
+          "as_of": "2026-10-09",
+          "decimals": 2,
+          "display": "−4.40%",
+          "id": "risk.var_1d.99.fhs_ewma.cvar_pct",
+          "label": "Average loss beyond the one-day threshold, 99%",
+          "method": "fhs_ewma",
+          "reason": null,
+          "signed": true,
+          "source": "computed",
+          "status": "ok",
+          "unit": "pct",
+          "value": -4.4
+        },
+        "level": 0.99,
+        "method": "fhs_ewma",
+        "var_pct": {
+          "as_of": "2026-10-09",
+          "decimals": 2,
+          "display": "−3.61%",
+          "id": "risk.var_1d.99.fhs_ewma.var_pct",
+          "label": "One-day loss threshold, 99%",
+          "method": "fhs_ewma",
+          "reason": null,
+          "signed": true,
+          "source": "computed",
+          "status": "ok",
+          "unit": "pct",
+          "value": -3.61
+        }
+      }
+    ],
+    "var_status": "ok",
+    "vol_252d_ann_pct": {
+      "as_of": "2026-10-09",
+      "decimals": 1,
+      "display": "26.3%",
+      "id": "risk.vol_252d_ann_pct",
+      "label": "Annualised volatility, last 12 months",
+      "method": null,
+      "reason": null,
+      "signed": false,
+      "source": "computed",
+      "status": "ok",
+      "unit": "pct",
+      "value": 26.3
+    },
+    "vol_63d_ann_pct": {
+      "as_of": "2026-10-09",
+      "decimals": 1,
+      "display": "24.1%",
+      "id": "risk.vol_63d_ann_pct",
+      "label": "Annualised volatility, last 3 months",
+      "method": null,
+      "reason": null,
+      "signed": false,
+      "source": "computed",
+      "status": "ok",
+      "unit": "pct",
+      "value": 24.1
+    },
+    "vol_ewma_ann_pct": {
+      "as_of": "2026-10-09",
+      "decimals": 1,
+      "display": "23.8%",
+      "id": "risk.vol_ewma_ann_pct",
+      "label": "Annualised volatility (recent-weighted)",
+      "method": "ewma_0.94",
+      "reason": null,
+      "signed": false,
+      "source": "computed",
+      "status": "ok",
+      "unit": "pct",
+      "value": 23.8
+    },
+    "vol_pctl": {
+      "as_of": "2026-10-09",
+      "decimals": 0,
+      "display": "52nd percentile",
+      "id": "risk.vol_pctl",
+      "label": "Volatility compared with the 200 most-traded NSE stocks",
+      "method": null,
+      "reason": null,
+      "signed": false,
+      "source": "computed",
+      "status": "ok",
+      "unit": "pctl",
+      "value": 52.0
+    }
+  },
+  "schema_version": "research.v1",
+  "sector": "Industrials",
+  "snapshot": {
+    "benchmark_id": "NIFTY50_PR",
+    "day_change_pct": {
+      "as_of": "2026-10-09",
+      "decimals": 2,
+      "display": "+1.27%",
+      "id": "snapshot.day_change_pct",
+      "label": "Change on the day",
+      "method": null,
+      "reason": null,
+      "signed": true,
+      "source": "nse_bhavcopy",
+      "status": "ok",
+      "unit": "pct",
+      "value": 1.27
+    },
+    "excess_12m_vs_nifty50_pp": {
+      "as_of": "2026-10-09",
+      "decimals": 1,
+      "display": "+5.8 percentage points",
+      "id": "snapshot.excess_12m_vs_nifty50_pp",
+      "label": "Price return above or below the Nifty 50, last 12 months (dividends excluded)",
+      "method": null,
+      "reason": null,
+      "signed": true,
+      "source": "computed",
+      "status": "ok",
+      "unit": "pp",
+      "value": 5.78
+    },
+    "high_52w": {
+      "as_of": "2026-10-09",
+      "decimals": 2,
+      "display": "₹3,120.55",
+      "id": "snapshot.high_52w",
+      "label": "52-week high (adjusted for splits and bonuses)",
+      "method": null,
+      "reason": null,
+      "signed": false,
+      "source": "computed",
+      "status": "ok",
+      "unit": "inr",
+      "value": 3120.55
+    },
+    "last_close": {
+      "as_of": "2026-10-09",
+      "decimals": 2,
+      "display": "₹2,875.40",
+      "id": "snapshot.last_close",
+      "label": "Last close",
+      "method": null,
+      "reason": null,
+      "signed": false,
+      "source": "nse_bhavcopy",
+      "status": "ok",
+      "unit": "inr",
+      "value": 2875.4
+    },
+    "low_52w": {
+      "as_of": "2026-10-09",
+      "decimals": 2,
+      "display": "₹2,310.10",
+      "id": "snapshot.low_52w",
+      "label": "52-week low (adjusted for splits and bonuses)",
+      "method": null,
+      "reason": null,
+      "signed": false,
+      "source": "computed",
+      "status": "ok",
+      "unit": "inr",
+      "value": 2310.1
+    },
+    "market_cap_cr": {
+      "as_of": "2026-10-07",
+      "decimals": 0,
+      "display": "₹1.9 lakh crore",
+      "id": "snapshot.market_cap_cr",
+      "label": "Market capitalisation",
+      "method": null,
+      "reason": null,
+      "signed": false,
+      "source": "yfinance",
+      "status": "ok",
+      "unit": "inr_cr",
+      "value": 194532.0
+    },
+    "median_turnover_63d_cr": {
+      "as_of": "2026-10-09",
+      "decimals": 1,
+      "display": "₹412.6 crore",
+      "id": "snapshot.median_turnover_63d_cr",
+      "label": "Median daily value traded, last 3 months",
+      "method": null,
+      "reason": null,
+      "signed": false,
+      "source": "nse_bhavcopy",
+      "status": "ok",
+      "unit": "inr_cr",
+      "value": 412.6
+    },
+    "nifty50_r_12m_pct": {
+      "as_of": "2026-10-09",
+      "decimals": 1,
+      "display": "+8.4%",
+      "id": "snapshot.nifty50_r_12m_pct",
+      "label": "Nifty 50 price return, last 12 months",
+      "method": null,
+      "reason": null,
+      "signed": true,
+      "source": "yfinance",
+      "status": "ok",
+      "unit": "pct",
+      "value": 8.43
+    },
+    "pct_below_52w_high": {
+      "as_of": "2026-10-09",
+      "decimals": 1,
+      "display": "7.9%",
+      "id": "snapshot.pct_below_52w_high",
+      "label": "Distance below the 52-week high",
+      "method": null,
+      "reason": null,
+      "signed": false,
+      "source": "computed",
+      "status": "ok",
+      "unit": "pct",
+      "value": 7.86
+    },
+    "r_12m_pct": {
+      "as_of": "2026-10-09",
+      "decimals": 1,
+      "display": "+14.2%",
+      "id": "snapshot.r_12m_pct",
+      "label": "Price return, last 12 months (dividends excluded)",
+      "method": null,
+      "reason": null,
+      "signed": true,
+      "source": "computed",
+      "status": "ok",
+      "unit": "pct",
+      "value": 14.21
+    },
+    "r_1m_pct": {
+      "as_of": "2026-10-09",
+      "decimals": 1,
+      "display": "−3.1%",
+      "id": "snapshot.r_1m_pct",
+      "label": "Price return, last 1 month (dividends excluded)",
+      "method": null,
+      "reason": null,
+      "signed": true,
+      "source": "computed",
+      "status": "ok",
+      "unit": "pct",
+      "value": -3.14
+    },
+    "r_3m_pct": {
+      "as_of": "2026-10-09",
+      "decimals": 1,
+      "display": "+4.6%",
+      "id": "snapshot.r_3m_pct",
+      "label": "Price return, last 3 months (dividends excluded)",
+      "method": null,
+      "reason": null,
+      "signed": true,
+      "source": "computed",
+      "status": "ok",
+      "unit": "pct",
+      "value": 4.62
+    },
+    "r_6m_pct": {
+      "as_of": "2026-10-09",
+      "decimals": 1,
+      "display": "+9.9%",
+      "id": "snapshot.r_6m_pct",
+      "label": "Price return, last 6 months (dividends excluded)",
+      "method": null,
+      "reason": null,
+      "signed": true,
+      "source": "computed",
+      "status": "ok",
+      "unit": "pct",
+      "value": 9.85
+    }
+  },
+  "staleness": {
+    "sessions_old": 0,
+    "state": "fresh"
+  },
+  "status": "ok",
+  "symbol": "DEMOIND"
+}
