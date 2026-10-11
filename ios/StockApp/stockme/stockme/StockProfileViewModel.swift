@@ -82,7 +82,8 @@ class StockProfileViewModel: ObservableObject {
         await MainActor.run { overviewLoading = true }
         let info = await NetworkManager.shared.quickInfo(ticker: ticker, exchange: exchange)
         await MainActor.run {
-            quickInfo = info
+            // A failed quick-info call keeps the profile-derived quickInfo (CMKT-04).
+            if let info { quickInfo = info }
             overviewLoading = false
         }
     }
@@ -302,7 +303,8 @@ class StockProfileViewModel: ObservableObject {
                 }
                 quickInfo = QuickInfo(
                     ticker: profile.ticker,
-                    price: profile.currentPrice,
+                    // current_price is 0 when the price feed failed; show no price, not ₹0.00.
+                    price: (profile.errors?.contains("company_info_unavailable") ?? false) ? nil : profile.currentPrice,
                     change: nil,
                     changePercent: profile.dayChangePct,
                     signal: nil,

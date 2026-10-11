@@ -42,19 +42,8 @@ def trade_journal_add_endpoint(req: TradeJournalAddRequest, token_user: int = De
                 reason_text=req.reason_text.strip(),
                 outcome_text=req.outcome_text.strip() if req.outcome_text else None,
             )
-            # Set optional new columns gracefully (only if col exists in DB after migration)
-            try:
-                entry.company_name = req.company_name
-            except Exception as e:
-                import logging
-                logging.error(f"Error occurred: {e}", exc_info=True)
-                raise HTTPException(status_code=500, detail="Internal server error")
-            try:
-                entry.mood = req.mood
-            except Exception as e:
-                import logging
-                logging.error(f"Error occurred: {e}", exc_info=True)
-                raise HTTPException(status_code=500, detail="Internal server error")
+            entry.company_name = req.company_name
+            entry.mood = req.mood
             session.add(entry)
             session.commit()
             session.refresh(entry)
@@ -132,18 +121,8 @@ def trade_journal_update_endpoint(entry_id: int, req: TradeJournalUpdateRequest,
             if entry.user_id != user_id:
                 raise HTTPException(status_code=403, detail="Not authorized to edit this entry")
             entry.outcome_text = req.outcome_text.strip()
-            try:
-                entry.mood = req.mood
-            except Exception as e:
-                import logging
-                logging.error(f"Error occurred: {e}", exc_info=True)
-                raise HTTPException(status_code=500, detail="Internal server error")
-            try:
-                entry.updated_at = datetime.now(timezone.utc)
-            except Exception as e:
-                import logging
-                logging.error(f"Error occurred: {e}", exc_info=True)
-                raise HTTPException(status_code=500, detail="Internal server error")
+            entry.mood = req.mood
+            entry.updated_at = datetime.now(timezone.utc)
             session.commit()
             session.refresh(entry)
             result = {
@@ -155,15 +134,10 @@ def trade_journal_update_endpoint(entry_id: int, req: TradeJournalUpdateRequest,
                 "outcome_text": entry.outcome_text,
                 "created_at": entry.created_at.strftime("%Y-%m-%d %H:%M") if entry.created_at else "",
             }
-            try:
-                result["company_name"] = getattr(entry, "company_name", None)
-                result["mood"] = getattr(entry, "mood", None)
-                upd = getattr(entry, "updated_at", None)
-                result["updated_at"] = upd.strftime("%Y-%m-%d %H:%M") if upd else None
-            except Exception as e:
-                import logging
-                logging.error(f"Error occurred: {e}", exc_info=True)
-                raise HTTPException(status_code=500, detail="Internal server error")
+            result["company_name"] = getattr(entry, "company_name", None)
+            result["mood"] = getattr(entry, "mood", None)
+            upd = getattr(entry, "updated_at", None)
+            result["updated_at"] = upd.strftime("%Y-%m-%d %H:%M") if upd else None
         return result
     except HTTPException:
         raise

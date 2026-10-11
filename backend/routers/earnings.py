@@ -280,9 +280,7 @@ def _build_yfinance_fallback_earnings(tickers: list[str], now_iso: str) -> tuple
                     if lp and not math.isnan(float(lp)):
                         ltp = round(float(lp), 2)
             except Exception as e:
-                import logging
-                logging.error(f"Error occurred: {e}", exc_info=True)
-                raise HTTPException(status_code=500, detail="Internal server error")
+                logging.warning("[earnings-fallback] LTP unavailable for %s: %s", ticker, e)
 
             # EPS from quarterly data
             eps = None
@@ -304,9 +302,7 @@ def _build_yfinance_fallback_earnings(tickers: list[str], now_iso: str) -> tuple
                         if not (math.isnan(pev) or math.isinf(pev)):
                             eps_prev = round(pev, 2)
             except Exception as e:
-                import logging
-                logging.error(f"Error occurred: {e}", exc_info=True)
-                raise HTTPException(status_code=500, detail="Internal server error")
+                logging.warning("[earnings-fallback] EPS unavailable for %s: %s", ticker, e)
 
             item = {
                 "ticker": ticker,
@@ -347,7 +343,6 @@ def _build_yfinance_fallback_earnings(tickers: list[str], now_iso: str) -> tuple
                 if err:
                     errors.append(err)
             except Exception as e:
-                import logging
                 logging.warning(f"Caught exception: {e}")
                 errors.append(f"{ticker}: timed out or executor error (yfinance slow)")
 

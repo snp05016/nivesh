@@ -134,8 +134,7 @@ def build_morning_summary(user_id: int) -> dict:
                     chg_str = (f"+{chg:.2f}%" if chg >= 0 else f"{chg:.2f}%")
                     indices_lines.append(f"{idx['name']}: {idx['value']:.2f} ({chg_str})")
         except Exception as e:
-            logging.error(f"Error occurred: {e}", exc_info=True)
-            raise HTTPException(status_code=500, detail="Internal server error")
+            logging.warning("[morning-summary] index data unavailable: %s", e)
 
         portfolio_text = "\n".join(holding_lines) if holding_lines else "No holdings found."
         movers_text = "\n".join(significant_movers_lines) if significant_movers_lines else "None today"

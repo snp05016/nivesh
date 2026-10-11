@@ -59,8 +59,27 @@ jobs:
         FIRECRAWL_API_KEY: mock
         FRED_API_KEY: mock
         HF_TOKEN: mock
+      # AUTH-25: the route-auth inventory and the auth/ownership/rate-limit suites gate
+      # every PR, so a new route without auth (or a broken auth invariant) fails CI.
       run: |
-        pytest backend/tests/test_ios_endpoints.py
+        pytest backend/tests/test_ios_endpoints.py \
+          backend/tests/test_route_auth_inventory.py \
+          backend/tests/test_auth_*.py \
+          backend/tests/test_rate_limiter.py \
+          backend/tests/test_rate_limit_isolation.py \
+          backend/tests/test_write_rate_limits.py \
+          backend/tests/test_job_endpoints_ownership.py \
+          backend/tests/test_job_admission.py \
+          backend/tests/test_entitlements_fail_closed.py \
+          backend/tests/test_startup_config.py \
+          backend/tests/test_earnings_alerts_auth.py \
+          backend/tests/test_utility_routes_auth.py \
+          backend/tests/test_legacy_notification_auth.py \
+          backend/tests/test_portfolio_chart_auth.py \
+          backend/tests/test_portfolio_export_isolation.py \
+          backend/tests/test_admin_dashboard_security.py \
+          backend/tests/test_best_effort_degradation.py \
+          backend/tests/test_analyst_ratings_contract.py
 
     - name: Validate OpenAPI schema
       env:

@@ -22,13 +22,15 @@ struct EarningsCalendarDay: Codable, Identifiable {
     let company_name: String?
     let announcement_date: String?
     let quarter: String?
-    let estimated_eps: Double?
     let sparkline: [Double]?
     let price_change_7d_pct: Double?
     
+    // /api/v1/earnings/calendar sends result_date. Its eps is trailing EPS, not an
+    // estimate, so it is not decoded as one (CMKT-10).
     enum CodingKeys: String, CodingKey {
-        case ticker, company_name, announcement_date, quarter
-        case estimated_eps, sparkline, price_change_7d_pct
+        case ticker, company_name, quarter
+        case announcement_date = "result_date"
+        case sparkline, price_change_7d_pct
     }
 }
 

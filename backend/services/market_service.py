@@ -79,6 +79,68 @@ def _yf_fetch_info(full_ticker: str) -> dict:
         return {}
 
 
+def _yf_frame(full_ticker: str, attr: str):
+    """A yfinance Ticker DataFrame attribute with 3 tries; None when empty or failing."""
+    for attempt in range(3):
+        try:
+            df = getattr(yf.Ticker(full_ticker), attr)
+            if df is not None and not df.empty:
+                return df
+        except Exception as e:
+            logger.info(f"[YF] {attr} attempt {attempt+1} failed for {full_ticker}: {e}")
+            if attempt < 2:
+                time.sleep((1.5 * (2 ** attempt)) + (random.random() * 0.5))
+    return None
+
+
+def analyst_ratings(full_ticker: str) -> dict:
+    """Yahoo analyst coverage: always {'ratings', 'consensus', 'buy', 'hold', 'sell'} (CMKT-10).
+
+    Counts come from Ticker.recommendations (yfinance >= 0.2.3x columns
+    period/strongBuy/buy/hold/sell/strongSell, current month '0m'); the firm list
+    comes from Ticker.upgrades_downgrades (Firm/ToGrade). Third-party consensus,
+    not a Nivesh call. Missing data yields 0 counts / [] / None.
+    """
+    buy = hold = sell = 0
+    recs = _yf_frame(full_ticker, "recommendations")
+    if recs is not None:
+        try:
+            current = recs[recs["period"] == "0m"] if "period" in recs.columns else recs.iloc[0:0]
+            row = (current if not current.empty else recs).iloc[0]
+
+            def _n(*cols: str) -> int:
+                return sum(int(_safe_float(row.get(c))) for c in cols)
+
+            buy, hold, sell = _n("strongBuy", "buy"), _n("hold"), _n("sell", "strongSell")
+        except Exception as e:
+            logger.warning(f"[analyst-ratings] unreadable recommendations for {full_ticker}: {e}")
+            buy = hold = sell = 0
+
+    ratings: list[dict] = []
+    grades = _yf_frame(full_ticker, "upgrades_downgrades")
+    if grades is not None:
+        try:
+            for when, row in grades.sort_index(ascending=False).head(6).iterrows():
+                firm = row.get("Firm", row.get("firm"))
+                grade = row.get("ToGrade", row.get("toGrade"))
+                if firm and grade:
+                    period = when.strftime("%b %Y") if hasattr(when, "strftime") else str(when)[:7]
+                    ratings.append({"firm": str(firm), "grade": str(grade), "period": period})
+        except Exception as e:
+            logger.warning(f"[analyst-ratings] unreadable upgrades_downgrades for {full_ticker}: {e}")
+            ratings = []
+
+    if buy > max(hold, sell):
+        consensus = "BUY"
+    elif sell > max(buy, hold):
+        consensus = "SELL"
+    elif buy + hold + sell > 0:
+        consensus = "HOLD"
+    else:
+        consensus = None
+    return {"ratings": ratings, "consensus": consensus, "buy": buy, "hold": hold, "sell": sell}
+
+
 def get_rbi_policy() -> dict:
     """RBI policy reference values from config (no live feed exists).
 

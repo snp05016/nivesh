@@ -264,6 +264,8 @@ def quick_info_endpoint(ticker: str, exchange: str = "NSE"):
         pe_vs_avg = None
         dividends = []
         corporate_actions = []
+        # Optional enrichments degrade to empty and are named here (CMKT-04).
+        errors: list[str] = []
 
         # ── PARALLEL: fetch enrichments (3y history, earnings, dividends, actions) in one batch ──
         try:
@@ -335,8 +337,9 @@ def quick_info_endpoint(ticker: str, exchange: str = "NSE"):
                     if divs_amt > 0:
                         corporate_actions.append({"date": dt.strftime("%d-%b-%Y"), "type": "dividend", "detail": f"Dividend ₹{round(divs_amt,2)}"})
         except Exception as e:
-            logging.error(f"Error occurred: {e}", exc_info=True)
-            raise HTTPException(status_code=500, detail="Internal server error")
+            logging.warning("[quick-info] enrichment failed for %s: %s", full_ticker, e)
+            pe_vs_avg, dividends, corporate_actions = None, [], []
+            errors.append("enrichment_unavailable")
 
         # Fetch latest AI governance analysis for this ticker
         governance_score = None
@@ -355,11 +358,13 @@ def quick_info_endpoint(ticker: str, exchange: str = "NSE"):
                         governance_score = _fj.get("governance_score")
                         governance_red_flags = _fj.get("governance_red_flags") or []
                     except Exception as e:
-                        logging.error(f"Error occurred: {e}", exc_info=True)
-                        raise HTTPException(status_code=500, detail="Internal server error")
+                        logging.warning("[quick-info] unreadable governance analysis for %s: %s", ticker, e)
+                        governance_score, governance_red_flags = None, []
+                        errors.append("governance_unavailable")
         except Exception as e:
-            logging.error(f"Error occurred: {e}", exc_info=True)
-            raise HTTPException(status_code=500, detail="Internal server error")
+            logging.warning("[quick-info] governance lookup failed for %s: %s", ticker, e)
+            governance_score, governance_red_flags = None, []
+            errors.append("governance_unavailable")
 
         asm_gsm_status = "CLEAN"
         try:
@@ -407,8 +412,10 @@ def quick_info_endpoint(ticker: str, exchange: str = "NSE"):
             "corporate_actions": corporate_actions,
             "governance_score": governance_score,
             "governance_red_flags": governance_red_flags,
+            "errors": errors,
         }
-        _dcache_set("quick-info", cache_key, result)
+        if not errors:
+            _dcache_set("quick-info", cache_key, result)
         return result
     except HTTPException:
         raise
@@ -514,12 +521,12 @@ kills the run. One running job per user (guarded by the DB job state).
                 try:
                     cached = _inject_live_data(cached, ticker)
                 except Exception as e:
-                    logging.error(f"Error occurred: {e}", exc_info=True)
-                    raise HTTPException(status_code=500, detail="Internal server error")
+                    logging.warning("[analyze] live-data refresh failed for cached %s: %s", ticker, e)
                 return cached
     except Exception as e:
-        logging.error(f"Error occurred: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Internal server error")
+        # A broken cache read must not block analysis: fall through to a fresh job,
+        # which the global AI budget check below still gates (CMKT-04).
+        logging.warning("[analyze] cache check failed for %s: %s", ticker, e)
 
     # Anonymous callers still reach here (auth waits for the token-sending app build), so
     # stop new paid jobs once today's global AI budget is spent: 503.
@@ -1271,8 +1278,7 @@ def screener_endpoint(preset: str):
                             fj_data = json.loads(fj)
                             company = fj_data.get("company_name") or company
                         except Exception as e:
-                            logging.error(f"Error occurred: {e}", exc_info=True)
-                            raise HTTPException(status_code=500, detail="Internal server error")
+                            logging.warning("[screener] unreadable analysis JSON for %s: %s", ticker, e)
                         results.append({
                             "ticker": ticker,
                             "company_name": company,
@@ -1344,8 +1350,7 @@ def daily_action_endpoint(user_id: int, _caller: int = Depends(require_user_matc
                             "is_bearish": True,
                         })
         except Exception as e:
-            logging.error(f"Error occurred: {e}", exc_info=True)
-            raise HTTPException(status_code=500, detail="Internal server error")
+            logging.warning("[daily-action] signal warnings unavailable: %s", e)
 
         conflicts = []
         try:
@@ -1374,11 +1379,9 @@ def daily_action_endpoint(user_id: int, _caller: int = Depends(require_user_matc
                                     "long": round((lt - cp) / cp * 100, 1),
                                 })
                     except Exception as e:
-                        logging.error(f"Error occurred: {e}", exc_info=True)
-                        raise HTTPException(status_code=500, detail="Internal server error")
+                        logging.warning("[daily-action] skipping unreadable analysis for %s: %s", ticker, e)
         except Exception as e:
-            logging.error(f"Error occurred: {e}", exc_info=True)
-            raise HTTPException(status_code=500, detail="Internal server error")
+            logging.warning("[daily-action] target conflicts unavailable: %s", e)
 
         triggered = []
         try:
@@ -1389,8 +1392,7 @@ def daily_action_endpoint(user_id: int, _caller: int = Depends(require_user_matc
                 ).all()
                 triggered = [{"ticker": a.ticker, "direction": a.direction, "price": a.target_price} for a in alerts]
         except Exception as e:
-            logging.error(f"Error occurred: {e}", exc_info=True)
-            raise HTTPException(status_code=500, detail="Internal server error")
+            logging.warning("[daily-action] triggered alerts unavailable: %s", e)
 
         urgency = "low"
         if triggered or any(w.get("is_bearish") for w in warnings):

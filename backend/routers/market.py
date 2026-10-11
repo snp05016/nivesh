@@ -8,6 +8,7 @@ from helpers import (
 
 from services.market_service import (
     _get_quarterly_fin, _yf_fetch_info, _fmt_inr_crores, _safe_float, get_rbi_policy,
+    analyst_ratings,
 )
 from services.cache_service import cached_call
 from concurrent.futures import ThreadPoolExecutor
@@ -86,8 +87,7 @@ def dividend_history_endpoint(ticker: str, exchange: str = "NSE"):
             fast = t.fast_info
             current_price = getattr(fast, "last_price", None)
         except Exception as e:
-            logging.error(f"Error occurred: {e}", exc_info=True)
-            raise HTTPException(status_code=500, detail="Internal server error")
+            logging.warning("[dividends] fast_info unavailable for %s: %s", resolved_ticker, e)
 
         history = []
         if divs is not None and not divs.empty:
@@ -225,12 +225,11 @@ def quarterly_financials_endpoint(ticker: str, exchange: str = "NSE"):
                                     "dii": dii or 0,
                                 })
                         except Exception as e:
-                            logging.error(f"Error occurred: {e}", exc_info=True)
-                            raise HTTPException(status_code=500, detail="Internal server error")
+                            logging.warning("[quarterly-financials] skipping malformed history row for %s: %s", ticker, e)
             promoter_history = list(reversed(promoter_history[:4]))
         except Exception as e:
-            logging.error(f"Error occurred: {e}", exc_info=True)
-            raise HTTPException(status_code=500, detail="Internal server error")
+            logging.warning("[quarterly-financials] promoter history unavailable for %s: %s", ticker, e)
+            promoter_history = []
 
         payload = {"quarters": result, "promoter_history": promoter_history}
         _dcache_set("market", cache_key, payload, ttl=3600)
@@ -508,11 +507,9 @@ AI-generated analysis if a cached analysis exists.
                             result["ai_summary"] = macro_impact
                             result["ai_sentiment"] = sentiment
                     except Exception as e:
-                        logging.error(f"Error occurred: {e}", exc_info=True)
-                        raise HTTPException(status_code=500, detail="Internal server error")
+                        logging.warning("[macro-context] unreadable cached analysis for %s: %s", ticker, e)
         except Exception as e:
-            logging.error(f"Error occurred: {e}", exc_info=True)
-            raise HTTPException(status_code=500, detail="Internal server error")
+            logging.warning("[macro-context] AI summary lookup failed for %s: %s", ticker, e)
 
         if not result.get("ai_summary"):
             impact_lines = []
@@ -535,49 +532,12 @@ def analyst_ratings_endpoint(ticker: str, exchange: str = "NSE"):
         return cached
     try:
         full_ticker = _resolve_ticker(ticker, exchange)
-
-        import time
-        import random
-        recs = None
-        for attempt in range(3):
-            try:
-                t = yf.Ticker(full_ticker)
-                recs = t.recommendations
-                if recs is not None and not recs.empty:
-                    break
-            except Exception as e:
-                logging.info(f"[YF] Ratings attempt {attempt+1} failed for {full_ticker}: {e}")
-                if attempt < 2:
-                    time.sleep((1.5 * (2 ** attempt)) + (random.random() * 0.5))
-
-        if recs is None or recs.empty:
-            return {"ratings": [], "consensus": None}
-
-        import math
-        recent = recs.tail(10)
-        ratings = []
-        for _, row in recent.iterrows():
-            firm = row.get("Firm", row.get("firm", "Unknown"))
-            grade = row.get("To Grade", row.get("toGrade", row.get("Action", "")))
-            period = row.name.strftime("%b %Y") if hasattr(row.name, 'strftime') else str(row.name)[:7]
-            if firm and grade:
-                ratings.append({"firm": str(firm), "grade": str(grade), "period": period})
-
-        # Consensus
-        BUY_KEYWORDS = ["BUY", "OUTPERFORM", "OVERWEIGHT", "ACCUMULATE", "ADD", "STRONG BUY", "POSITIVE", "TOP PICK", "UPGRADE"]
-        SELL_KEYWORDS = ["SELL", "UNDERPERFORM", "UNDERWEIGHT", "REDUCE", "STRONG SELL", "NEGATIVE", "AVOID", "DOWNGRADE"]
-        buys = sum(1 for r in ratings if any(w in r["grade"].upper() for w in BUY_KEYWORDS))
-        sells = sum(1 for r in ratings if any(w in r["grade"].upper() for w in SELL_KEYWORDS))
-        holds = len(ratings) - buys - sells
-        if buys > sells and buys > holds: consensus = "BUY"
-        elif sells > buys and sells > holds: consensus = "SELL"
-        elif len(ratings) > 0: consensus = "HOLD"
-        else: consensus = None
-
-        payload = {"ratings": ratings[-6:], "consensus": consensus, "buy": buys, "hold": holds, "sell": sells}
-        _dcache_set("market", cache_key, payload, ttl=3600)
+        payload = analyst_ratings(full_ticker)
+        covered = payload["buy"] + payload["hold"] + payload["sell"] > 0
+        _dcache_set("market", cache_key, payload, ttl=3600 if covered else 900)
         return payload
     except Exception as e:
+        logging.error(f"[analyst-ratings] failed for {ticker}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -926,6 +886,9 @@ Returns HTTP 200 on partial failures — errors array explains what's missing.
     week_52_low = None
     market_cap_crores = None
     description = None
+    # yfinance total institutional (FII + DII); set before the try so the holdings
+    # supplement below can read it when the info fetch fails (CMKT-04).
+    _institutional_total_pct: float | None = None
 
     try:
         info = _yf_fetch_info(full_ticker)
@@ -953,7 +916,6 @@ Returns HTTP 200 on partial failures — errors array explains what's missing.
         # Store it separately so we can derive FII = institutional - DII later
         # instead of misreporting the full institutional as FII alone (#256/#306).
         raw_inst = info.get("heldPercentInstitutions")
-        _institutional_total_pct: float | None = None
         if raw_inst is not None:
             _institutional_total_pct = round(float(raw_inst) * 100, 2)
             fii_holding_pct = _institutional_total_pct  # provisional; revised below
@@ -1005,8 +967,8 @@ Returns HTTP 200 on partial failures — errors array explains what's missing.
                 if not fund_fii and _institutional_total_pct is not None:
                     fii_holding_pct = max(0.0, round(_institutional_total_pct - fund_dii, 2))
     except Exception as e:
-        logging.error(f"Error occurred: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Internal server error")
+        logging.warning("[stock-profile] holdings supplement failed for %s: %s", ticker, e)
+        errors.append("holdings_supplement_unavailable")
 
     # ── 2. Price history — full error capture ──────────────────────────────
     price_history_data: dict = {"prices": [], "source": None, "error": None}
@@ -1119,14 +1081,14 @@ Returns HTTP 200 on partial failures — errors array explains what's missing.
                                 "dii": dii_v or 0,
                             })
                     except Exception as e:
-                        logging.error(f"Error occurred: {e}", exc_info=True)
-                        raise HTTPException(status_code=500, detail="Internal server error")
+                        logging.warning("[stock-profile] skipping malformed history row for %s: %s", ticker, e)
             quarterly_data["promoter_history"] = list(
                 reversed(quarterly_data["promoter_history"][:4])
             )
     except Exception as e:
-        logging.error(f"Error occurred: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Internal server error")
+        logging.warning("[stock-profile] promoter history unavailable for %s: %s", ticker, e)
+        quarterly_data["promoter_history"] = []
+        errors.append("promoter_history_unavailable")
 
     # ── 4. Sanitise & assemble ─────────────────────────────────────────────
     def _clean_num(v):
@@ -1172,7 +1134,7 @@ Returns HTTP 200 on partial failures — errors array explains what's missing.
         "errors": errors,
     }
 
-    # A partial profile (errors non-empty) is kept 60 s so it refreshes once upstream recovers (PERF-18).
+    # A partial profile (errors non-empty) is kept 60 s so it refreshes once upstream recovers (PERF-18, CMKT-04).
     _dcache_set("market", cache_key, result, ttl=60 if errors else 900)
     return result
 
@@ -1426,8 +1388,7 @@ def _build_cap_index_grid() -> list[dict]:
                 if info:
                     ticker_data[ticker] = info
             except Exception as e:
-                logging.error(f"Error occurred: {e}", exc_info=True)
-                raise HTTPException(status_code=500, detail="Internal server error")
+                logging.warning("[cap-grid] skipping ticker: %s", e)
 
     results: list[dict] = []
     for bracket in brackets:

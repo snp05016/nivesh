@@ -465,13 +465,11 @@ def portfolio_risk_analysis_endpoint(user_id: int, _caller: int = Depends(requir
                             if not math.isnan(float(val)):
                                 daily[dstr] = float(val)
                         except Exception as e:
-                            logging.error(f"Error occurred: {e}", exc_info=True)
-                            raise HTTPException(status_code=500, detail="Internal server error")
+                            logging.warning("[risk-analysis] skipping return point for %s: %s", ticker, e)
                     if daily:
                         _return_series[ticker] = daily
             except Exception as e:
-                logging.error(f"Error occurred: {e}", exc_info=True)
-                raise HTTPException(status_code=500, detail="Internal server error")
+                logging.warning("[risk-analysis] return history unavailable for %s: %s", ticker, e)
 
             stock_details.append({
                 "ticker": ticker,
@@ -571,8 +569,7 @@ def portfolio_red_flags_endpoint(user_id: int, _caller: int = Depends(require_us
                         data["_pledged_pct_db"] = row.promoter_pledged_pct
                         latest_analyses[ticker] = data
                     except Exception as e:
-                        logging.error(f"Error occurred: {e}", exc_info=True)
-                        raise HTTPException(status_code=500, detail="Internal server error")
+                        logging.warning("[red-flags] skipping unreadable analysis for %s: %s", ticker, e)
 
             # FII trend: last 4 analyses per ticker (most recent first)
             fii_histories: dict[str, list[float]] = {}
@@ -588,8 +585,7 @@ def portfolio_red_flags_endpoint(user_id: int, _caller: int = Depends(require_us
                         if fii is not None:
                             fiis.append(float(fii))
                     except Exception as e:
-                        logging.error(f"Error occurred: {e}", exc_info=True)
-                        raise HTTPException(status_code=500, detail="Internal server error")
+                        logging.warning("[red-flags] skipping unreadable FII history for %s: %s", ticker, e)
                 fii_histories[ticker] = fiis
 
             cutoff = datetime.now(timezone.utc) - timedelta(days=30)
