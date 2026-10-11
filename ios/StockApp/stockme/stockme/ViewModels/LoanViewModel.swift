@@ -64,8 +64,9 @@ class LoanViewModel: ObservableObject {
 class LoanApplicationViewModel: ObservableObject {
     let offer: LoanOfferDTO
 
-    @Published var amount: Double
-    @Published var tenureMonths: Int
+    // Changing what's sent starts a new intent, so it gets a fresh idempotency key.
+    @Published var amount: Double { didSet { submitKey = nil } }
+    @Published var tenureMonths: Int { didSet { submitKey = nil } }
     @Published var purpose: String = ""
     @Published var kycConsent: Bool = false
 
@@ -84,6 +85,11 @@ class LoanApplicationViewModel: ObservableObject {
     @Published var disbursement: DisbursementDTO? = nil
     @Published var isRequestingDisbursement: Bool = false
     @Published var disbursementError: String? = nil
+
+    /// IOSCORE-17: one Idempotency-Key per user intent, reused on retry after a
+    /// failure (the first attempt may have committed), cleared on success.
+    private var submitKey: String?
+    private var disburseKey: String?
 
     init(offer: LoanOfferDTO) {
         self.offer = offer
@@ -130,10 +136,13 @@ class LoanApplicationViewModel: ObservableObject {
             requestedTenureMonths: tenureMonths,
             deviceId: UIDevice.current.identifierForVendor?.uuidString
         )
+        let key = submitKey ?? UUID().uuidString
+        submitKey = key
         do {
-            submittedApplication = try await NetworkManager.shared.submitLoanApplication(requestBody)
+            submittedApplication = try await NetworkManager.shared.submitLoanApplication(requestBody, idempotencyKey: key)
+            submitKey = nil
         } catch {
-            submissionError = "Couldn't submit your application. Please try again."
+            submissionError = error.moneyActionMessage(fallback: "Couldn't submit your application. Please try again.")
         }
         isSubmitting = false
     }
@@ -145,10 +154,13 @@ class LoanApplicationViewModel: ObservableObject {
         guard let applicationId = submittedApplication?.id else { return }
         isRequestingDisbursement = true
         disbursementError = nil
+        let key = disburseKey ?? UUID().uuidString
+        disburseKey = key
         do {
-            disbursement = try await NetworkManager.shared.requestDisbursement(applicationId: applicationId)
+            disbursement = try await NetworkManager.shared.requestDisbursement(applicationId: applicationId, idempotencyKey: key)
+            disburseKey = nil
         } catch {
-            disbursementError = "Couldn't request disbursement. Please try again."
+            disbursementError = error.moneyActionMessage(fallback: "Couldn't request disbursement. Please try again.")
         }
         isRequestingDisbursement = false
     }

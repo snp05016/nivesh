@@ -190,10 +190,10 @@ class _SecurityHeadersMiddleware(BaseHTTPMiddleware):
         # setdefault: the admin dashboard route sets its own, wider policy.
         response.headers.setdefault("Content-Security-Policy", "default-src 'self'")
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-        # Fixes #109: Prevent CDN/browser caching of authenticated API responses
-        if request.url.path.startswith("/api/"):
-            response.headers["Cache-Control"] = "no-store, private"
-            response.headers["Pragma"] = "no-cache"
+        # Fixes #109, GH-695: never cache any response. Legacy user-data routes
+        # (/portfolio/{id}, /watchlist/{id}, /alerts/{id}, ...) live outside /api/.
+        response.headers["Cache-Control"] = "no-store, private"
+        response.headers["Pragma"] = "no-cache"
         return response
 
 app.add_middleware(_SecurityHeadersMiddleware)

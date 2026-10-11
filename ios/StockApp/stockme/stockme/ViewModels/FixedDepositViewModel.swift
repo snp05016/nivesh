@@ -116,15 +116,20 @@ class FixedDepositCalculatorViewModel: ObservableObject {
 class FixedDepositBookingViewModel: ObservableObject {
     let scheme: FDSchemeDTO
 
-    @Published var principal: Double
-    @Published var tenureMonths: Int
-    @Published var paymentMethod: FDPaymentMethod = .upi
+    // Changing what's sent starts a new intent, so it gets a fresh idempotency key.
+    @Published var principal: Double { didSet { bookingKey = nil } }
+    @Published var tenureMonths: Int { didSet { bookingKey = nil } }
+    @Published var paymentMethod: FDPaymentMethod = .upi { didSet { bookingKey = nil } }
 
     let calculator: FixedDepositCalculatorViewModel
 
     @Published var isSubmitting: Bool = false
     @Published var submissionError: String? = nil
     @Published var bookingResult: FDBookingResponse? = nil
+
+    /// IOSCORE-17: one Idempotency-Key per booking intent, reused on retry after
+    /// a failure (the first attempt may have committed), cleared on success.
+    private var bookingKey: String?
 
     init(scheme: FDSchemeDTO) {
         self.scheme = scheme
@@ -182,10 +187,13 @@ class FixedDepositBookingViewModel: ObservableObject {
             paymentMethod: paymentMethod.rawValue,
             deviceId: deviceId
         )
+        let key = bookingKey ?? UUID().uuidString
+        bookingKey = key
         do {
-            bookingResult = try await NetworkManager.shared.bookFixedDeposit(requestBody)
+            bookingResult = try await NetworkManager.shared.bookFixedDeposit(requestBody, idempotencyKey: key)
+            bookingKey = nil
         } catch {
-            submissionError = "Couldn't submit your booking. Please try again."
+            submissionError = error.moneyActionMessage(fallback: "Couldn't submit your booking. Please try again.")
         }
         isSubmitting = false
     }

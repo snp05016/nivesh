@@ -16,6 +16,29 @@ import Foundation
 
 extension NetworkManager {
 
+    // MARK: - Money POSTs (IOSCORE-17)
+
+    /// Builds an authenticated JSON POST for a money action (loan, disbursement,
+    /// FD booking). 30 s timeout; encode failures throw instead of sending an
+    /// empty body; `idempotencyKey` is sent as `Idempotency-Key` so a retry of the
+    /// same user intent can be deduped server-side.
+    func makeJSONPOST<B: Encodable>(endpoint: String, body: B?, idempotencyKey: String?) throws -> URLRequest {
+        guard let url = URL(string: "\(baseURL)\(endpoint)") else {
+            throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Invalid URL")
+        }
+        var request = authRequest(url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = 30
+        if let body {
+            request.httpBody = try JSONEncoder().encode(body)
+        }
+        if let idempotencyKey {
+            request.setValue(idempotencyKey, forHTTPHeaderField: "Idempotency-Key")
+        }
+        return request
+    }
+
     // MARK: - Finance Tracker
 
     /// Fetches every mock "linked" bank account for the current user.
@@ -161,16 +184,9 @@ extension NetworkManager {
     /// against the mock KYC device-binding gate in
     /// services/kyc_consent_service.py before any auto-approval.
     /// POST /api/finance/loan-applications
-    func submitLoanApplication(_ requestBody: LoanApplicationRequest) async throws -> LoanApplicationResponse {
+    func submitLoanApplication(_ requestBody: LoanApplicationRequest, idempotencyKey: String? = nil) async throws -> LoanApplicationResponse {
         let endpoint = "/api/finance/loan-applications"
-        guard let url = URL(string: "\(baseURL)\(endpoint)") else {
-            throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Invalid URL")
-        }
-        var request = authRequest(url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.timeoutInterval = 15
-        request.httpBody = try? JSONEncoder().encode(requestBody)
+        let request = try makeJSONPOST(endpoint: endpoint, body: requestBody, idempotencyKey: idempotencyKey)
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else {
             throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Not HTTP")
@@ -213,15 +229,9 @@ extension NetworkManager {
 
     /// "Request Disbursement (Demo)" button action for an approved (mock)
     /// loan application. POST /api/finance/loan-applications/{id}/disburse
-    func requestDisbursement(applicationId: Int) async throws -> DisbursementDTO {
+    func requestDisbursement(applicationId: Int, idempotencyKey: String? = nil) async throws -> DisbursementDTO {
         let endpoint = "/api/finance/loan-applications/\(applicationId)/disburse"
-        guard let url = URL(string: "\(baseURL)\(endpoint)") else {
-            throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Invalid URL")
-        }
-        var request = authRequest(url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.timeoutInterval = 15
+        let request = try makeJSONPOST(endpoint: endpoint, body: Optional<EmptyJSONBody>.none, idempotencyKey: idempotencyKey)
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else {
             throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Not HTTP")
@@ -253,5 +263,30 @@ extension NetworkManager {
         }
         do { return try JSONDecoder().decode(DisbursementDTO.self, from: data) }
         catch { throw NetworkError.decodingError(error.localizedDescription) }
+    }
+}
+
+/// Placeholder body type for bodiless money POSTs passed to `makeJSONPOST`.
+struct EmptyJSONBody: Encodable {}
+
+extension Error {
+    /// User-facing copy for a failed money POST: timeouts must not invite a blind
+    /// retry, offline and 4xx/5xx get distinct text, anything else uses `fallback`.
+    func moneyActionMessage(fallback: String) -> String {
+        if let urlError = self as? URLError {
+            switch urlError.code {
+            case .timedOut, .networkConnectionLost:
+                return "The request timed out and may have gone through. Check its status before retrying."
+            case .notConnectedToInternet:
+                return "You're offline. Connect and try again."
+            default:
+                return fallback
+            }
+        }
+        if let networkError = self as? NetworkError, case .fetchFailed(_, let status, _) = networkError {
+            if (400...499).contains(status) { return "The request was rejected (code \(status))." }
+            if status >= 500 { return "Server error. Please try again shortly." }
+        }
+        return fallback
     }
 }

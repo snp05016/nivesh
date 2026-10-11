@@ -82,6 +82,9 @@ class AuthManager: ObservableObject {
     func logout() {
         // Fix 3.30: Destructive cleanup — cancel network session and clear state
         URLSession.shared.invalidateAndCancel()
+        // GH-695: NetworkManager's default config caches to URLCache.shared (Cache.db);
+        // wipe holdings/watchlist responses so they don't outlive the session.
+        URLCache.shared.removeAllCachedResponses()
         currentUser = nil
         NetworkManager.shared.authToken = nil
         UserDefaults.standard.removeObject(forKey: key)

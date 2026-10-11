@@ -108,16 +108,9 @@ extension NetworkManager {
     /// `decisionReason` means the booking failed closed (e.g. "SIM binding
     /// required" / "KYC incomplete").
     /// POST /api/fixed-deposits/bookings
-    func bookFixedDeposit(_ requestBody: FDBookingRequest) async throws -> FDBookingResponse {
+    func bookFixedDeposit(_ requestBody: FDBookingRequest, idempotencyKey: String? = nil) async throws -> FDBookingResponse {
         let endpoint = "/api/fixed-deposits/bookings"
-        guard let url = URL(string: "\(baseURL)\(endpoint)") else {
-            throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Invalid URL")
-        }
-        var request = authRequest(url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.timeoutInterval = 15
-        request.httpBody = try? JSONEncoder().encode(requestBody)
+        let request = try makeJSONPOST(endpoint: endpoint, body: requestBody, idempotencyKey: idempotencyKey)
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else {
             throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Not HTTP")
