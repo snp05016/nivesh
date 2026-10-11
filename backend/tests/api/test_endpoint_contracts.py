@@ -106,11 +106,9 @@ def test_no_500_on_safe_get_endpoints(api_client):
 
 
 def test_auth_protected_routes_return_401_without_token(api_client):
-    """Protected endpoints must return 401 without Bearer token."""
-    resp = api_client.get("/api/v1/portfolio?user_id=1")
-    # Either 401 (auth checked) or 422 (missing param) or 200 with empty data
-    # Must NOT be 500
-    assert resp.status_code != 500
+    """Protected endpoints must return 401 without Bearer token (every route: test_auth_matrix.py)."""
+    resp = api_client.get("/portfolio/history/1")
+    assert resp.status_code == 401, resp.text
 
 
 def test_mutual_fund_legacy_data_fallback():

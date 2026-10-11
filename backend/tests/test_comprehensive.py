@@ -801,17 +801,8 @@ class TestSecurity:
         assert response.headers.get("X-Frame-Options") == "DENY"
         assert response.headers.get("X-XSS-Protection") == "1; mode=block"
         assert response.headers.get("Referrer-Policy") == "strict-origin-when-cross-origin"
-    
-    def test_unauthorized_access(self):
-        """Test unauthorized access to protected endpoints."""
-        response = client.get("/portfolio/history/1")
-        assert response.status_code in [200, 401]
-    
-    def test_invalid_token(self):
-        """Test invalid token."""
-        headers = {"Authorization": "Bearer invalid_token_123"}
-        response = client.get("/portfolio/history/1", headers=headers)
-        assert response.status_code in [200, 401]
+
+    # Anonymous / invalid-token rejection is covered route-by-route in test_auth_matrix.py (TEST-09).
 
 
 # ==================== API DOCUMENTATION TESTS ====================

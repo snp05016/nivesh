@@ -81,8 +81,6 @@ PUBLIC_ROUTES |= {
 # Unauthenticated today; each entry names the audit item that adds auth.
 KNOWN_GAPS = {
     ("POST", "/analyze"): "IOSCORE-04/AUTH-08: user_id comes from the request body",
-    ("POST", "/brainstorm"): "LLM-02: paid LLM, anonymous",
-    ("POST", "/api/v1/copilot/chat"): "LLM-02: paid LLM, optional auth",
     ("POST", "/api/v1/screener/natural-language"): "LLM-02/IOSCORE-04",
     # Bearer is checked inside notifications_service.register_user_device; move it to
     # Depends(require_auth) so the inventory can see it.

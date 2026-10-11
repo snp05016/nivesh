@@ -269,22 +269,24 @@ class TestIntegration:
 
 
 class TestAPI:
-    def test_endpoint_returns_200_with_valid_body(self):
-        from fastapi.testclient import TestClient
-        from main import app
-
-        client = TestClient(app)
+    def test_endpoint_requires_auth(self, client):
         response = client.post(
             "/api/v1/portfolio/stress-test",
             json={"portfolio_id": "test", "scenarios": ["nifty_crash"]},
         )
-        assert response.status_code in [200, 401]
+        assert response.status_code == 401
 
-    def test_endpoint_accepts_custom_shocks(self):
-        from fastapi.testclient import TestClient
-        from main import app
+    def test_endpoint_returns_200_with_valid_body(self, client, auth_headers):
+        # No holdings in group "test", so the job completes inline without a worker.
+        response = client.post(
+            "/api/v1/portfolio/stress-test",
+            json={"portfolio_id": "test", "scenarios": ["nifty_crash"]},
+            headers=auth_headers,
+        )
+        assert response.status_code == 200, response.text
+        assert "job_id" in response.json()
 
-        client = TestClient(app)
+    def test_endpoint_accepts_custom_shocks(self, client, auth_headers):
         response = client.post(
             "/api/v1/portfolio/stress-test",
             json={
@@ -292,8 +294,9 @@ class TestAPI:
                 "scenarios": ["nifty_crash"],
                 "custom_shocks": {"market": -30.0},
             },
+            headers=auth_headers,
         )
-        assert response.status_code in [200, 401]
+        assert response.status_code == 200, response.text
 
     def test_scenario_key_case_insensitive(self):
         from services.stress_test import run_stress_test
