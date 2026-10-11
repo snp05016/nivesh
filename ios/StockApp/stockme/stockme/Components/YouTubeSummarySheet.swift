@@ -74,6 +74,7 @@ struct YTSSheetHeader: View {
                         .foregroundStyle(Theme.inkTertiary)
                 }
                 .buttonStyle(EKPressStyle())
+                .accessibilityLabel("Close")
             }
             GuillocheDivider()
         }

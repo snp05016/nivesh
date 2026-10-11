@@ -12,6 +12,7 @@ struct HelpTypedButton: View {
                 .foregroundColor(Theme.securityGold)
         }
         .buttonStyle(EKPressStyle())
+        .accessibilityLabel("Help")
     }
 }
 
@@ -140,6 +141,7 @@ struct HelpToolbarButton: ViewModifier {
                             .foregroundColor(Theme.securityGold)
                     }
                     .buttonStyle(EKPressStyle())
+                    .accessibilityLabel("Help")
                 }
             }
     }

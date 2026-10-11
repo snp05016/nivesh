@@ -251,6 +251,7 @@ struct NLScreenerScreen: View {
                         .foregroundColor(Theme.inkTertiary)
                 }
                 .buttonStyle(EKPressStyle())
+                .accessibilityLabel("Clear query")
             }
             
             Button(action: { HapticManager.selection();  HapticManager.selection()
@@ -260,6 +261,7 @@ struct NLScreenerScreen: View {
                     .foregroundColor(Theme.securityGold)
             }
             .buttonStyle(EKPressStyle())
+            .accessibilityLabel("Voice input")
         }
         .padding(.horizontal, Theme.Spacing.card)
         .padding(.vertical, Theme.Spacing.standard)

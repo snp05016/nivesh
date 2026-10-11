@@ -261,6 +261,7 @@ struct YouTubeCompactCard: View {
                             .clipShape(Circle())
                     }
                     .buttonStyle(EKPressStyle())
+                    .accessibilityLabel("Show video summary")
                 }
             }
             .padding(Theme.Spacing.standard)

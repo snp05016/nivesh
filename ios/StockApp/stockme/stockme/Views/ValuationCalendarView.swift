@@ -254,6 +254,7 @@ struct CalendarHeatGrid: View {
                         .foregroundStyle(Theme.inkSecondary)
                 }
                 .buttonStyle(EKPressStyle())
+                .accessibilityLabel("Previous month")
                 Spacer()
                 Text(selectedMonth, format: .dateTime.month(.wide).year())
                     .font(Theme.serialNumberFont(size: 11))

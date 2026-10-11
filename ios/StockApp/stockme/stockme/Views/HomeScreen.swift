@@ -782,6 +782,7 @@ struct HomeScreen: View {
                             }
                         }
                         .buttonStyle(EKPressStyle())
+                        .accessibilityLabel("Morning brief")
                     }
                 }
             }
@@ -2104,6 +2105,7 @@ struct NewsDetailSheet: View {
                             .foregroundStyle(Theme.inkSecondary)
                             .font(.title3)
                     }
+                    .accessibilityLabel("Close")
                 }
             }
         }
@@ -2328,6 +2330,7 @@ extension HomeScreen {
                                     }
                                 }
                                 .buttonStyle(EKPressStyle())
+                                .accessibilityLabel("Morning brief")
                             }
                             
                             Button {
@@ -2346,6 +2349,7 @@ extension HomeScreen {
                                     .overlay(Circle().stroke(Theme.securityGold.opacity(0.3), lineWidth: 0.5))
                             }
                             .buttonStyle(EKPressStyle())
+                            .accessibilityLabel(showSearch ? "Close search" : "Search")
                             Button {
                                 HapticManager.selection()
                                 showGlossary = true
@@ -2359,6 +2363,7 @@ extension HomeScreen {
                                     .overlay(Circle().stroke(Theme.securityGold.opacity(0.3), lineWidth: 0.5))
                             }
                             .buttonStyle(EKPressStyle())
+                            .accessibilityLabel("Glossary")
                             NavigationLink(destination: SettingsScreen()) {
                                 ZStack {
                                     Circle()
@@ -2398,6 +2403,7 @@ extension HomeScreen {
                                             .foregroundStyle(Theme.inkTertiary)
                                     }
                                     .buttonStyle(.plain)
+                                    .accessibilityLabel("Clear search")
                                 }
                                 Button { HapticManager.selection(); 
     HapticManager.selection()

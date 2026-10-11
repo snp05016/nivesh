@@ -210,6 +210,7 @@ private struct PollComposerSection: View {
                                     .foregroundColor(Theme.bearRed)
                             }
                             .buttonStyle(EKPressStyle())
+                            .accessibilityLabel("Remove poll option")
                         }
                     }
                 }

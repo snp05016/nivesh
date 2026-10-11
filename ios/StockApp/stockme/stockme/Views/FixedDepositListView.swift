@@ -46,6 +46,7 @@ struct FixedDepositListView: View {
                     Image(systemName: "function")
                         .foregroundStyle(Theme.securityGold)
                 }
+                .accessibilityLabel("FD calculator")
             }
         }
         .task { await vm.fetchSchemes() }
@@ -124,6 +125,7 @@ struct FDSortAndFilterBar: View {
                     .banknoteCard()
             }
             .buttonStyle(EKPressStyle())
+            .accessibilityLabel("Filters")
         }
         .padding(.horizontal, Theme.screenPadding)
     }

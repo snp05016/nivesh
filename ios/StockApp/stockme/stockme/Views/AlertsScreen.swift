@@ -379,6 +379,7 @@ struct AddAlertSheet: View {
                                 Button { HapticManager.selection();  selectedTicker = ""; selectedCompany = ""; currentPrice = nil } label: {
                                     Image(systemName: "xmark.circle.fill").foregroundStyle(Theme.inkTertiary)
                                 }
+                                .accessibilityLabel("Clear selected stock")
                             }
                             .padding(Theme.Spacing.card)
                             .banknoteCard()

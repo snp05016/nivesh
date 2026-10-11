@@ -112,6 +112,7 @@ struct LoanTypeSelector: View {
                     .banknoteCard()
             }
             .buttonStyle(EKPressStyle())
+            .accessibilityLabel("Filters")
         }
         .padding(.horizontal, Theme.screenPadding)
     }

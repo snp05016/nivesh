@@ -97,6 +97,7 @@ struct TermTooltipCard: View {
                     .foregroundStyle(Theme.inkTertiary)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Close")
             .padding(Theme.Spacing.medium)
         }
         .padding(Theme.screenPadding)

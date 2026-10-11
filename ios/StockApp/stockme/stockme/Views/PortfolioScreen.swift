@@ -187,12 +187,14 @@ struct PortfolioScreen: View {
                                     .foregroundStyle(Theme.inkSecondary)
                                     .padding(Theme.Spacing.medium)
                             }
+                            .accessibilityLabel("Export portfolio")
                             Button { HapticManager.selection(); showBriefSheet = true } label: {
                                 Image(systemName: "message")
                                     .foregroundStyle(Theme.inkSecondary)
                                     .padding(Theme.Spacing.medium)
                             }
                             .buttonStyle(EKPressStyle())
+                            .accessibilityLabel("Portfolio brief")
                             Button { HapticManager.selection(); showTransactionSheet = true } label: {
                                 ZStack {
                                     Circle().stroke(Theme.borderSage, lineWidth: 0.5).frame(width: 44, height: 44)
@@ -200,6 +202,7 @@ struct PortfolioScreen: View {
                                 }
                             }
                             .buttonStyle(EKPressStyle())
+                            .accessibilityLabel("Add transaction")
                         }
                     }
                     .padding(.horizontal, Theme.screenPadding)
@@ -633,6 +636,7 @@ struct PortfolioScreen: View {
             }
         }
         .buttonStyle(EKPressStyle())
+        .accessibilityLabel(selectedTab == 0 ? "Add holding" : "Add to watchlist")
     }
 
     // Watchlist "+" — built from scratch to be an exact mirror image of the AI
@@ -780,6 +784,7 @@ private struct TaggingSheet: View {
                                 Button(action: { HapticManager.selection(); tagsManager.removeTag(tag, from: ticker) }) {
                                     Image(systemName: "minus.circle.fill").foregroundStyle(Theme.bearRed)
                                 }
+                                .accessibilityLabel("Remove tag \(tag)")
                             }
                             .padding(Theme.Spacing.standard)
                             .banknoteCard()
@@ -2319,6 +2324,7 @@ struct PortfolioBriefSheet: View {
                         Image(systemName: "xmark.circle.fill")
                             .font(.title2).foregroundStyle(Theme.inkTertiary)
                     }.buttonStyle(EKPressStyle())
+                    .accessibilityLabel("Close")
                 }
 
                 GuillocheDivider()

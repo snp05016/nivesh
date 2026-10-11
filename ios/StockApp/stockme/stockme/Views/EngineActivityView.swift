@@ -74,6 +74,7 @@ struct EngineActivityView: View {
                         Image(systemName: "xmark.circle.fill")
                             .foregroundStyle(Theme.inkTertiary)
                     }
+                    .accessibilityLabel("Close")
                 }
             }
         }

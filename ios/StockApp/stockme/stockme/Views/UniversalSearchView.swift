@@ -22,6 +22,7 @@ struct UniversalSearchView: View {
                         .foregroundColor(Theme.inkTertiary)
                 }
                 .buttonStyle(EKPressStyle())
+                .accessibilityLabel("Clear search")
             }
         }
         .padding(Theme.Spacing.standard)

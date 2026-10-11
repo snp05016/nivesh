@@ -52,6 +52,7 @@ struct ForumHubView: View {
                         .foregroundStyle(Theme.securityGold)
                 }
                 .buttonStyle(EKPressStyle())
+                .accessibilityLabel("New thread")
             }
         }
         .sheet(isPresented: $showCreateThread) {
@@ -259,6 +260,7 @@ struct BoardThreadListView: View {
                         .foregroundStyle(Theme.securityGold)
                 }
                 .buttonStyle(EKPressStyle())
+                .accessibilityLabel("New thread")
             }
         }
         .sheet(isPresented: $showCreateThread) {

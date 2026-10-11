@@ -709,6 +709,7 @@ struct TopMoverRow: View {
                     .foregroundStyle(Theme.securityGold.opacity(0.7))
             }
             .buttonStyle(EKPressStyle())
+            .accessibilityLabel("Open chart for \(mover.ticker)")
         }
         .padding(Theme.Spacing.standard)
         .banknoteCard()

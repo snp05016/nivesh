@@ -145,6 +145,7 @@ struct CopilotScreen: View {
                             }
                             .disabled(messageText.isEmpty || isTyping)
                             .buttonStyle(EKPressStyle())
+                            .accessibilityLabel("Send message")
                         }
                         .padding(.horizontal, Theme.screenPadding)
                         .padding(.vertical, Theme.Spacing.standard)
@@ -176,6 +177,7 @@ struct CopilotScreen: View {
                             .foregroundColor(Theme.inkTertiary)
                     }
                     .buttonStyle(EKPressStyle())
+                    .accessibilityLabel("Close")
                 }
             }
             .toolbarBackground(Theme.canvas, for: .navigationBar)
@@ -528,6 +530,7 @@ struct CopilotFloatingButtonModifier: ViewModifier {
                             .shadow(color: Theme.securityGold.opacity(0.4), radius: 8, x: 0, y: 4)
                     }
                     .buttonStyle(EKPressStyle())
+                    .accessibilityLabel("Open Copilot")
                     .padding(.trailing, Theme.screenPadding + Theme.Spacing.standard)
                     .padding(.bottom, Theme.Spacing.standard + Theme.tabBarHeight)
                 }

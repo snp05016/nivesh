@@ -1430,6 +1430,7 @@ struct ScreenerView: View {
                                 .font(.footnote)
                                 .foregroundStyle(isBookmarked ? Theme.securityGold : Theme.inkTertiary.opacity(0.5))
                         }
+                        .accessibilityLabel(isBookmarked ? "Remove bookmark" : "Bookmark screener")
 
                         // Match count badge
                         Text(matchCount)

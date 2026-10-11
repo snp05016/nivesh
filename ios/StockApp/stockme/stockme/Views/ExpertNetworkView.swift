@@ -210,6 +210,7 @@ struct ExpertNetworkView: View {
                     Image(systemName: "list.bullet.rectangle")
                         .foregroundStyle(Theme.securityGold)
                 }
+                .accessibilityLabel("Harvester sources")
             }
         }
         .sheet(isPresented: $showSourcesSheet) {

@@ -145,6 +145,7 @@ struct EarningsSurpriseScreen: View {
                             .foregroundColor(Theme.securityGold)
                     }
                     .buttonStyle(EKPressStyle())
+                    .accessibilityLabel("Help")
                     
                     Button { HapticManager.selection(); 
                         HapticManager.selection()
@@ -158,6 +159,7 @@ struct EarningsSurpriseScreen: View {
                             .foregroundColor(Theme.inkPrimary)
                     }
                     .buttonStyle(EKPressStyle())
+                    .accessibilityLabel(vm.isCalendarView ? "Show list" : "Show calendar")
                 }
             }
         }

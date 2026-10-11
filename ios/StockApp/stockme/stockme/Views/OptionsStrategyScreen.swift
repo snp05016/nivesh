@@ -89,6 +89,7 @@ struct OptionsStrategyScreen: View {
                     .foregroundStyle(Theme.securityGold)
             }
             .buttonStyle(EKPressStyle())
+            .accessibilityLabel("Help")
         }
         .padding(.horizontal, Theme.screenPadding)
         .padding(.top, Theme.Spacing.standard)
@@ -174,6 +175,7 @@ struct OptionsStrategyScreen: View {
                     .buttonStyle(EKPressStyle())
                     .disabled(legs.count <= 1)
                     .opacity(legs.count <= 1 ? 0.3 : 1.0)
+                    .accessibilityLabel("Remove leg")
                 }
 
                 // Row 2: Strike and Premium

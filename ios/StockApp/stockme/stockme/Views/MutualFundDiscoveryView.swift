@@ -124,6 +124,7 @@ struct MutualFundSearchBar: View {
                     .banknoteCard()
             }
             .buttonStyle(EKPressStyle())
+            .accessibilityLabel("Filters")
         }
     }
 }

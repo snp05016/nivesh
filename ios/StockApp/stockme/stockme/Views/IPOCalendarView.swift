@@ -138,6 +138,7 @@ private struct IPOCalendarMonthHeader: View {
                     .font(Theme.officialStampFont(size: 11))
                     .foregroundColor(Theme.inkSecondary)
             }
+            .accessibilityLabel("Previous month")
             .buttonStyle(EKPressStyle())
 
             Spacer()

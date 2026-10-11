@@ -427,6 +427,7 @@ struct StressDiagnosticCard: View {
                         .foregroundColor(Theme.inkTertiary)
                 }
                 .buttonStyle(EKPressStyle())
+                .accessibilityLabel(expanded ? "Hide details" : "Show details")
                 #endif
             }
 

@@ -240,6 +240,7 @@ struct SearchScreen: View {
                                 Image(systemName: speechManager.isRecording ? "mic.fill" : "mic")
                                     .foregroundStyle(speechManager.isRecording ? Theme.bearRed : Theme.securityGold)
                             }
+                            .accessibilityLabel(speechManager.isRecording ? "Stop voice search" : "Voice search")
 
                             Button(action: { HapticManager.selection();  HapticManager.selection()
                                 showFilterSheet = true
@@ -247,6 +248,7 @@ struct SearchScreen: View {
                                 Image(systemName: "line.3.horizontal.decrease.circle")
                                     .foregroundStyle(Theme.securityGold)
                             }
+                            .accessibilityLabel("Filters")
                         }
                         .padding(Theme.Spacing.card)
                         .background(Theme.canvasDeep)
