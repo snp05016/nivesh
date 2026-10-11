@@ -311,14 +311,21 @@ app.include_router(notifications_inbox.router)
 app.include_router(youtube_summary_router.router)
 app.include_router(search.router)
 app.include_router(stocks.router)
-app.include_router(ipo.router)
-app.include_router(mutual_funds.router)
-app.include_router(forum.router)
-app.include_router(finance.router)
-app.include_router(kyc.router)
+# ARCH-17: money-control routers live under /api/v1/<name>. The old /api/<name>
+# paths stay as deprecated aliases, hidden from OpenAPI, for the shipped iOS app;
+# drop them in the release that moves the app to /api/v1.
+for _router, _name in (
+    (ipo.router, "ipo"),
+    (mutual_funds.router, "mutual-funds"),
+    (forum.router, "forum"),
+    (finance.router, "finance"),
+    (kyc.router, "kyc"),
+    (account.router, "me"),
+    (fixed_deposits.router, "fixed-deposits"),
+):
+    app.include_router(_router, prefix=f"/api/v1/{_name}")
+    app.include_router(_router, prefix=f"/api/{_name}", include_in_schema=False, deprecated=True)
 app.include_router(compliance.router)
-app.include_router(account.router)
-app.include_router(fixed_deposits.router)
 # Portfolio chart PNGs are served only through the owner-checked route
 # GET /api/v1/portfolio/charts/{user_id}/image/{filename} (routers/portfolio_analytics.py).
 # Never mount backend/charts publicly.

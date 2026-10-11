@@ -71,6 +71,12 @@ PUBLIC_ROUTES = {
     ("GET", "/api/v1/home-feed"), ("GET", "/api/forum/boards"),
     ("GET", "/api/forum/boards/{board_id}/threads"), ("GET", "/api/forum/threads/{thread_id}"),
 }
+# ARCH-17: money-control routers serve /api/v1/<name> plus the legacy /api/<name> alias.
+PUBLIC_ROUTES |= {
+    (method, "/api/v1/" + path[len("/api/"):])
+    for method, path in PUBLIC_ROUTES
+    if path.startswith(("/api/ipo", "/api/mutual-funds/", "/api/forum/", "/api/finance/", "/api/fixed-deposits/"))
+}
 
 # Unauthenticated today; each entry names the audit item that adds auth.
 KNOWN_GAPS = {

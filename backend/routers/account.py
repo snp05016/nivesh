@@ -1,4 +1,4 @@
-"""My Account API — /api/me/*.
+"""My Account API — /api/v1/me/* (legacy alias /api/me/*, see main.py).
 
 Thin, read-only-ish aggregation router: composes existing
 services/subscription_service.py, services/kyc_consent_service.py, and
@@ -17,7 +17,7 @@ from core.security import require_auth
 from routers.subscription import SubscriptionResponse
 from services import compliance_service, kyc_consent_service, subscription_service
 
-router = APIRouter(prefix="/api/me", tags=["My Account"])
+router = APIRouter(tags=["My Account"])
 
 
 @router.get("/subscription", response_model=SubscriptionResponse)

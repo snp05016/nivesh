@@ -24,7 +24,7 @@ from services.kyc_consent_service import (
     verify_device_binding,
 )
 
-router = APIRouter(prefix="/api/kyc", tags=["KYC Consent"])
+router = APIRouter(tags=["KYC Consent"])
 
 
 # ---------------------------------------------------------------------------

@@ -17,7 +17,7 @@ from services.ipo_service import (
     list_ipos,
 )
 
-router = APIRouter(prefix="/api/ipo", tags=["IPO"])
+router = APIRouter(tags=["IPO"])
 
 
 class IPOResponse(BaseModel):

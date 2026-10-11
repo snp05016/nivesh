@@ -27,7 +27,7 @@ from services.forum_service import (
     vote_post,
 )
 
-router = APIRouter(prefix="/api/forum", tags=["Forum"])
+router = APIRouter(tags=["Forum"])
 
 
 # ---------------------------------------------------------------------------

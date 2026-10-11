@@ -26,7 +26,7 @@ from services.fixed_deposit_service import (
 from services.product_bounds import ProductBoundsError
 
 # Demo-only money flows: 404 unless DEMO_MODE=true (FAKE-23).
-router = APIRouter(prefix="/api/fixed-deposits", tags=["Fixed Deposits"], dependencies=[Depends(require_demo_mode)])
+router = APIRouter(tags=["Fixed Deposits"], dependencies=[Depends(require_demo_mode)])
 
 VALID_PAYMENT_METHODS = {"upi", "net_banking"}
 

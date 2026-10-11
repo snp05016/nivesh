@@ -37,7 +37,7 @@ from services.loan_marketplace_service import (
 from services.product_bounds import ProductBoundsError
 
 # Demo-only money flows: 404 unless DEMO_MODE=true (FAKE-23).
-router = APIRouter(prefix="/api/finance", tags=["Loan Marketplace"], dependencies=[Depends(require_demo_mode)])
+router = APIRouter(tags=["Loan Marketplace"], dependencies=[Depends(require_demo_mode)])
 
 VALID_LOAN_TYPES = {"personal", "home", "car", "gold", "education"}
 

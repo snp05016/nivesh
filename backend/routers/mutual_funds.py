@@ -15,7 +15,7 @@ from services.mutual_fund_service import (
     list_funds,
 )
 
-router = APIRouter(prefix="/api/mutual-funds", tags=["Mutual Funds"])
+router = APIRouter(tags=["Mutual Funds"])
 
 
 class MutualFundResponse(BaseModel):
