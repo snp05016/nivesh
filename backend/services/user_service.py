@@ -1,5 +1,6 @@
 import asyncio
 import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 import logging
@@ -10,6 +11,7 @@ from helpers import (
     _to_ns, _yf_price, _yf_fetch_info, _get_asm_gsm_lists
 )
 from database import MarketErrorLog
+from repositories.analysis_repo import latest_signals_by_ticker
 from services.harvester_reformatter import strip_emoji
 from services.notifications_inbox import create_notification
 from services.preferences import push_allowed
@@ -92,27 +94,27 @@ def get_watchlist(user_id: int) -> Optional[dict]:
         logging.warning(f"Caught exception: {e}")
         asm_gsm_data = {"ASM": set(), "GSM": set()}
 
+    tickers = [t for t, _ in items_data]
+    latest: dict = {}
+    try:
+        with get_session() as session:
+            latest = latest_signals_by_ticker(session, tickers)
+    except Exception as e:
+        logging.error(f"Error occurred: {e}", exc_info=True)
+
+    with ThreadPoolExecutor(max_workers=min(len(tickers), 10) or 1) as ex:
+        prices = dict(zip(tickers, ex.map(lambda t: _yf_price(_to_ns(t)), tickers)))
+
     result = []
     for ticker, company_name in items_data:
-        ns = _to_ns(ticker)
-        current_price, prev_close = _yf_price(ns)
+        current_price, prev_close = prices[ticker]
         day_change_pct = 0.0
         if current_price and prev_close and prev_close > 0:
             day_change_pct = round((current_price - prev_close) / prev_close * 100, 2)
 
-        last_signal = None
-        last_signal_date = None
-        try:
-            with get_session() as _sess:
-                sig_row = _sess.query(AnalysisHistory).filter(
-                    AnalysisHistory.ticker == ticker
-                ).order_by(AnalysisHistory.created_at.desc()).first()
-                if sig_row:
-                    last_signal = sig_row.signal
-                    last_signal_date = sig_row.analysis_date
-        except Exception as e:
-            logging.error(f"Error occurred: {e}", exc_info=True)
-            pass
+        sig = (latest.get(ticker) or [{}])[0]
+        last_signal = sig.get("signal")
+        last_signal_date = sig.get("analysis_date")
 
         asm_gsm_status = "UNKNOWN"
         try:

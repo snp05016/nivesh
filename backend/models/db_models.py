@@ -200,11 +200,11 @@ class AnalysisHistory(Base):
     # ML Hybrid Pipeline — quantitative engine columns (added 2026-06-14)
     market_regime               = Column(String, nullable=True)
     calibrated_confidence        = Column(Float, nullable=True, default=0.0, server_default="0.0")
-    confidence_math_breakdown   = Column(JSON, default="{}")
+    confidence_math_breakdown   = Column(JSON, default=dict)
     conformal_target_upper_3m   = Column(Float, nullable=True)
     conformal_target_lower_3m   = Column(Float, nullable=True)
-    quantitative_drivers        = Column(JSON, default="{}")
-    tail_risk_flags             = Column(JSON, default="{}")
+    quantitative_drivers        = Column(JSON, default=dict)
+    tail_risk_flags             = Column(JSON, default=dict)
     created_at     = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     user = relationship("User", back_populates="analysis_history")
@@ -728,8 +728,8 @@ class CovarianceMatrix(Base):
     """Serialized covariance matrices for stress testing. Prevents recomputation."""
     __tablename__ = "covariance_matrices"
     matrix_type = Column(String(50), primary_key=True)
-    tickers_list = Column(JSON, default="[]")
-    data_matrix = Column(JSON, default="[]")
+    tickers_list = Column(JSON, default=list)
+    data_matrix = Column(JSON, default=list)
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 class StockUniverse(Base):
@@ -769,7 +769,7 @@ class AnalysisPrediction(Base):
     __tablename__ = "analysis_predictions"
 
     id                    = Column(Integer, primary_key=True, autoincrement=True)
-    analysis_history_id   = Column(Integer, ForeignKey("analysis_history.id"), nullable=True, index=True)
+    analysis_history_id   = Column(Integer, ForeignKey("analysis_history.id"), nullable=True, index=True, unique=True)
     symbol                = Column(String(30), nullable=False, index=True)
     created_at            = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
     horizon_days          = Column(Integer, nullable=False, default=20)  # label horizon in trading days
@@ -1531,7 +1531,7 @@ class AuditLogEntry(Base):
     action = Column(String(60), nullable=False, index=True)
     # Free-form JSON-serialisable details about the action (e.g. consent_type,
     # reason, previous/new status). Stored as JSON for structured audit reads.
-    details = Column(JSON, nullable=True, default="{}")
+    details = Column(JSON, nullable=True, default=dict)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
     ip_address = Column(String(64), nullable=True)
 
@@ -1556,6 +1556,14 @@ class DataDeletionRequest(Base):
         CheckConstraint(
             "status IN ('pending','processing','completed','cancelled')",
             name="ck_data_deletion_request_status",
+        ),
+        # At most one active (pending/processing) request per user.
+        Index(
+            "uq_data_deletion_active",
+            "user_id",
+            unique=True,
+            sqlite_where=text("status IN ('pending','processing')"),
+            postgresql_where=text("status IN ('pending','processing')"),
         ),
     )
 

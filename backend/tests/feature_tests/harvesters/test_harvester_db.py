@@ -117,3 +117,22 @@ def test_record_source_health_failure(db_session):
     assert row.is_healthy is False
     assert row.error_message == "Test Error"
     assert row.last_failure is not None
+
+
+def test_harvester_engine_pragmas(tmp_path):
+    """DB-31: harvester.db gets WAL + busy_timeout like the main SQLite engine."""
+    from sqlalchemy import event
+    import services.harvester_db as harvester_db
+
+    assert event.contains(harvester_db.ENGINE, "connect", harvester_db._sqlite_pragmas)
+
+    # Exercise the listener on a throwaway file DB (WAL needs a file, not :memory:).
+    eng = create_engine(f"sqlite:///{tmp_path / 'h.db'}")
+    event.listen(eng, "connect", harvester_db._sqlite_pragmas)
+    try:
+        with eng.connect() as c:
+            assert c.exec_driver_sql("PRAGMA journal_mode").scalar().lower() == "wal"
+            assert c.exec_driver_sql("PRAGMA busy_timeout").scalar() == 5000
+            assert c.exec_driver_sql("PRAGMA synchronous").scalar() == 1  # NORMAL
+    finally:
+        eng.dispose()

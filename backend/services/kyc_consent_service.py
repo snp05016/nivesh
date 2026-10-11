@@ -430,7 +430,18 @@ def bind_device(user_id: int, device_id: str, is_primary: bool = True) -> dict:
             session.add(binding)
 
         _log_bind_attempt(session, user_id, device_id, "bound", None)
-        session.commit()
+        try:
+            session.commit()
+        except IntegrityError:
+            # A concurrent bind of the same (user, device) won uq_device_binding_user_device.
+            session.rollback()
+            binding = (
+                session.query(DeviceBinding)
+                .filter(DeviceBinding.user_id == user_id, DeviceBinding.device_id == device_id)
+                .first()
+            )
+            if binding is None:
+                raise
         session.refresh(binding)
 
         return {

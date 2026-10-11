@@ -2,8 +2,9 @@
 
 import json
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Any, Iterable, Optional
 
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from core.timeutil import ist_today
@@ -95,6 +96,46 @@ def save_analysis(session: Session, user_id: Optional[int], ticker: str, result:
     result["signal_changed"] = flipped
     result["previous_signal"] = prev_signal
     return result
+
+
+def latest_signals_by_ticker(
+    session: Session, tickers: Iterable[Any], user_id: Optional[int] = None, per_ticker: int = 1
+) -> dict[Any, list[dict]]:
+    """Newest `per_ticker` analyses for each ticker, newest first, in one query.
+
+    Selects only (signal, confidence_pct, analysis_date, created_at); full_json and
+    raw_output are never loaded. user_id=None reads across users (shared reports).
+    """
+    wanted = set(tickers)
+    if not wanted:
+        return {}
+    rn = func.row_number().over(
+        partition_by=AnalysisHistory.ticker,
+        order_by=(AnalysisHistory.created_at.desc(), AnalysisHistory.id.desc()),
+    ).label("rn")
+    inner = select(
+        AnalysisHistory.ticker,
+        AnalysisHistory.signal,
+        AnalysisHistory.confidence_pct,
+        AnalysisHistory.analysis_date,
+        AnalysisHistory.created_at,
+        rn,
+    ).where(AnalysisHistory.ticker.in_(wanted))
+    if user_id is not None:
+        inner = inner.where(AnalysisHistory.user_id == user_id)
+    sub = inner.subquery()
+    rows = session.execute(
+        select(sub).where(sub.c.rn <= per_ticker).order_by(sub.c.ticker, sub.c.rn)
+    ).all()
+    out: dict[Any, list[dict]] = {}
+    for r in rows:
+        out.setdefault(r.ticker, []).append({
+            "signal": r.signal,
+            "confidence_pct": r.confidence_pct,
+            "analysis_date": r.analysis_date,
+            "created_at": r.created_at,
+        })
+    return out
 
 
 def get_recent_analyses(

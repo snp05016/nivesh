@@ -35,6 +35,7 @@ from sqlalchemy import (
     String,
     Text,
     create_engine,
+    event,
 )
 from sqlalchemy.orm import declarative_base, sessionmaker
 
@@ -49,6 +50,17 @@ ENGINE = create_engine(
     connect_args={"check_same_thread": False},  # APScheduler threads + FastAPI
     future=True,
 )
+
+
+@event.listens_for(ENGINE, "connect")
+def _sqlite_pragmas(dbapi_conn, _record):
+    # Same concurrency settings as the main SQLite engine (database.py): readers
+    # never block the writer, and writers wait instead of failing "database is locked".
+    dbapi_conn.execute("PRAGMA journal_mode=WAL")
+    dbapi_conn.execute("PRAGMA synchronous=NORMAL")
+    dbapi_conn.execute("PRAGMA busy_timeout=5000")
+
+
 SessionLocal = sessionmaker(bind=ENGINE, autoflush=False, autocommit=False, future=True)
 Base = declarative_base()
 

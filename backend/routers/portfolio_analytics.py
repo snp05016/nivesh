@@ -30,6 +30,7 @@ from services.market_service import get_rbi_policy
 from services.llm_utils import deepseek_chat as _deepseek_chat
 from services.kyc_consent_service import AI_PROCESSING_CONSENT, has_active_consent
 from services import llm_budget
+from repositories.analysis_repo import latest_signals_by_ticker
 from services.portfolio_service import (
     _get_asm_gsm_lists, _risk_label, compute_sip, compute_pearson_correlation,
 )
@@ -161,15 +162,17 @@ def portfolio_signal_warnings(user_id: int, _caller: int = Depends(require_user_
     warnings = []
     with get_session() as session:
         holdings = session.query(Portfolio).filter(Portfolio.user_id == user_id, Portfolio.group_name == "holdings").all()
+        # Cross-user on purpose: reports are shared per ticker.
+        history = latest_signals_by_ticker(session, [h.ticker for h in holdings], per_ticker=2)
         for h in holdings:
-            rows = session.query(AnalysisHistory).filter(AnalysisHistory.ticker == h.ticker).order_by(AnalysisHistory.created_at.desc()).limit(2).all()
+            rows = history.get(h.ticker)
             if not rows: continue
             latest, prev = rows[0], rows[1] if len(rows) > 1 else None
-            signal_flipped = prev is not None and prev.signal != latest.signal
-            confidence_dropped = prev is not None and latest.confidence_pct is not None and prev.confidence_pct is not None and (prev.confidence_pct - latest.confidence_pct) > 20
-            is_bearish = latest.signal in ("BEARISH", "CAUTIOUSLY BEARISH")
+            signal_flipped = prev is not None and prev["signal"] != latest["signal"]
+            confidence_dropped = prev is not None and latest["confidence_pct"] is not None and prev["confidence_pct"] is not None and (prev["confidence_pct"] - latest["confidence_pct"]) > 20
+            is_bearish = latest["signal"] in ("BEARISH", "CAUTIOUSLY BEARISH")
             if signal_flipped or confidence_dropped or is_bearish:
-                warnings.append({"ticker": h.ticker, "current_signal": latest.signal, "previous_signal": prev.signal if prev else None, "signal_flipped": signal_flipped, "confidence_dropped": confidence_dropped, "is_bearish": is_bearish, "analysis_date": latest.analysis_date})
+                warnings.append({"ticker": h.ticker, "current_signal": latest["signal"], "previous_signal": prev["signal"] if prev else None, "signal_flipped": signal_flipped, "confidence_dropped": confidence_dropped, "is_bearish": is_bearish, "analysis_date": latest["analysis_date"]})
     return {"warnings": warnings}
 
 

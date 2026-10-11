@@ -18,6 +18,8 @@ import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
+from sqlalchemy.exc import IntegrityError
+
 from database import get_session
 from models.db_models import AuditLogEntry, Base, DataDeletionRequest, User
 
@@ -77,8 +79,8 @@ def request_account_deletion(
     AuditLogEntry. The data itself is erased later by
     process_due_deletion_requests() once ERASURE_GRACE_DAYS have passed.
     """
-    with get_session() as session:
-        existing_pending = (
+    def _existing(session) -> Optional[dict]:
+        active = (
             session.query(DataDeletionRequest)
             .filter(
                 DataDeletionRequest.user_id == user_id,
@@ -86,12 +88,18 @@ def request_account_deletion(
             )
             .first()
         )
-        if existing_pending is not None:
-            return {
-                "created": False,
-                "reason": "an active deletion request already exists for this user",
-                **_deletion_request_to_dict(existing_pending),
-            }
+        if active is None:
+            return None
+        return {
+            "created": False,
+            "reason": "an active deletion request already exists for this user",
+            **_deletion_request_to_dict(active),
+        }
+
+    with get_session() as session:
+        existing = _existing(session)
+        if existing is not None:
+            return existing
 
         deletion_request = DataDeletionRequest(
             user_id=user_id,
@@ -100,7 +108,15 @@ def request_account_deletion(
             reason=reason,
         )
         session.add(deletion_request)
-        session.flush()  # assign deletion_request.id before logging
+        try:
+            session.flush()  # assign deletion_request.id before logging
+        except IntegrityError:
+            # A concurrent request won the uq_data_deletion_active race.
+            session.rollback()
+            existing = _existing(session)
+            if existing is None:
+                raise
+            return existing
 
         _log_action(
             session,

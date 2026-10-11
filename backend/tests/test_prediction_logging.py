@@ -255,3 +255,70 @@ def test_provenance_migration_parses():
     }
     assert names["revision"] == "2b3e6056a7c7"
     assert names["down_revision"] == "f32cf73ca308"
+
+
+# ── DB-17: one prediction per analysis_history row; legacy cache-hit duplicates removed ──
+
+def test_prediction_history_id_unique(engine):
+    s = sessionmaker(bind=engine)()
+    s.add_all([_row(), _row()])  # NULL analysis_history_id may repeat
+    s.commit()
+    s.add(_row(analysis_history_id=7, input_asof_date=date(2026, 10, 8)))
+    s.commit()
+    s.add(_row(analysis_history_id=7, input_asof_date=date(2026, 10, 9)))
+    with pytest.raises(IntegrityError):
+        s.commit()
+    s.rollback()
+    s.close()
+
+
+def test_dedupe_migration_removes_cache_hit_duplicates(tmp_path):
+    import os
+    import subprocess
+    import sys
+
+    from sqlalchemy import inspect as sa_inspect, text
+
+    backend_dir = Path(__file__).resolve().parents[1]
+    db = tmp_path / "dedupe.db"
+    env = {**os.environ, "DATABASE_URL": f"sqlite:///{db}"}
+
+    def _alembic(target):
+        res = subprocess.run(
+            [sys.executable, "-m", "alembic", "upgrade", target],
+            cwd=str(backend_dir), capture_output=True, text=True, env=env,
+        )
+        assert res.returncode == 0, res.stderr
+
+    _alembic("fa04b9414864")  # head before 814a5ca5bc07
+    eng = create_engine(f"sqlite:///{db}")
+    insert = text(
+        "INSERT INTO analysis_predictions (symbol, created_at, horizon_days, recommendation, "
+        "confidence_pct, model_version, scan_type, entry_price, input_asof_date, analysis_history_id) "
+        "VALUES ('TCS', :ts, 20, 'BULLISH', 70, 'v1', 'standard', 3500.0, :asof, :hid)"
+    )
+    with eng.begin() as c:
+        for ts in ("2026-10-01 09:00:00", "2026-10-01 11:00:00", "2026-10-01 15:00:00"):
+            c.execute(insert, {"ts": ts, "asof": None, "hid": None})  # one cached forecast, three rows
+        c.execute(insert, {"ts": "2026-10-02 09:00:00", "asof": None, "hid": None})  # next day: kept
+        c.execute(insert, {"ts": "2026-10-03 09:00:00", "asof": "2026-10-02", "hid": 5})
+        c.execute(insert, {"ts": "2026-10-03 10:00:00", "asof": "2026-10-03", "hid": 5})  # same analysis
+    eng.dispose()
+
+    _alembic("head")
+    eng = create_engine(f"sqlite:///{db}")
+    with eng.connect() as c:
+        rows = c.execute(text(
+            "SELECT created_at, analysis_history_id FROM analysis_predictions ORDER BY id"
+        )).all()
+    ix = next(
+        i for i in sa_inspect(eng).get_indexes("analysis_predictions")
+        if i["name"] == "ix_analysis_predictions_analysis_history_id"
+    )
+    eng.dispose()
+    assert [(str(r[0])[:19], r[1]) for r in rows] == [
+        ("2026-10-01 09:00:00", None),
+        ("2026-10-02 09:00:00", None),
+        ("2026-10-03 09:00:00", 5),
+    ]
+    assert ix["unique"]

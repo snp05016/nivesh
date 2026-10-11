@@ -16,7 +16,7 @@ from services.yfinance_client import _yf_price_with_status
 
 from helpers import (
     get_session, EXCHANGE_SUFFIX, _to_ns, _yf_price, _quick_info_cache,
-    _QUICK_INFO_TTL, DataHarvestingError, User, Portfolio, AnalysisHistory,
+    _QUICK_INFO_TTL, DataHarvestingError, User, Portfolio,
     PortfolioValuationHistory, PKScreenerSignal, MacroEvent, PortfolioAddRequest,
     PortfolioRemoveRequest, PortfolioUpdateRequest, PortfolioNoteRequest, _check_rate_limit,
     _get_analyze_semaphore, _acquire_analysis_slot, _release_analysis_slot, _dash_start_job,
@@ -28,6 +28,7 @@ from core.security import require_user_match, assert_same_user
 from decimal import Decimal
 
 from services.staleness import compute_staleness
+from repositories.analysis_repo import latest_signals_by_ticker
 
 
 # _adjust_for_splits, _adjust_for_bonus, _apply_corporate_actions
@@ -69,15 +70,9 @@ def portfolio_endpoint(user_id: int, _caller: int = Depends(require_user_match),
                 return {"user": user.display_name, "holdings": [], "total_invested": 0, "total_current": 0, "total_pnl": 0}
 
             tickers = [h.ticker for h in holdings]
-            last_analyses = {}
-            last_signals = {}
-            for row in session.query(AnalysisHistory).filter(
-                AnalysisHistory.user_id == user_id,
-                AnalysisHistory.ticker.in_(tickers),
-            ).order_by(AnalysisHistory.created_at.desc()).all():
-                if row.ticker not in last_analyses:
-                    last_analyses[row.ticker] = row.created_at
-                    last_signals[row.ticker] = row.signal or "HOLD"
+            latest = latest_signals_by_ticker(session, tickers, user_id=user_id)
+            last_analyses = {t: rows[0]["created_at"] for t, rows in latest.items()}
+            last_signals = {t: rows[0]["signal"] or "HOLD" for t, rows in latest.items()}
 
         # Fetch all prices in parallel — 10x faster than sequential yfinance calls.
         # Sync handler (threadpool), so the _to_ns probe stays off the event loop too.
