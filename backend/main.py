@@ -14,9 +14,8 @@ from typing import Optional
 # ---------------------------------------------------------------------------
 # Load environment before any other imports
 # ---------------------------------------------------------------------------
-from dotenv import load_dotenv
-env_path = Path(__file__).parent / ".env"
-load_dotenv(dotenv_path=env_path, override=True)
+from core.env import load_backend_env
+load_backend_env()  # no-op under pytest (NIVESH_TESTING=1)
 
 # Disk cache — L2 persistent layer (L1 = in-memory _quick_info_cache)
 from services.disk_cache import get as _dcache_get, set as _dcache_set, stats as _dcache_stats

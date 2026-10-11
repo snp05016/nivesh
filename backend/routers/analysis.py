@@ -42,6 +42,7 @@ router = APIRouter(tags=["Analysis"])
 # ---------------------------------------------------------------------------
 from services.llm_utils import deepseek_chat, SONNET_MODEL, DEEPSEEK_MODEL
 _deepseek_chat = deepseek_chat  # backward-compat alias
+from services.kyc_consent_service import AI_PROCESSING_CONSENT, has_active_consent
 
 # Task 31: import SECTOR_PE_MAP from central config
 from config.settings import (
@@ -125,13 +126,12 @@ _get_asm_gsm_lists = _helpers_asm_gsm
 # Analysis worker (runs in subprocess)
 # ---------------------------------------------------------------------------
 def _run_analysis_worker(queue, ticker, exchange, user_id, deep_scan=False, scan_type="standard", language=None, debate_rounds=None, risk_tolerance=None):
-    from dotenv import load_dotenv
+    from core.env import load_backend_env
     from pathlib import Path as _Path
     import os
     import traceback
     import sys
-    env_path = _Path(__file__).parent.parent / ".env"
-    load_dotenv(dotenv_path=env_path, override=True)
+    load_backend_env()
     try:
         sys.path.insert(0, str(_Path(__file__).parent.parent))
         # Put the local tradingagents-core fork BEFORE the venv so it shadows
@@ -1421,7 +1421,8 @@ def daily_action_endpoint(user_id: int, authorization: str = Header(None)):
             urgency = "medium"
 
         action = "Review your portfolio — no urgent signals detected today."
-        if os.getenv("DEEPSEEK_API_KEY"):
+        # Holdings go to the LLM processor only with the opt-in consent (FINSEC-04).
+        if os.getenv("DEEPSEEK_API_KEY") and has_active_consent(user_id, AI_PROCESSING_CONSENT):
             try:
                 context_parts = []
                 if triggered:

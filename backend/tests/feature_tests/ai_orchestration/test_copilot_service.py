@@ -24,10 +24,11 @@ def test_process_copilot_general(mock_claude, mock_deepseek):
     assert mock_deepseek.call_count == 2
     mock_claude.assert_not_called()
 
+@patch("backend.services.copilot_service.has_active_consent", return_value=True)
 @patch("backend.services.copilot_service.deepseek_chat")
 @patch("backend.services.copilot_service.claude_haiku")
 @patch("backend.services.copilot_service.get_session")
-def test_process_copilot_portfolio(mock_get_session, mock_claude, mock_deepseek):
+def test_process_copilot_portfolio(mock_get_session, mock_claude, mock_deepseek, _mock_consent):
     mock_deepseek.return_value = "PORTFOLIO"
     mock_claude.return_value = "Portfolio looks great."
     

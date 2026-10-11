@@ -39,6 +39,9 @@ from database import get_session
 from models.db_models import DeviceBinding, DeviceBindingAttempt, KYCConsent
 
 CREDIT_CHECK_CONSENT = "credit_check"
+# Opt-in (default off) consent to send a user's portfolio data to the LLM
+# processors named in disclosure_service ("AI processors"). FINSEC-04.
+AI_PROCESSING_CONSENT = "ai_processing"
 
 # Rebind rate-limit heuristic — MOCK DATA, simulated for demo purposes, not a
 # real integration. Models a "rapid device churn" fraud signal (SIM-swap
@@ -152,13 +155,27 @@ def get_active_consents(user_id: int) -> list[dict]:
         return [_consent_to_dict(c) for c in consents]
 
 
+def has_active_consent(user_id: int, consent_type: str) -> bool:
+    """True iff the user's newest consent_type row is granted and not revoked.
+
+    Newest row wins, so a later POST with granted=false (what the iOS toggle
+    sends) withdraws an earlier grant without needing DELETE.
+    """
+    with get_session() as session:
+        latest = (
+            session.query(KYCConsent)
+            .filter(KYCConsent.user_id == user_id, KYCConsent.consent_type == consent_type)
+            .order_by(KYCConsent.id.desc())
+            .first()
+        )
+        return bool(latest and latest.granted and latest.revoked_at is None)
+
+
 def has_active_credit_check_consent(user_id: int) -> bool:
     """Convenience helper for the loan-approval invariant: True iff the user
     has an active (granted, not revoked) "credit_check" consent.
     """
-    return any(
-        c["consent_type"] == CREDIT_CHECK_CONSENT for c in get_active_consents(user_id)
-    )
+    return has_active_consent(user_id, CREDIT_CHECK_CONSENT)
 
 
 def verify_device_binding(user_id: int, device_id: str) -> dict:

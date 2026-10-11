@@ -15,7 +15,9 @@ FAIL=0
 
 cd "$BACKEND_DIR"
 
-# Safe test environment — never touch production DB
+# Safe test environment — never touch production DB.
+# NIVESH_TESTING=1 stops main.py & co. from loading backend/.env over these values.
+export NIVESH_TESTING=1
 export DATABASE_URL="sqlite:///./stockapp_health_check_test.db"
 export ENABLE_SCHEDULER="false"
 export JWT_SECRET="health-check-secret-not-for-production"

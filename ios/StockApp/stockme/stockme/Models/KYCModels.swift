@@ -38,11 +38,14 @@ struct ConsentDTO: Codable, Identifiable, Equatable {
 /// Well-known consent_type values used across the loan/FD marketplace KYC
 /// gate (services/kyc_consent_service.py's CREDIT_CHECK_CONSENT constant +
 /// the "sim_binding"/"data_sharing" types referenced by
-/// services/compliance_service.py's withdraw_consent()).
+/// services/compliance_service.py's withdraw_consent()), plus "ai_processing"
+/// (services/kyc_consent_service.py AI_PROCESSING_CONSENT), which gates every
+/// backend path that sends portfolio data to an LLM processor.
 enum KYCConsentType: String, CaseIterable, Identifiable {
     case creditCheck = "credit_check"
     case simBinding = "sim_binding"
     case dataSharing = "data_sharing"
+    case aiProcessing = "ai_processing"
 
     var id: String { rawValue }
 
@@ -51,6 +54,7 @@ enum KYCConsentType: String, CaseIterable, Identifiable {
         case .creditCheck: return "Credit Check"
         case .simBinding: return "SIM / Device Binding"
         case .dataSharing: return "Data Sharing"
+        case .aiProcessing: return "AI Processing"
         }
     }
 
@@ -62,6 +66,8 @@ enum KYCConsentType: String, CaseIterable, Identifiable {
             return "Consent to the mock device-binding fraud-prevention check used to gate loan/FD confirmations."
         case .dataSharing:
             return "Consent to (mock) downstream data sharing with the demo loan/FD marketplace partners."
+        case .aiProcessing:
+            return "Lets AI features (morning brief, red flags, macro impact, daily action, journal patterns, PDF review, Copilot portfolio answers) send your holdings, % moves, P&L %, signals and journal notes to DeepSeek (China) and Anthropic (USA). Never your name or contact details. Off: non-AI text."
         }
     }
 }

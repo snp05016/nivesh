@@ -5,6 +5,7 @@ from typing import List, Dict, Any, Optional
 
 from database import get_session
 from services.llm_utils import deepseek_chat, HAIKU_MODEL
+from services.kyc_consent_service import AI_PROCESSING_CONSENT, has_active_consent
 import anthropic
 import os
 
@@ -110,7 +111,11 @@ User Message: {user_message}
     reply = ""
     context_cards = None
     
-    if "PORTFOLIO" in intent:
+    if "PORTFOLIO" in intent and not (user_id and has_active_consent(user_id, AI_PROCESSING_CONSENT)):
+        # FINSEC-04: holdings go to the LLM processors only with the opt-in consent.
+        reply = "To discuss your holdings, enable 'AI processing' in Settings > Account Security > KYC Consents."
+
+    elif "PORTFOLIO" in intent:
         # Query DB via get_session()
         with get_session() as db:
             from database import Portfolio

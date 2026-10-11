@@ -62,6 +62,7 @@ from services.market_service import get_rbi_policy
 # imported from services.portfolio_service
 
 from services.llm_utils import deepseek_chat as _deepseek_chat
+from services.kyc_consent_service import AI_PROCESSING_CONSENT, has_active_consent
 from services.portfolio_service import (
     _adjust_for_splits,
     _adjust_for_bonus,
@@ -424,6 +425,15 @@ def morning_summary_endpoint(user_id: int, authorization: str = Header(None)):
     token_user = verify_access_token(authorization.split(" ", 1)[1] if authorization and authorization.startswith("Bearer ") else "")
     if token_user != user_id:
         raise HTTPException(status_code=401, detail="Unauthorized")
+    # FINSEC-04: holdings go to the LLM processor only with the opt-in consent.
+    # Not cached, so granting consent takes effect on the next request.
+    if not has_active_consent(user_id, AI_PROCESSING_CONSENT):
+        return {
+            "summary": "• Enable 'AI processing' in Settings > Account Security > KYC Consents to get an AI morning brief.",
+            "movers": [],
+            "mood": "cautious",
+            "generated_at": datetime.now(timezone.utc).strftime("%H:%M"),
+        }
     now = time.time()
 
     # Check in-memory cache first
@@ -482,18 +492,15 @@ def morning_summary_endpoint(user_id: int, authorization: str = Header(None)):
 
             invested = h.shares * h.buy_price
             current_value = h.shares * current_price if current_price else None
-            pnl_inr = (current_value - invested) if current_value else None
             pnl_pct = ((current_value - invested) / invested * 100) if current_value and invested > 0 else None
 
-            price_str = f"₹{current_price:.2f}" if current_price else "N/A"
+            # Data minimisation for the LLM processor: % moves only, never
+            # share counts, prices or rupee P&L.
             day_str = (f"+{day_pct:.1f}%" if day_pct and day_pct >= 0 else f"{day_pct:.1f}%") if day_pct is not None else "N/A"
-            pnl_str = ""
-            if pnl_inr is not None and pnl_pct is not None:
-                pnl_sign = "+" if pnl_inr >= 0 else ""
-                pnl_str = f", overall P&L: {pnl_sign}₹{pnl_inr:.0f} ({pnl_sign}{pnl_pct:.1f}%)"
+            pnl_str = f", overall P&L: {'+' if pnl_pct >= 0 else ''}{pnl_pct:.1f}%" if pnl_pct is not None else ""
 
             company = h.company_name or h.ticker
-            holding_lines.append(f"{h.ticker} ({company}): {price_str}, day change: {day_str}{pnl_str}")
+            holding_lines.append(f"{h.ticker} ({company}): day change: {day_str}{pnl_str}")
 
             if day_pct is not None and abs(day_pct) >= 2.0:
                 mover_tickers.append(h.ticker)
@@ -1610,9 +1617,10 @@ def portfolio_red_flags_endpoint(user_id: int, authorization: str = Header(None)
 
         summary = "No significant red flags detected across the portfolio."
         if flags:
+            summary = f"{len(flags)} red flag(s) detected across the portfolio."
             try:
-                # Red flags summary → DeepSeek V4 Flash (Tier 1 bulk task)
-                if os.getenv("DEEPSEEK_API_KEY"):
+                # Red flags summary → DeepSeek V4 Flash (Tier 1 bulk task), consented users only
+                if os.getenv("DEEPSEEK_API_KEY") and has_active_consent(user_id, AI_PROCESSING_CONSENT):
                     flags_text = "\n".join(
                         f"- [{f['severity']}] {f['ticker']}: {f['detail']}" for f in flags
                     )
@@ -1701,9 +1709,10 @@ def macro_impact_endpoint(user_id: int, authorization: str = Header(None)):
             '[{"ticker": "TICKER", "impact_statement": "...", "direction": "positive|negative|neutral"}]'
         )
 
-        # Macro impact → DeepSeek V4 Flash (Tier 1 bulk task)
+        # Macro impact → DeepSeek V4 Flash (Tier 1 bulk task), consented users only
+        consent_ok = has_active_consent(user_id, AI_PROCESSING_CONSENT)
         impacts = []
-        if os.getenv("DEEPSEEK_API_KEY"):
+        if os.getenv("DEEPSEEK_API_KEY") and consent_ok:
             try:
                 raw_text = _deepseek_chat(
                     [{"role": "user", "content": prompt}],
@@ -1721,7 +1730,9 @@ def macro_impact_endpoint(user_id: int, authorization: str = Header(None)):
                 logging.info(f"[MACRO-IMPACT] AI call failed: {e}")
                 impacts = [{"ticker": t, "impact_statement": "Macro assessment unavailable.", "direction": "neutral"} for t, _ in holdings_data]
         else:
-            impacts = [{"ticker": t, "impact_statement": "DeepSeek API key not configured.", "direction": "neutral"} for t, _ in holdings_data]
+            note = ("DeepSeek API key not configured." if consent_ok else
+                    "Enable 'AI processing' in Settings > Account Security > KYC Consents for a macro assessment.")
+            impacts = [{"ticker": t, "impact_statement": note, "direction": "neutral"} for t, _ in holdings_data]
 
         result = {
             "user_id": user_id,
@@ -1729,7 +1740,8 @@ def macro_impact_endpoint(user_id: int, authorization: str = Header(None)):
             "impacts": impacts,
             "generated_at": datetime.now(timezone.utc).isoformat(),
         }
-        _dcache_set("macro_impact", str(user_id), result, ttl=_MACRO_IMPACT_TTL)
+        if consent_ok:  # never pin the consent hint in the 2h cache
+            _dcache_set("macro_impact", str(user_id), result, ttl=_MACRO_IMPACT_TTL)
         return result
     except HTTPException:
         raise
@@ -2040,7 +2052,7 @@ def trade_journal_stats_endpoint(user_id: int, auth_user_id: int = Depends(requi
         patterns = []
         try:
             all_reasons = " | ".join(e["reason_text"] for e in entries_data if e["reason_text"])
-            if all_reasons and os.getenv("DEEPSEEK_API_KEY"):
+            if all_reasons and os.getenv("DEEPSEEK_API_KEY") and has_active_consent(auth_user_id, AI_PROCESSING_CONSENT):
                 prompt = (
                     f'Find 2 patterns in these trade journal reasons: {all_reasons[:2000]}. '
                     'Return JSON: [{"pattern": str}]'

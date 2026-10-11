@@ -14,11 +14,13 @@ from datetime import datetime, date, timedelta, timezone
 import sys
 import os
 import json
+from typing import cast
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from database import get_session, Portfolio, PortfolioValuationHistory, User, AnalysisHistory
 from services.llm_utils import contains_devanagari
 from services.yfinance_client import _yf_price, _to_ns
+from services.kyc_consent_service import AI_PROCESSING_CONSENT, has_active_consent
 
 logger = logging.getLogger(__name__)
 
@@ -141,7 +143,8 @@ async def snapshot_all_users():
 
 
 async def pregen_morning_briefs_all_users() -> dict:
-    """Pre-generate morning briefs for every user who has holdings.
+    """Pre-generate morning briefs for every user who has holdings and an active
+    'ai_processing' consent (FINSEC-04: no consent, no data to the LLM processor).
 
     Called at 6:30 AM IST so the endpoint returns instantly when the user opens the app.
     Stores results in disk_cache under 'morning_brief' namespace keyed by user_id.
@@ -162,6 +165,9 @@ async def pregen_morning_briefs_all_users() -> dict:
     with get_session() as db:
         users = db.query(User).all()
         for user in users:
+            if not has_active_consent(cast(int, user.id), AI_PROCESSING_CONSENT):
+                skipped += 1
+                continue
             holdings = db.query(Portfolio).filter_by(
                 user_id=user.id, group_name="holdings"
             ).all()
@@ -218,18 +224,15 @@ async def pregen_morning_briefs_all_users() -> dict:
 
                 invested = shares * buy_price
                 current_value = shares * current_price if current_price else None
-                pnl_inr = (current_value - invested) if current_value else None
                 pnl_pct = ((current_value - invested) / invested * 100) if current_value and invested > 0 else None
 
-                price_str = f"₹{current_price:.2f}" if current_price else "N/A"
+                # Data minimisation for the LLM processor: % moves only, never
+                # share counts, prices or rupee P&L.
                 day_str = (f"+{day_pct:.1f}%" if day_pct and day_pct >= 0 else f"{day_pct:.1f}%") if day_pct is not None else "N/A"
-                pnl_str = ""
-                if pnl_inr is not None and pnl_pct is not None:
-                    sign = "+" if pnl_inr >= 0 else ""
-                    pnl_str = f", overall P&L: {sign}₹{pnl_inr:.0f} ({sign}{pnl_pct:.1f}%)"
+                pnl_str = f", overall P&L: {'+' if pnl_pct >= 0 else ''}{pnl_pct:.1f}%" if pnl_pct is not None else ""
 
                 holding_lines.append(
-                    f"{ticker} ({company}): {price_str}, day: {day_str}{pnl_str}"
+                    f"{ticker} ({company}): day: {day_str}{pnl_str}"
                 )
 
                 if day_pct is not None and abs(day_pct) >= 2.0:

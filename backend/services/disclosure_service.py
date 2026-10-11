@@ -31,6 +31,26 @@ def _section(heading: str, text: str) -> dict:
     return {"heading": heading, "text": text}
 
 
+# FINSEC-04: the real data flow to LLM processors. Interim wording pending
+# legal review; must stay in sync with the 'ai_processing' consent gate.
+_AI_PROCESSORS_TEXT = (
+    "Portfolio-based AI features (morning brief, red-flag summary, macro "
+    "impact, daily action, trade-journal patterns, the PDF portfolio review and "
+    "Copilot answers about your holdings) run only if you turn on the 'AI "
+    "processing' consent in Settings > Account Security > KYC Consents. It is "
+    "off by default and you can withdraw it there at any time; without it these "
+    "features show non-AI text. With it, the app sends what each feature needs "
+    "(stock tickers and company names, day and overall P&L percentages, AI "
+    "signals and red flags, your trade-journal notes, and your holdings for "
+    "Copilot portfolio questions) to two third-party large-language-model "
+    "processors: DeepSeek (servers in the People's Republic of China) and "
+    "Anthropic (USA). Text you type into AI features (Copilot chat, the "
+    "natural-language screener, idea brainstorming) is also sent to them to be "
+    "answered. The app does not add your name, username or contact details to "
+    "these requests."
+)
+
+
 STATIC_DISCLOSURES = {
     "privacy_policy": {
         "title": "Privacy Policy (Demo)",
@@ -55,6 +75,7 @@ STATIC_DISCLOSURES = {
                 "right-to-erasure workflow (DEMO-GRADE — a state-machine record "
                 "only, not real irreversible deletion).",
             ),
+            _section("AI processors", _AI_PROCESSORS_TEXT),
         ],
     },
     "data_sharing_governance": {
@@ -63,11 +84,15 @@ STATIC_DISCLOSURES = {
         "sections": [
             _section(
                 "Third parties in this demo",
-                "This demo app does not call any real third-party data broker, "
-                "ad network, or analytics reseller. Market data (prices, "
+                "This demo app does not sell user data and does not use any data "
+                "broker, ad network, or analytics reseller. Market data (prices, "
                 "fundamentals) is fetched from public market-data sources for "
-                "display purposes only.",
+                "display purposes only. Apart from the hosting and Apple "
+                "push-notification services needed to run the app (device token "
+                "and alert text for price alerts), the third parties that receive "
+                "data derived from your account are the AI processors below.",
             ),
+            _section("AI processors", _AI_PROCESSORS_TEXT),
             _section(
                 "Mock lending-marketplace partners",
                 "NBFC/bank names shown in the loan and FD marketplaces (e.g. "

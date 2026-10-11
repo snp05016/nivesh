@@ -45,10 +45,9 @@ import json  # kept for local import compat inside functions
 # ---------------------------------------------------------------------------
 # Load environment
 # ---------------------------------------------------------------------------
-from dotenv import load_dotenv
+from core.env import load_backend_env
 
-_env_path = Path(__file__).parent.parent / ".env"
-load_dotenv(dotenv_path=_env_path, override=True)
+load_backend_env()
 
 # ---------------------------------------------------------------------------
 # Third-party

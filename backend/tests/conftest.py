@@ -129,20 +129,12 @@ _nse_dp.get_price_history.return_value = []
 _nse_dp.get_fundamentals.return_value = {}
 
 # ---------------------------------------------------------------------------
-# STEP 2: Set test environment variables
+# STEP 2: Test environment
 # ---------------------------------------------------------------------------
-_TEST_DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "stockapp_test.db")
-os.environ.setdefault("DATABASE_URL", f"sqlite:///{_TEST_DB_PATH}")
-os.environ.setdefault("JWT_SECRET", "test_secret_key_for_pytest_only")
-os.environ.setdefault("ANTHROPIC_API_KEY", "test_key")
-os.environ.setdefault("DEEPSEEK_API_KEY", "test_key")
-os.environ.setdefault("ADMIN_TOKEN", "admin")
-
-for _path in (_TEST_DB_PATH, f"{_TEST_DB_PATH}-wal", f"{_TEST_DB_PATH}-shm"):
-    try:
-        os.remove(_path)
-    except FileNotFoundError:
-        pass
+# backend/conftest.py (loaded first) forces DATABASE_URL to a fresh temp SQLite
+# file, sets dummy API keys and NIVESH_TESTING=1. Capture the URL before main is
+# imported so the guard below catches anything that rebinds the engine.
+_TEST_DATABASE_URL = os.environ["DATABASE_URL"]
 
 # ---------------------------------------------------------------------------
 # STEP 2b: No real child processes (TEST-02)
@@ -180,6 +172,12 @@ _piotroski_mock.compute_piotroski.return_value = {"score": 5, "interpretation": 
 sys.modules["services.piotroski"] = _piotroski_mock
 
 from main import app
+import database as _database
+from sqlalchemy.engine import make_url as _make_url
+if _database.ENGINE.url != _make_url(_TEST_DATABASE_URL):
+    # SystemExit, not pytest.exit(): pytest reports a failing conftest as a
+    # collection error and keeps collecting other directories; SystemExit aborts.
+    raise SystemExit("database.ENGINE is not bound to the test database; refusing to run")
 from database import init_db
 init_db()
 
@@ -327,21 +325,13 @@ def teardown_test_user(client, request):
 def seed_job_test_users():
     """Create stub users for job/worker tests that reference hard-coded user IDs.
     These IDs are needed to satisfy the FK constraint on analysis_jobs.user_id
-    now that PRAGMA foreign_keys=ON is enforced.
+    now that PRAGMA foreign_keys=ON is enforced. Written through the app engine,
+    so they can only land in the test DB (the per-session temp DB is discarded,
+    hence no teardown; jobs rows would block a delete through the FK anyway).
     """
-    import sqlite3
-    from pathlib import Path
-    db_path = Path(__file__).parent.parent / "stockapp_test.db"
-    conn = sqlite3.connect(str(db_path))
-    test_ids = [990001, 990002, 990003, 11_111_111, 11_111_112, 22_222_221]
-    for uid in test_ids:
-        conn.execute(
-            "INSERT OR IGNORE INTO users (id, username, password_hash, display_name) VALUES (?, ?, ?, ?)",
-            (uid, f"_test_stub_{uid}", "x", f"Test Stub {uid}")
-        )
-    conn.commit()
-    yield
-    for uid in test_ids:
-        conn.execute("DELETE FROM users WHERE id=?", (uid,))
-    conn.commit()
-    conn.close()
+    from database import get_session, User
+    with get_session() as session:
+        for uid in (990001, 990002, 990003, 11_111_111, 11_111_112, 22_222_221):
+            session.merge(User(id=uid, username=f"_test_stub_{uid}", password_hash="x",
+                               display_name=f"Test Stub {uid}"))
+        session.commit()

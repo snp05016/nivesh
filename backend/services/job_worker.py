@@ -48,8 +48,8 @@ def run_job(job_id: str, ticker: str, exchange: str,
         _sys.path.insert(0, str(_tg_path))
 
     try:
-        from dotenv import load_dotenv
-        load_dotenv(override=True)
+        from core.env import load_backend_env
+        load_backend_env()
     except Exception as _e:
         pass
 

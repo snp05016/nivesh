@@ -267,8 +267,8 @@ def run_stress_test_job(
         scenarios (list[str]): A list of stress test scenario keys.
     """
     try:
-        from dotenv import load_dotenv
-        load_dotenv(override=True)
+        from core.env import load_backend_env
+        load_backend_env()
     except Exception as _e:
         pass
 
