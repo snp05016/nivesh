@@ -204,7 +204,8 @@ def test_analyze_job_spawning_and_polling_idor(client, auth_headers, test_user_i
         assert "pid" not in resp.json()
 
         # 3. Another user's token -> 404, even when ?user_id= names the owner
-        other = {"Authorization": f"Bearer {database.create_access_token(user_id=99999)}"}
+        # Seeded stub user (conftest): tokens need a real user (AUTH-13).
+        other = {"Authorization": f"Bearer {database.create_access_token(user_id=990001)}"}
         assert client.get(f"/analyze/job/{job_id}", headers=other).status_code == 404
         resp = client.get(f"/analyze/job/{job_id}?user_id={test_user_id}", headers=other)
         assert resp.status_code == 404

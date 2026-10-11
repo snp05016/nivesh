@@ -64,7 +64,8 @@ def test_entitlements_free_user(client):
     assert body["features"][_GATED_FEATURE] is False
 
 
-def test_upgrade_rejects_invalid_tier(client):
+def test_upgrade_rejects_invalid_tier(client, monkeypatch):
+    monkeypatch.setenv("ALLOW_MOCK_PURCHASES", "1")  # /upgrade is a 404 otherwise (AUTH-14)
     resp = client.post(
         "/api/v1/subscription/upgrade",
         json={"tier": "free", "billing_cycle": "monthly"},
@@ -73,7 +74,8 @@ def test_upgrade_rejects_invalid_tier(client):
     assert resp.status_code == 422, resp.text
 
 
-def test_entitlement_gate_402_then_200_after_upgrade(client):
+def test_entitlement_gate_402_then_200_after_upgrade(client, monkeypatch):
+    monkeypatch.setenv("ALLOW_MOCK_PURCHASES", "1")  # /upgrade is a 404 otherwise (AUTH-14)
     from core.entitlement_gate import require_entitlement
     from services.entitlement_service import FEATURE_MIN_TIER
 

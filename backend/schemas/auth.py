@@ -40,3 +40,10 @@ class RegisterRequest(BaseModel):
         if not _USERNAME_RE.match(v):
             raise ValueError("Username must be 3-32 characters: letters, digits, '.', '_' or '-'.")
         return v
+
+
+class ChangePasswordRequest(BaseModel):
+    """POST /api/v1/auth/change-password (AUTH-13)."""
+    current_password: str = Field(..., max_length=128)
+    # Length rules live in services/auth_service._check_password_policy (400, same as /register).
+    new_password: str = Field(..., max_length=128)

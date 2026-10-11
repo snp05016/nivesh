@@ -84,7 +84,6 @@ KNOWN_GAPS = {
     ("POST", "/brainstorm"): "LLM-02: paid LLM, anonymous",
     ("POST", "/api/v1/copilot/chat"): "LLM-02: paid LLM, optional auth",
     ("POST", "/api/v1/screener/natural-language"): "LLM-02/IOSCORE-04",
-    ("GET", "/api/v1/earnings/alerts"): "AUTH-10",
     # Bearer is checked inside notifications_service.register_user_device; move it to
     # Depends(require_auth) so the inventory can see it.
     ("POST", "/api/v1/notifications/register"): "ARCH-02 follow-up: service-level bearer check",

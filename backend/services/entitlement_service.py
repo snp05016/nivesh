@@ -124,13 +124,12 @@ def has_entitlement(user_id: int, feature_key: str) -> bool:
     """Returns True if the user's effective tier meets or exceeds the
     minimum tier required for feature_key.
 
-    Unknown feature keys are treated as ungated (return True) so this
-    never accidentally locks out an endpoint that hasn't been added to
-    FEATURE_MIN_TIER yet.
+    Unknown feature keys fail closed (False): a typo must never ungate a
+    paid route (AUTH-14). require_entitlement() rejects them at import time.
     """
     required_tier = FEATURE_MIN_TIER.get(feature_key)
     if required_tier is None:
-        return True
+        return False
 
     effective_tier = get_effective_tier(user_id)
     return TIER_RANK.get(effective_tier, 0) >= TIER_RANK.get(required_tier, 0)

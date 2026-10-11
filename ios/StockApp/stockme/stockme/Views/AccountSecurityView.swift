@@ -2,10 +2,10 @@ import SwiftUI
 
 // MARK: - AccountSecurityView
 //
-// KYC & device-binding entry point. Password change, two-factor
-// authentication and session management have no backend endpoints yet
-// (backend/routers/auth.py exposes only /login and /register), so this screen
-// states that plainly instead of simulating those flows client-side.
+// KYC & device-binding entry point, password change and "sign out of all
+// devices" (AUTH-13: POST /api/v1/auth/change-password and /api/v1/auth/logout
+// revoke every token server-side). Two-factor authentication has no backend
+// yet, so the screen says so instead of simulating it.
 
 struct AccountSecurityView: View {
     @EnvironmentObject var authManager: AuthManager
@@ -16,7 +16,9 @@ struct AccountSecurityView: View {
             ScrollView {
                 VStack(spacing: Theme.Spacing.large) {
                     kycDeviceSecurityLink
-                    Text("Password change, two-factor authentication and session management are not available yet.")
+                    PasswordChangeCard()
+                    SignOutEverywhereCard()
+                    Text("Two-factor authentication is not available yet.")
                         .font(Theme.engravedSerif(size: 13))
                         .foregroundStyle(Theme.inkSecondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -68,5 +70,105 @@ struct AccountSecurityView: View {
             Text(title).font(Theme.officialStampFont(size: 9)).foregroundStyle(Theme.inkPrimary)
         }
         .padding(.horizontal, Theme.Spacing.small)
+    }
+}
+
+// MARK: - Password change (AUTH-13)
+
+/// Changes the password server-side; every existing session, this one included,
+/// is revoked, so the user signs in again with the new password.
+private struct PasswordChangeCard: View {
+    @EnvironmentObject var authManager: AuthManager
+    @State private var current = ""
+    @State private var new = ""
+    @State private var confirm = ""
+    @State private var isSaving = false
+    @State private var errorMessage: String?
+    @State private var showSignInAgain = false
+
+    private var canSubmit: Bool { !current.isEmpty && new.count >= 8 && new == confirm && !isSaving }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
+            Text("CHANGE PASSWORD")
+                .font(Theme.officialStampFont(size: 9)).foregroundStyle(Theme.inkPrimary)
+            SecureField("Current password", text: $current).textContentType(.password)
+            SecureField("New password (min 8 characters)", text: $new).textContentType(.newPassword)
+            SecureField("Confirm new password", text: $confirm).textContentType(.newPassword)
+            if !confirm.isEmpty && new != confirm {
+                Text("Passwords do not match.").font(Theme.serialNumberFont(size: 10)).foregroundStyle(Theme.bearRed)
+            }
+            if let errorMessage {
+                Text(errorMessage).font(Theme.serialNumberFont(size: 10)).foregroundStyle(Theme.bearRed)
+            }
+            Button(isSaving ? "UPDATING..." : "UPDATE PASSWORD") { submit() }
+                .font(Theme.officialStampFont(size: 10))
+                .foregroundStyle(canSubmit ? Theme.securityGold : Theme.inkTertiary)
+                .disabled(!canSubmit)
+                .buttonStyle(EKPressStyle())
+        }
+        .font(Theme.engravedSerif(size: 14))
+        .foregroundStyle(Theme.inkPrimary)
+        .padding(Theme.Spacing.card)
+        .banknoteCard()
+        .alert("Password changed", isPresented: $showSignInAgain) {
+            Button("OK") { authManager.logout() }
+        } message: {
+            Text("Please sign in again with your new password.")
+        }
+    }
+
+    private func submit() {
+        isSaving = true
+        errorMessage = nil
+        Task {
+            defer { isSaving = false }
+            do {
+                try await NetworkManager.shared.changePassword(current: current, new: new)
+                showSignInAgain = true
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+}
+
+// MARK: - Sign out everywhere (AUTH-13)
+
+private struct SignOutEverywhereCard: View {
+    @EnvironmentObject var authManager: AuthManager
+    @State private var confirming = false
+    @State private var errorMessage: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
+            Button("SIGN OUT OF ALL DEVICES") { confirming = true }
+                .font(Theme.officialStampFont(size: 10))
+                .foregroundStyle(Theme.bearRed)
+                .buttonStyle(EKPressStyle())
+            Text("Ends every session, including this one.")
+                .font(Theme.serialNumberFont(size: 10)).foregroundStyle(Theme.inkTertiary)
+            if let errorMessage {
+                Text(errorMessage).font(Theme.serialNumberFont(size: 10)).foregroundStyle(Theme.bearRed)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(Theme.Spacing.card)
+        .banknoteCard()
+        .confirmationDialog("Sign out of all devices?", isPresented: $confirming, titleVisibility: .visible) {
+            Button("Sign Out Everywhere", role: .destructive) { signOutEverywhere() }
+        }
+    }
+
+    private func signOutEverywhere() {
+        errorMessage = nil
+        Task {
+            do {
+                try await NetworkManager.shared.logoutAllSessions()
+                authManager.logout()
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
     }
 }

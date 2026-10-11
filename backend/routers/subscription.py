@@ -5,6 +5,8 @@ real StoreKit purchase-completion handshake and no real payment processor
 wired to these endpoints; /upgrade and /cancel just record the requested
 state via services/subscription_service.py.
 """
+import os
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from typing import Dict, List, Optional
@@ -53,7 +55,11 @@ def get_subscription(user_id: int = Depends(require_auth)):
 @router.post("/upgrade", response_model=SubscriptionResponse)
 def upgrade_subscription(req: UpgradeRequest, user_id: int = Depends(rate_limited_user("subscription"))):
     """MOCK upgrade — simulated for demo purposes. No real StoreKit
-    purchase or payment processor call happens server-side."""
+    purchase or payment processor call happens server-side, so it is a 404
+    unless ALLOW_MOCK_PURCHASES=1 (dev/demo only; AUTH-14): otherwise any
+    account could grant itself a paid tier."""
+    if os.getenv("ALLOW_MOCK_PURCHASES") != "1":
+        raise HTTPException(status_code=404, detail="Not Found")
     try:
         result = subscription_service.mock_upgrade(user_id, tier=req.tier, billing_cycle=req.billing_cycle)
     except ValueError as e:

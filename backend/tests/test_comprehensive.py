@@ -464,11 +464,12 @@ class TestUserEndpoints:
         """Morning summary push requires the caller's own token (401 without, 403 for another user)."""
         from database import create_access_token
         url = "/notifications/morning-summary-push"
-        assert client.post(url, json={"user_id": 1}).status_code == 401
-        other = {"Authorization": f"Bearer {create_access_token(2)}"}
-        assert client.post(url, json={"user_id": 1}, headers=other).status_code == 403
-        own = {"Authorization": f"Bearer {create_access_token(1)}"}
-        response = client.post(url, json={"user_id": 1}, headers=own)
+        # 990001/990002: seeded stub users (conftest); tokens need a real user (AUTH-13).
+        assert client.post(url, json={"user_id": 990001}).status_code == 401
+        other = {"Authorization": f"Bearer {create_access_token(990002)}"}
+        assert client.post(url, json={"user_id": 990001}, headers=other).status_code == 403
+        own = {"Authorization": f"Bearer {create_access_token(990001)}"}
+        response = client.post(url, json={"user_id": 990001}, headers=own)
         assert response.status_code in [200, 404, 500]
     
     def test_get_experts(self):

@@ -612,25 +612,22 @@ class EarningsAlertCreateRequest(_BaseModelLocal):
 
 
 @router.get("/api/v1/earnings/alerts")
-def earnings_alerts_get_endpoint(user_id: int = 0):
+def earnings_alerts_get_endpoint(user_id: int = Depends(require_auth)):
     """
-    Return all earnings alerts for a given user.
-Pass ?user_id=<id> to filter. Returns empty list if none.
+    Return the caller's earnings alerts (AUTH-10: bearer only, never another
+    user's rows; ?user_id= is ignored). Returns empty list if none.
 
     Args:
-        user_id (int): The user_id.
+        user_id (int): The authenticated user_id.
 
     Returns:
         Any: The response.
     """
     try:
         with get_session() as session:
-            if user_id > 0:
-                rows = session.query(EarningsAlert).filter(
-                    EarningsAlert.user_id == user_id
-                ).order_by(EarningsAlert.earnings_date.asc()).all()
-            else:
-                rows = session.query(EarningsAlert).order_by(EarningsAlert.earnings_date.asc()).limit(100).all()
+            rows = session.query(EarningsAlert).filter(
+                EarningsAlert.user_id == user_id
+            ).order_by(EarningsAlert.earnings_date.asc()).all()
             return {
                 "alerts": [
                     {
@@ -648,8 +645,7 @@ Pass ?user_id=<id> to filter. Returns empty list if none.
     except Exception as e:
         log_market_error("earnings_alerts_get", str(e))
         logging.exception("[EARNINGS/ALERTS] list failed")
-        return {"alerts": [], "count": 0, "error": "Earnings alerts temporarily unavailable",
-                "fetched_at": datetime.now(timezone.utc).isoformat(), "degraded": True}
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/api/v1/earnings/alerts")
@@ -704,7 +700,8 @@ Deduplicates — if same user/ticker/date already exists, returns 200 with exist
             }
     except Exception as e:
         log_market_error("earnings_alerts_post", str(e), context_ticker=ticker)
-        raise HTTPException(status_code=500, detail=f"Failed to create earnings alert: {e}")
+        logging.exception("[EARNINGS/ALERTS] create failed")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.delete("/api/v1/earnings/alerts/{alert_id}")
@@ -734,4 +731,5 @@ def earnings_alerts_delete_endpoint(alert_id: int, user_id: int = Depends(requir
         raise
     except Exception as e:
         log_market_error("earnings_alerts_delete", str(e))
-        raise HTTPException(status_code=500, detail=f"Failed to delete alert: {e}")
+        logging.exception("[EARNINGS/ALERTS] delete failed")
+        raise HTTPException(status_code=500, detail="Internal server error")

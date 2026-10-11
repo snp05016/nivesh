@@ -23,7 +23,8 @@ def test_chart_images_require_owner(client, auth_token, test_user_id):
     with open(path, "wb") as f:
         f.write(_PNG)
     owner = {"Authorization": f"Bearer {auth_token}"}
-    other = {"Authorization": f"Bearer {database.create_access_token(uid + 1_000_000)}"}
+    # Seeded stub user (conftest): tokens need a real user (AUTH-13).
+    other = {"Authorization": f"Bearer {database.create_access_token(990001)}"}
     route = f"/api/v1/portfolio/charts/{uid}/image"
     try:
         # Public static mount is gone. The global OPTIONS catch-all in main.py

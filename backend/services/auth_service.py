@@ -1,8 +1,8 @@
 import hashlib
 import logging
 
-from helpers import get_session, get_user_by_credentials, User, create_access_token
-from database import create_user as _create_user
+from helpers import get_session, get_user_by_credentials, User, DeviceToken, create_access_token
+from database import create_user as _create_user, _hash_password, verify_password
 from services.disclosure_service import CURRENT_POLICY_VERSION
 from services.kyc_consent_service import record_consent
 
@@ -14,7 +14,7 @@ def _auth_payload(user) -> dict:
         "user_id": user.id,
         "username": user.username,
         "display_name": user.display_name,
-        "access_token": create_access_token(user.id),
+        "access_token": create_access_token(user.id, user.token_version or 0),
         "token_type": "bearer",
     }
 
@@ -41,6 +41,44 @@ PASSWORD_MIN_LENGTH = 8
 PASSWORD_MAX_BYTES = 72
 
 
+def _check_password_policy(password):
+    if not password or len(password) < PASSWORD_MIN_LENGTH:
+        raise ValueError(f"Password must be at least {PASSWORD_MIN_LENGTH} characters.")
+    if len(password.encode("utf-8")) > PASSWORD_MAX_BYTES:
+        raise ValueError(f"Password must be at most {PASSWORD_MAX_BYTES} characters.")
+
+
+def _revoke_sessions(session, user_id, extra=None):
+    """Bump users.token_version so every issued token fails verify_access_token, and
+    drop the push bindings of those signed-out devices (iOS re-registers on login)."""
+    session.query(User).filter(User.id == user_id).update(
+        {"token_version": User.token_version + 1, **(extra or {})}, synchronize_session=False
+    )
+    session.query(DeviceToken).filter(DeviceToken.user_id == user_id).delete(synchronize_session=False)
+    session.commit()
+
+
+def logout_all(user_id):
+    """Sign the user out on every device (AUTH-13)."""
+    with get_session() as session:
+        _revoke_sessions(session, user_id)
+
+
+def change_password(user_id, current_password, new_password):
+    """Set a new password and revoke all existing tokens (AUTH-13).
+
+    PermissionError when current_password is wrong; ValueError when the new one
+    breaks the registration password policy.
+    """
+    _check_password_policy(new_password)
+    with get_session() as session:
+        user = session.query(User).filter(User.id == user_id).first()
+        if not user or not verify_password(current_password or "", str(user.password_hash)):
+            _auth_log.warning("auth.change_password_failed user_id=%s", user_id)
+            raise PermissionError("Current password is incorrect")
+        _revoke_sessions(session, user_id, {"password_hash": _hash_password(new_password)})
+
+
 def register_user(username, password, display_name, accepted_policy_version=None, age_confirmed=False, ip_address=None, app_version=None):
     # REG-12: no account without consent to the current notice and an 18+
     # attestation. ValueError surfaces as HTTP 400 with this text as `detail`.
@@ -48,11 +86,7 @@ def register_user(username, password, display_name, accepted_policy_version=None
         raise ValueError("Please update the app and accept the current Privacy Policy and Terms of Use.")
     if age_confirmed is not True:
         raise ValueError("You must be 18 or older to create an account.")
-    # Password policy.
-    if not password or len(password) < PASSWORD_MIN_LENGTH:
-        raise ValueError(f"Password must be at least {PASSWORD_MIN_LENGTH} characters.")
-    if len(password.encode("utf-8")) > PASSWORD_MAX_BYTES:
-        raise ValueError(f"Password must be at most {PASSWORD_MAX_BYTES} characters.")
+    _check_password_policy(password)
     with get_session() as session:
         username = username.strip().lower()  # create_user and login use the same form (AUTH-23)
         existing = session.query(User).filter_by(username=username).first()

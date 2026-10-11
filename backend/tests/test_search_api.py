@@ -13,7 +13,7 @@ def test_client():
 
 @pytest.fixture
 def auth_headers():
-    token = create_access_token(1)
+    token = create_access_token(990001)  # seeded stub user (conftest); tokens need a real user (AUTH-13)
     return {"Authorization": f"Bearer {token}"}
 
 

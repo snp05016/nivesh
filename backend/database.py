@@ -408,20 +408,25 @@ def _load_jwt_secret(env=os.environ) -> str:
 
 _JWT_SECRET = _load_jwt_secret()
 _JWT_ALGORITHM = "HS256"
-_JWT_EXPIRY_HOURS = 720  # 30 days — prevents silent 401s from expired tokens on mobile
+# 30 days, but revocable: logout / password change bump users.token_version (AUTH-13).
+# ponytail: long-lived token, add short access + refresh tokens once iOS has central 401 handling.
+_JWT_EXPIRY_HOURS = 720
 
 
-def create_access_token(user_id: int) -> str:
+def create_access_token(user_id: int, token_version: int = 0) -> str:
     """Create a JWT access token for authentication.
     
     Args:
         user_id (int): The ID of the user.
+        token_version (int): The user's current users.token_version; the token
+            stops verifying once that column is bumped (AUTH-13).
         
     Returns:
         str: The encoded JWT token.
     """
     payload = {
         "sub": str(user_id),
+        "ver": int(token_version or 0),
         "iat": datetime.now(timezone.utc),
         "exp": datetime.now(timezone.utc) + timedelta(hours=_JWT_EXPIRY_HOURS),
     }
@@ -440,7 +445,17 @@ def verify_access_token(token: str) -> Optional[int]:
     try:
         payload = pyjwt.decode(token, _JWT_SECRET, algorithms=[_JWT_ALGORITHM])
         sub = payload.get("sub")
-        return int(sub) if sub is not None else None
+        if sub is None:
+            return None
+        user_id = int(sub)
+        # AUTH-13: revoked by logout/password change/erasure (token_version bump) or
+        # unknown user. Tokens minted before the "ver" claim count as version 0.
+        with get_session() as session:
+            current = session.query(User.token_version).filter(User.id == user_id).scalar()
+        if current is None or int(payload.get("ver", 0)) != int(current):
+            _auth_logger.debug("[auth] revoked or unknown-user token")
+            return None
+        return user_id
     except pyjwt.ExpiredSignatureError:
         _auth_logger.debug("[auth] token expired")
     except pyjwt.InvalidSignatureError:
