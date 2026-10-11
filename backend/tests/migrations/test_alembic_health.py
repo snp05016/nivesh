@@ -50,7 +50,6 @@ def test_no_model_migration_drift(tmp_db):
     subprocess.run([PYTHON, "-m", "alembic", "upgrade", "head"],
                    cwd=str(BACKEND_DIR), capture_output=True, env=env)
 
-    os.environ["DATABASE_URL"] = f"sqlite:///{tmp_db}"
     from models.db_models import Base
 
     engine = create_engine(f"sqlite:///{tmp_db}")

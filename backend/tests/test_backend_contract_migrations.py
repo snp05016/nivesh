@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import importlib.util
+import os
 import subprocess
 import sys
 from pathlib import Path
+
+import pytest
 
 
 MIGRATIONS_DIR = Path(__file__).resolve().parents[1] / "migrations" / "versions"
@@ -84,7 +87,7 @@ def test_destructive_migration_operations_are_visible_for_audit_report():
     assert destructive == {}
 
 
-def test_alembic_empty_database_lifecycle(tmp_path):
+def _run_alembic_steps(tmp_path: Path, steps: list[list[str]]) -> None:
     source_ini = BACKEND_ROOT / "alembic.ini"
     temp_ini = tmp_path / "alembic.ini"
     temp_db = tmp_path / "nivesh_migration_lifecycle.db"
@@ -99,20 +102,64 @@ def test_alembic_empty_database_lifecycle(tmp_path):
         f"sqlalchemy.url = sqlite:///{temp_db}",
     )
     temp_ini.write_text(ini_text)
+    # migrations/env.py overrides sqlalchemy.url with DATABASE_URL, so the
+    # temp DB must be passed through the environment too; otherwise the
+    # subprocess migrates the session-wide test DB instead.
+    env = {**os.environ, "DATABASE_URL": f"sqlite:///{temp_db}"}
 
-    commands = [
-        [sys.executable, "-m", "alembic", "-c", str(temp_ini), "upgrade", "head"],
-        [sys.executable, "-m", "alembic", "-c", str(temp_ini), "downgrade", "-1"],
-        [sys.executable, "-m", "alembic", "-c", str(temp_ini), "upgrade", "head"],
-        [sys.executable, "-m", "alembic", "-c", str(temp_ini), "check"],
-    ]
-    for command in commands:
+    for step in steps:
         result = subprocess.run(
-            command,
+            [sys.executable, "-m", "alembic", "-c", str(temp_ini), *step],
             cwd=BACKEND_ROOT,
+            env=env,
             text=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             check=False,
         )
-        assert result.returncode == 0, result.stdout
+        assert result.returncode == 0, f"alembic {' '.join(step)} failed:\n{result.stdout}"
+
+
+def _root_revision() -> str:
+    roots = [
+        module.revision
+        for module in map(_load_revision, sorted(MIGRATIONS_DIR.glob("*.py")))
+        if module.down_revision is None
+    ]
+    assert len(roots) == 1
+    return roots[0]
+
+
+def test_alembic_empty_database_lifecycle(tmp_path):
+    _run_alembic_steps(tmp_path, [
+        ["upgrade", "head"],
+        ["downgrade", "-1"],
+        ["upgrade", "head"],
+        ["check"],
+    ])
+
+
+@pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason=(
+        "163d22315728: downgrade drops in_app_notifications/user_preferences/"
+        "youtube_video_summaries owned by f0a1b2c3d4e5/e5f6a7b8c9d0, whose "
+        "unguarded downgrades then fail. Remove this marker once fixed."
+    ),
+)
+def test_alembic_downgrade_roundtrip(tmp_path):
+    """Walk every non-root downgrade and re-upgrade on an empty temp DB.
+
+    Stops at the root revision instead of base: the root's downgrade is
+    drop_all on the whole schema and is not a supported path.
+    """
+    root = _root_revision()
+    _run_alembic_steps(tmp_path, [
+        ["upgrade", "head"],
+        ["downgrade", root],
+        ["upgrade", "head"],
+        ["downgrade", "-1"],
+        ["upgrade", "head"],
+        ["check"],
+    ])
