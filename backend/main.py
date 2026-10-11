@@ -84,7 +84,7 @@ from core.dashboard_state import (
 # ---------------------------------------------------------------------------
 # Simple in-memory rate limiter
 # ---------------------------------------------------------------------------
-# The _check_rate_limit function is now imported from helpers.py
+# Lives in core.rate_limiter; the middleware below resolves it at call time.
 
 # ---------------------------------------------------------------------------
 
@@ -176,12 +176,13 @@ class _SecurityHeadersMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         client_ip = request.client.host if request.client else "unknown"
         endpoint = request.url.path
-        from helpers import _check_rate_limit
+        # Module-attribute lookup: core.rate_limiter._check_rate_limit is the single patch point.
+        from core import rate_limiter as _rate_limiter
         from fastapi import HTTPException
         from fastapi.responses import JSONResponse
         
         try:
-            _check_rate_limit(client_ip, endpoint)
+            _rate_limiter._check_rate_limit(client_ip, endpoint)
         except HTTPException as e:
             return JSONResponse(
                 status_code=e.status_code, 

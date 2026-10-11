@@ -190,7 +190,7 @@ init_db()
 def _reset_rate_limiter():
     """Clear the live limiter's store around every test (TEST-21).
 
-    The security middleware calls core.rate_limiter._check_rate_limit (via helpers),
+    The security middleware calls core.rate_limiter._check_rate_limit,
     keyed per client IP and exact path; every TestClient shares one IP, so without
     this /analyze (10/hour) and /login (5/minute) results depend on test order.
     The limiter stays enabled, so tests can still assert 429 within one test.
