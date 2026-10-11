@@ -181,7 +181,6 @@ struct DalalStreetConsensusCard: View {
                 VStack(spacing: Theme.Spacing.none) {
                     ForEach(Array(response.trendingTickers.prefix(3))) { ticker in
                         TrendingTickerRow(ticker: ticker, onTap: {
-                            HapticManager.selection()
                             onTickerTap(ticker.ticker)
                         })
                     }

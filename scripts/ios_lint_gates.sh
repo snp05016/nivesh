@@ -33,5 +33,14 @@ gate template-stub 'Write your test here' '' ios/StockApp/stockme/stockmeTests
 gate auth-singleton 'AuthManager\.shared'
 gate user-id-fallback 'userId \?\? 1([^0-9.]|$)'
 
+# Back-to-back selection haptics (same line or adjacent lines) left by a non-idempotent codemod (IOSUI-31).
+haptic_dups=$(find "$SRC" -name '*.swift' -exec perl -0777 -ne \
+  'print "$ARGV\n" if /HapticManager\.selection\(\);?[ \t]*(\n[ \t]*)?HapticManager\.selection\(\)/' {} +)
+if [ -n "$haptic_dups" ]; then
+  echo "FAIL [haptic-dup]: consecutive HapticManager.selection() calls in:"
+  printf '%s\n' "$haptic_dups"
+  FAIL=1
+fi
+
 [ "$FAIL" -eq 0 ] && echo "ios_lint_gates: OK"
 exit "$FAIL"

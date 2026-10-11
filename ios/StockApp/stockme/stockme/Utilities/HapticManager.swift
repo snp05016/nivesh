@@ -12,12 +12,16 @@ extension HapticManager {
         defaults.object(forKey: enabledKey) as? Bool ?? true
     }
 
-    static func selection() {
+    // One prepared generator: a fresh one per call fires late and stutters on device.
+    @MainActor private static let selectionGenerator = UISelectionFeedbackGenerator()
+
+    @MainActor static func selection() {
         #if targetEnvironment(simulator)
         return
         #else
         guard isEnabled() else { return }
-        UISelectionFeedbackGenerator().selectionChanged()
+        selectionGenerator.selectionChanged()
+        selectionGenerator.prepare()
         #endif
     }
 

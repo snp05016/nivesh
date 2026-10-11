@@ -1904,7 +1904,6 @@ struct CompactNewsCell: View {
             if let url = URL(string: article.articleUrl) {
                 Button {
                     UIPasteboard.general.string = url.absoluteString
-                    HapticManager.selection()
                 } label: {
                     Label("Copy Link", systemImage: "link")
                 }
@@ -2950,7 +2949,7 @@ struct HomeLayoutEditorSheet: View {
                         .foregroundStyle(Theme.inkSecondary)
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Save") { HapticManager.selection(); 
+                    Button("Save") { HapticManager.selection()
                         onSave(currentOrder)
                         dismiss()
                     }

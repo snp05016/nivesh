@@ -46,7 +46,7 @@ struct CrashLabView: View {
         .toolbar {
             if !crashes.isEmpty {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Clear All") { HapticManager.selection(); 
+                    Button("Clear All") { HapticManager.selection()
                         CrashLog.shared.clearAll()
                         crashes = []
                     }
@@ -139,7 +139,7 @@ private struct CrashCardView: View {
                 }
                 .buttonStyle(EKPressStyle())
 
-                Button(role: .destructive) { HapticManager.selection(); 
+                Button(role: .destructive) { HapticManager.selection()
                     CrashLog.shared.delete(id: report.id)
                 } label: {
                     Text("DELETE").font(Theme.officialStampFont(size: 8, relativeTo: .caption2))

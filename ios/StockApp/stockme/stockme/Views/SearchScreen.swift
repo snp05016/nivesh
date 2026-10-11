@@ -236,7 +236,6 @@ struct SearchScreen: View {
 
                             Button(action: {
                                 speechManager.toggleRecording()
-                                HapticManager.selection()
                             }) {
                                 Image(systemName: speechManager.isRecording ? "mic.fill" : "mic")
                                     .foregroundStyle(speechManager.isRecording ? Theme.bearRed : Theme.securityGold)
@@ -330,7 +329,7 @@ struct SearchScreen: View {
                                         }
                                         .buttonStyle(.plain)
                                         .contextMenu {
-                                            Button(role: .destructive) { HapticManager.selection(); 
+                                            Button(role: .destructive) { HapticManager.selection()
                                                 customPresetsManager.presets.removeAll { $0.id == preset.id }
                                                 if activeCustomPreset == preset {
                                                     activeCustomPreset = nil
@@ -846,7 +845,7 @@ private struct FilterSheet: View {
                         }
                         .buttonStyle(.plain)
                     }
-                    Button("Save Preset") { HapticManager.selection(); 
+                    Button("Save Preset") { HapticManager.selection()
                         guard !newPresetName.trimmingCharacters(in: .whitespaces).isEmpty else { return }
                         let preset = CustomFilter(name: newPresetName, sectors: Array(selectedSectors))
                         customPresetsManager.presets.append(preset)

@@ -288,16 +288,16 @@ struct PortfolioScreen: View {
                                         }
                                         .ekPress()
                                         .contextMenu {
-                                            Button("Edit Holding") { HapticManager.selection(); 
+                                            Button("Edit Holding") { HapticManager.selection()
                                                 editingHolding = holding
                                                 showEditHoldingSheet = true
                                             }
-                                            Button("Add Note") { HapticManager.selection(); 
+                                            Button("Add Note") { HapticManager.selection()
                                                 noteEditingHolding = holding
                                                 noteEditorText = holding.notes ?? ""
                                                 showNoteEditor = true
                                             }
-                                            Button("Remove from Portfolio", role: .destructive) { HapticManager.selection(); 
+                                            Button("Remove from Portfolio", role: .destructive) { HapticManager.selection()
                                                 deletingTicker = holding.stock.ticker
                                                 showDeleteAlert = true
                                             }
@@ -733,7 +733,7 @@ private struct TaggingSheet: View {
                         TextField("New Tag (e.g. Tech)", text: $newTag)
                             .font(Theme.serialNumberFont(size: 14, relativeTo: .subheadline))
                             .foregroundStyle(Theme.inkPrimary)
-                        Button("Add") { HapticManager.selection(); 
+                        Button("Add") { HapticManager.selection()
                             tagsManager.addTag(newTag, to: ticker)
                             newTag = ""
                         }
@@ -1643,7 +1643,7 @@ private struct AddHoldingSheet: View {
             .toolbar {
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
-                    Button("Done") { HapticManager.selection(); 
+                    Button("Done") { HapticManager.selection()
                         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                     }
                     .font(.subheadline.weight(.bold))
@@ -1793,7 +1793,7 @@ private struct EditHoldingSheet: View {
                 .toolbar {
                     ToolbarItemGroup(placement: .keyboard) {
                         Spacer()
-                        Button("Done") { HapticManager.selection(); 
+                        Button("Done") { HapticManager.selection()
                             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                         }
                         .font(.subheadline.weight(.bold))
@@ -1861,7 +1861,7 @@ private struct NoteEditorSheet: View {
                             Button("Cancel") { dismiss() }.buttonStyle(EKPressStyle())
                         }
                         ToolbarItem(placement: .confirmationAction) {
-                            Button("Save") { HapticManager.selection(); 
+                            Button("Save") { HapticManager.selection()
                                 onSave(String(noteText.prefix(280)))
                                 dismiss()
                             }

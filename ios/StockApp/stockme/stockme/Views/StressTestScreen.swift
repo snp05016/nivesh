@@ -575,7 +575,7 @@ struct StressTestScreen: View {
                         HStack(spacing: Theme.Spacing.standard) {
                             ForEach(vm.scenarios, id: \.0) { id, name, icon in
                                 let isSelected = vm.selectedScenarios.contains(id)
-                                Button { HapticManager.selection(); 
+                                Button { HapticManager.selection()
                                     vm.toggleScenario(id)
                                 } label: {
                                     HStack(spacing: Theme.Spacing.small) {

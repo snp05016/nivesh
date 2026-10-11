@@ -225,7 +225,6 @@ struct NLScreenerScreen: View {
             if !viewModel.query.isEmpty {
                 Button(action: {
                     viewModel.query = ""
-                    HapticManager.selection()
                 }) {
                     Image(systemName: "xmark.circle.fill")
                         .foregroundColor(Theme.inkTertiary)
