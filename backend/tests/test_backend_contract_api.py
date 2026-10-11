@@ -48,6 +48,37 @@ def test_register_duplicate_username_returns_400(client, monkeypatch):
     assert duplicate.json()["detail"] == "Username already exists"
 
 
+def test_register_returns_usable_access_token(client, monkeypatch):
+    # iOS decodes the /register response into LoggedInUser, which requires access_token (CMON-01).
+    import database
+    import routers.auth as auth_router
+
+    monkeypatch.setattr(auth_router, "_check_rate_limit", lambda *_args, **_kwargs: True)
+    username = _unique_name("contract_signup")
+
+    response = client.post(
+        "/register",
+        json={
+            "username": username,
+            "password": "ContractPass!123",
+            "display_name": "Contract Signup",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["username"] == username
+    assert body["display_name"] == "Contract Signup"
+    assert body["token_type"] == "bearer"
+    assert database.verify_access_token(body["access_token"]) == body["user_id"]
+
+    authed = client.get(
+        "/api/kyc/consents",
+        headers={"Authorization": f"Bearer {body['access_token']}"},
+    )
+    assert authed.status_code == 200
+
+
 def test_login_rejects_invalid_credentials_without_token(client):
     response = client.post(
         "/login",
