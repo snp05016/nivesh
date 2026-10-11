@@ -1055,10 +1055,21 @@ private struct HoldingNoteRow: View {
             Spacer()
 
             VStack(alignment: .trailing, spacing: Theme.Spacing.xSmall) {
-                Text(hideValues ? "₹ ••••" : IndianFormatter.price(holding.currentValue))
-                    .font(Theme.serialNumberFont(size: 14, relativeTo: .body).weight(.semibold))
-                    .foregroundStyle(Theme.inkPrimary)
-                if !hideValues { ChangeBadge(value: holding.pnlPercent) }
+                if holding.priceAvailable {
+                    Text(hideValues ? "₹ ••••" : IndianFormatter.price(holding.currentValue))
+                        .font(Theme.serialNumberFont(size: 14, relativeTo: .body).weight(.semibold))
+                        .foregroundStyle(Theme.inkPrimary)
+                    if !hideValues { ChangeBadge(value: holding.pnlPercent) }
+                    if holding.priceStatus == "stale", let asOf = holding.priceAsOf {
+                        Text("as of \(String(asOf.prefix(10)))")
+                            .font(Theme.engravedSerif(size: 10, weight: .regular, relativeTo: .caption2))
+                            .foregroundStyle(Theme.inkTertiary)
+                    }
+                } else {
+                    Text("Price unavailable")
+                        .font(Theme.engravedSerif(size: 11, weight: .regular, relativeTo: .footnote))
+                        .foregroundStyle(Theme.inkTertiary)
+                }
             }
         }
         .padding(.horizontal, Theme.Spacing.card)
@@ -1335,7 +1346,7 @@ private struct WatchlistRowView: View {
                 Spacer()
 
                 VStack(alignment: .trailing, spacing: Theme.Spacing.xSmall) {
-                    Text(item.currentPrice.inrFormatted)
+                    Text(item.priceStatus == "unavailable" ? "--" : item.currentPrice.inrFormatted)
                         .contentTransition(.numericText())
                         .font(Theme.serialNumberFont(size: 14))
                         .foregroundStyle(Theme.inkPrimary)
@@ -2405,7 +2416,8 @@ struct PortfolioBriefSheet: View {
 
     /// Top 3 gainers (pnl% > 0, best first) and up to 3 losers (pnl% < 0, worst first).
     static func performers(_ holdings: [PortfolioHolding]) -> (top: [PortfolioHolding], attention: [PortfolioHolding]) {
-        let sorted = holdings.sorted { $0.pnlPercent > $1.pnlPercent }
+        // Unpriced holdings are valued at cost (P&L 0); keep them out of both lists.
+        let sorted = holdings.filter { $0.priceAvailable }.sorted { $0.pnlPercent > $1.pnlPercent }
         return (Array(sorted.filter { $0.pnlPercent > 0 }.prefix(3)),
                 Array(sorted.reversed().filter { $0.pnlPercent < 0 }.prefix(3)))
     }

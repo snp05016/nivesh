@@ -14,6 +14,7 @@ import math
 import random
 import time
 from datetime import datetime, timezone
+from decimal import Decimal
 from typing import Optional
 
 import yfinance as yf
@@ -505,22 +506,33 @@ def compute_holding_pnl(
     buy_price: float,
     current_price: Optional[float],
     prev_close: Optional[float],
+    price_status: Optional[str] = None,
 ) -> dict:
     """Compute invested, current_value, P&L and day-change for a single holding.
 
-    Returns dict with invested_inr, current_value_inr, pnl_inr, pnl_pct, day_change_pct.
+    A missing (None/0) price is not a ₹0 price: the holding is valued at cost
+    (current_value = invested, P&L 0) and flagged price_status='unavailable',
+    so a failed quote never shows as a -100% loss or drags totals down.
+
+    Returns dict with invested_inr, current_value_inr, pnl_inr, pnl_pct,
+    day_change_pct and price_status ('live' | 'stale' | 'unavailable').
     """
-    invested = shares * buy_price
-    current_value = shares * current_price if current_price else 0.0
-    pnl = current_value - invested if current_value > 0 else 0.0
-    pnl_pct = (pnl / invested * 100) if invested > 0 and current_value > 0 else 0.0
+    invested = Decimal(str(shares)) * Decimal(str(buy_price))
+    if not current_price:
+        current_value = invested
+        price_status = "unavailable"
+    else:
+        current_value = Decimal(str(shares)) * Decimal(str(current_price))
+    pnl = current_value - invested
+    pnl_pct = pnl / invested * 100 if invested > 0 else Decimal("0")
     day_change_pct = 0.0
     if current_price and prev_close and prev_close > 0:
         day_change_pct = round((current_price - prev_close) / prev_close * 100, 2)
     return {
-        "invested_inr": round(invested, 2),
-        "current_value_inr": round(current_value, 2),
-        "pnl_inr": round(pnl, 2),
-        "pnl_pct": round(pnl_pct, 2),
+        "invested_inr": round(float(invested), 2),
+        "current_value_inr": round(float(current_value), 2),
+        "pnl_inr": round(float(pnl), 2),
+        "pnl_pct": round(float(pnl_pct), 2),
         "day_change_pct": day_change_pct,
+        "price_status": price_status or "live",
     }

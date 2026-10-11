@@ -8,6 +8,7 @@ import os
 import time
 import threading
 import random
+from datetime import datetime, timezone
 
 import yfinance as yf
 
@@ -84,10 +85,18 @@ def _yf_fetch_info(sym: str) -> dict:
                 time.sleep(sleep_time)
     return {}
 
+# ponytail: per-process last-good cache; move to Redis/DB if workers>1 matters
+_LAST_GOOD: dict[str, tuple[float, float, float]] = {}  # sym -> (current, prev, epoch)
+_last_good_lock = threading.Lock()
+_STALE_MAX_AGE_S = 4 * 86400  # covers a weekend plus a market holiday
+
+
 def _yf_price(ticker_sym: str) -> tuple[float | None, float | None]:
     """Fetches the current and previous closing prices for a ticker.
 
-    Falls back to trying the .NS suffix if .BO returns no data.
+    Falls back to trying the .NS suffix if .BO returns no data, retries once
+    after a short jittered pause, and logs a WARNING when no price is found.
+    Successful prices feed the last-good cache used by _yf_price_with_status.
 
     Args:
         ticker_sym (str): The ticker symbol to fetch prices for.
@@ -117,12 +126,37 @@ def _yf_price(ticker_sym: str) -> tuple[float | None, float | None]:
             logging.info(f"[YF Price Error] {sym}: {e}")
             return None, None
 
-    current, prev = _fetch(ticker_sym)
-    if current is None and ticker_sym.upper().endswith(".BO"):
-        ns_sym = ticker_sym[:-3] + ".NS"
-        logging.info(f"[BSE FALLBACK] No data for {ticker_sym}, trying {ns_sym}")
-        current, prev = _fetch(ns_sym)
+    current, prev = None, None
+    for attempt in range(2):  # one jittered retry: Yahoo 429s / empty frames are often transient
+        if attempt:
+            time.sleep(0.5 + random.random() * 0.5)
+        current, prev = _fetch(ticker_sym)
+        if current is None and ticker_sym.upper().endswith(".BO"):
+            ns_sym = ticker_sym[:-3] + ".NS"
+            logging.info(f"[BSE FALLBACK] No data for {ticker_sym}, trying {ns_sym}")
+            current, prev = _fetch(ns_sym)
+        if current is not None:
+            with _last_good_lock:
+                _LAST_GOOD[ticker_sym] = (current, prev if prev is not None else current, time.time())
+            return current, prev
+    logging.warning(f"[YF Price] no price for {ticker_sym} after retry")
     return current, prev
+
+def _yf_price_with_status(ticker_sym: str) -> tuple[float | None, float | None, str, str | None]:
+    """Like _yf_price, but says whether the price is live, a stale last-good
+    value, or unavailable: (current, prev, 'live'|'stale'|'unavailable', as_of_iso).
+
+    Display-only. Alert/trading paths keep using _yf_price, which never returns
+    a stale price.
+    """
+    current, prev = _yf_price(ticker_sym)
+    if current is not None:
+        return current, prev, "live", datetime.now(timezone.utc).isoformat()
+    with _last_good_lock:
+        cached = _LAST_GOOD.get(ticker_sym)
+    if cached is not None and time.time() - cached[2] <= _STALE_MAX_AGE_S:
+        return cached[0], cached[1], "stale", datetime.fromtimestamp(cached[2], timezone.utc).isoformat()
+    return None, None, "unavailable", None
 
 # ---------------------------------------------------------------------------
 # Ticker resolution

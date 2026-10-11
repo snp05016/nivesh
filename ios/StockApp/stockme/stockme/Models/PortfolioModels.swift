@@ -13,8 +13,13 @@ struct PortfolioHolding: Codable, Identifiable {
     let purchaseDate: String?
     let notes: String?
     let targetPrice: Double?
+    /// "live" | "stale" | "unavailable" from GET /portfolio (set by NetworkManager, not decoded).
+    var priceStatus: String = "live"
+    var priceAsOf: String? = nil
 
-    var currentValue: Double { stock.currentPrice * shares }
+    /// False when the server had no quote: the holding is valued at cost, never at ₹0.
+    var priceAvailable: Bool { priceStatus != "unavailable" }
+    var currentValue: Double { priceAvailable ? stock.currentPrice * shares : investedValue }
     var investedValue: Double { buyPrice * shares }
     var pnl: Double { currentValue - investedValue }
     var pnlPercent: Double { investedValue > 0 ? (pnl / investedValue) * 100 : 0 }

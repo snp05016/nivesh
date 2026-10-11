@@ -422,7 +422,9 @@ class NetworkManager: ObservableObject {
         let company_name: String
         let shares: Double
         let buy_price: Double
-        let current_price: Double
+        let current_price: Double?
+        let price_status: String?
+        let price_as_of: String?
         let day_change_pct: Double?
         let notes: String?
         let purchase_date: String?
@@ -456,7 +458,7 @@ class NetworkManager: ObservableObject {
                     ticker: dto.ticker,
                     companyName: dto.company_name,
                     exchange: "NSE",
-                    currentPrice: dto.current_price,
+                    currentPrice: dto.current_price ?? dto.buy_price,
                     changePercent: dto.day_change_pct ?? 0.0,
                     signal: nil
                 )
@@ -466,7 +468,9 @@ class NetworkManager: ObservableObject {
                     buyPrice: dto.buy_price,
                     purchaseDate: dto.purchase_date,
                     notes: dto.notes,
-                    targetPrice: dto.target_price
+                    targetPrice: dto.target_price,
+                    priceStatus: dto.price_status ?? (dto.current_price == nil ? "unavailable" : "live"),
+                    priceAsOf: dto.price_as_of
                 )
             }
             WidgetSnapshotStore.save(holdings: holdings)

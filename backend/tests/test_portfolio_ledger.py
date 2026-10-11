@@ -5,6 +5,9 @@ Tests cover:
   - WAC recalculation: two BUYs average correctly
   - SELL reduces shares, WAC cost basis proportionally reduced
   - Position fully closed (SELL all) deletes Portfolio row
+  - Pre-ledger holdings (no Transaction rows) get an opening BUY, never wiped
+  - adjust_position / close_position (PUT/DELETE) survive the next replay
+  - Rows deleted/rewritten outside the ledger are reconciled (ADJUST), not resurrected
   - GET /portfolio/transactions/{ticker} returns correct records
 
 Run from backend/:
@@ -18,7 +21,9 @@ from sqlalchemy.orm import sessionmaker
 
 # conftest.py patches heavy modules before any app import — rely on that here.
 from models.db_models import Base, Portfolio, PortfolioGroup, Transaction
-from services.ledger_service import record_transaction, _recalculate_portfolio_snapshot
+from services.ledger_service import (
+    record_transaction, _recalculate_portfolio_snapshot, adjust_position, close_position,
+)
 
 # SQLAlchemy 1.x uses untyped Column descriptors; at runtime ORM instance
 # attributes are plain Python scalars. This helper satisfies Pyright.
@@ -172,6 +177,160 @@ class TestWACEngine:
 
 def session_query_all(session, ticker: str, user_id: int) -> list[Transaction]:
     return session.query(Transaction).filter_by(user_id=user_id, ticker=ticker).all()
+
+
+# ---------------------------------------------------------------------------
+# Pre-ledger holdings + ledger-backed edit/remove
+# ---------------------------------------------------------------------------
+
+_OPENING_NOTE = "Opening balance (pre-ledger holding)"
+
+
+def _seed_legacy_holding(session, group_id, ticker, shares, buy_price, user_id: int = 1):
+    """A holdings row with no Transaction rows, as seeds/scripts/the pre-ledger API create."""
+    session.add(Portfolio(
+        user_id=user_id, ticker=ticker, company_name=f"{ticker} Ltd",
+        shares=shares, buy_price=buy_price, group_name="holdings", group_id=group_id,
+    ))
+    session.commit()
+
+
+class TestPreLedgerHoldings:
+    def test_sell_on_pre_ledger_holding_keeps_remainder(self, db_session):
+        """Legacy 100 @ 3200, SELL 10 → 90 @ 3200 (not a deleted position)."""
+        g = _make_group(db_session)
+        _seed_legacy_holding(db_session, g.id, "TCS", 100, 3200.0)
+
+        _sell(1, g.id, "TCS", 10, 3500.0)
+        db_session.commit()
+
+        h = _holding(db_session, 1, "TCS")
+        assert h is not None
+        assert _f(h.shares) == 90.0
+        assert _f(h.buy_price) == 3200.0
+        txns = session_query_all(db_session, "TCS", 1)
+        assert sorted(t.transaction_type for t in txns) == ["BUY", "SELL"]
+        opening = next(t for t in txns if str(t.transaction_type) == "BUY")
+        assert str(opening.notes) == _OPENING_NOTE
+        assert _f(opening.quantity) == 100.0 and _f(opening.price) == 3200.0
+
+    def test_buy_on_pre_ledger_holding_blends_wac(self, db_session):
+        """Legacy 100 @ 3200 + BUY 5 @ 3500 → 105 @ 3214.29 (not 5 @ 3500)."""
+        g = _make_group(db_session)
+        _seed_legacy_holding(db_session, g.id, "TCS", 100, 3200.0)
+
+        _buy(1, g.id, "TCS", 5, 3500.0)
+        db_session.commit()
+
+        h = _holding(db_session, 1, "TCS")
+        assert h is not None
+        assert _f(h.shares) == 105.0
+        assert _f(h.buy_price) == 3214.29
+
+    def test_opening_balance_inserted_once(self, db_session):
+        g = _make_group(db_session)
+        _seed_legacy_holding(db_session, g.id, "SBIN", 290, 600.0)
+
+        _buy(1, g.id, "SBIN", 10, 700.0)
+        _buy(1, g.id, "SBIN", 10, 800.0)
+        db_session.commit()
+
+        txns = session_query_all(db_session, "SBIN", 1)
+        assert len(txns) == 3
+        assert sum(1 for t in txns if str(t.notes) == _OPENING_NOTE) == 1
+        h = _holding(db_session, 1, "SBIN")
+        assert h is not None
+        assert _f(h.shares) == 310.0
+
+    def test_recalc_with_empty_ledger_keeps_row(self, db_session):
+        g = _make_group(db_session)
+        _seed_legacy_holding(db_session, g.id, "INFY", 100, 1500.0)
+
+        _recalculate_portfolio_snapshot(db_session, user_id=1, group_id=int(g.id), ticker="INFY")  # type: ignore[arg-type]
+        db_session.commit()
+
+        h = _holding(db_session, 1, "INFY")
+        assert h is not None
+        assert _f(h.shares) == 100.0
+        assert _f(h.buy_price) == 1500.0
+
+
+class TestLedgerBackedEditRemove:
+    def test_adjust_then_buy_preserves_edit(self, db_session):
+        """PUT 40 @ 55 on a legacy row, then BUY 10 @ 65 → 50 @ 57 (edit kept)."""
+        g = _make_group(db_session)
+        _seed_legacy_holding(db_session, g.id, "ITC", 100, 50.0)
+
+        assert adjust_position(1, "ITC", 40, 55.0, target_price=70.0, purchase_date="01-Jan-2026") == "ITC Ltd"
+        db_session.commit()
+        h = _holding(db_session, 1, "ITC")
+        assert h is not None
+        assert (_f(h.shares), _f(h.buy_price), _f(h.target_price)) == (40.0, 55.0, 70.0)
+        assert str(h.purchase_date) == "01-Jan-2026"
+
+        _buy(1, g.id, "ITC", 10, 65.0)
+        db_session.commit()
+
+        h = _holding(db_session, 1, "ITC")
+        assert h is not None
+        assert _f(h.shares) == 50.0
+        assert _f(h.buy_price) == 57.0  # (40*55 + 10*65) / 50
+
+    def test_close_then_buy_does_not_resurrect(self, db_session):
+        g = _make_group(db_session)
+        _buy(1, g.id, "WIPRO", 100, 400.0)
+
+        assert close_position(1, "WIPRO") is True
+        db_session.commit()
+        assert _holding(db_session, 1, "WIPRO") is None
+
+        _buy(1, g.id, "WIPRO", 5, 450.0)
+        db_session.commit()
+
+        h = _holding(db_session, 1, "WIPRO")
+        assert h is not None
+        assert _f(h.shares) == 5.0
+        assert _f(h.buy_price) == 450.0
+
+    def test_row_deleted_outside_ledger_is_not_resurrected(self, db_session):
+        """Pre-fix DELETE /portfolio/remove (or populate_portfolio) dropped the row but
+        kept the ledger: BUY 5 must give 5 shares, not 100 + 5."""
+        g = _make_group(db_session)
+        _buy(1, g.id, "TCS", 100, 3200.0)
+        db_session.delete(_holding(db_session, 1, "TCS"))
+        db_session.commit()
+
+        _buy(1, g.id, "TCS", 5, 3500.0)
+        db_session.commit()
+
+        h = _holding(db_session, 1, "TCS")
+        assert h is not None
+        assert (_f(h.shares), _f(h.buy_price)) == (5.0, 3500.0)
+        assert [t.transaction_type for t in session_query_all(db_session, "TCS", 1)] == ["BUY", "ADJUST", "BUY"]
+
+    def test_row_rewritten_outside_ledger_is_kept(self, db_session):
+        """A re-seeded / directly edited row (50 @ 300) over a 100 @ 400 ledger: the next
+        BUY builds on the row, not on the stale ledger."""
+        g = _make_group(db_session)
+        _buy(1, g.id, "SBIN", 100, 400.0)
+        h = _holding(db_session, 1, "SBIN")
+        assert h is not None
+        h.shares, h.buy_price = 50.0, 300.0  # type: ignore[assignment]
+        db_session.commit()
+
+        _buy(1, g.id, "SBIN", 10, 500.0)
+        db_session.commit()
+
+        h = _holding(db_session, 1, "SBIN")
+        assert h is not None
+        assert (_f(h.shares), _f(h.buy_price)) == (60.0, 333.33)  # (50*300 + 10*500) / 60
+
+    def test_edit_remove_unknown_holding_returns_not_found(self, db_session):
+        _make_group(db_session)
+        db_session.commit()
+        assert adjust_position(1, "NOPE", 10, 100.0) is None
+        assert close_position(1, "NOPE") is False
+        assert session_query_all(db_session, "NOPE", 1) == []
 
 
 # ---------------------------------------------------------------------------

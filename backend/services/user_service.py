@@ -122,7 +122,8 @@ def get_watchlist(user_id: int) -> Optional[dict]:
             "ticker": ticker,
             "company_name": company_name,
             "exchange": "NSE",
-            "current_price": current_price or 0.0,
+            "current_price": current_price or 0.0,  # numeric for shipped apps; check price_status
+            "price_status": "live" if current_price else "unavailable",
             "day_change_pct": day_change_pct,
             "last_signal": last_signal,
             "last_signal_date": last_signal_date,

@@ -11,6 +11,8 @@ struct WatchlistItem: Codable, Identifiable {
     let companyName: String
     let exchange: String
     let currentPrice: Double
+    /// "live" | "unavailable"; when unavailable, currentPrice is a 0.0 placeholder.
+    let priceStatus: String?
     let dayChangePct: Double
     let lastSignal: String?
     let lastSignalDate: String?
@@ -20,6 +22,7 @@ struct WatchlistItem: Codable, Identifiable {
         case ticker, exchange
         case companyName = "company_name"
         case currentPrice = "current_price"
+        case priceStatus = "price_status"
         case dayChangePct = "day_change_pct"
         case lastSignal = "last_signal"
         case lastSignalDate = "last_signal_date"

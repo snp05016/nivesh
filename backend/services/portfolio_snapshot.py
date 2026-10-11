@@ -8,8 +8,9 @@ Also provides pregen_morning_briefs_all_users() — pre-generates morning briefs
 for all users at 6:30 AM IST so the /morning-summary endpoint is instant.
 """
 import yfinance as yf
+import asyncio
 import logging
-from datetime import datetime, date, timezone
+from datetime import datetime, date, timedelta, timezone
 import sys
 import os
 import json
@@ -17,6 +18,7 @@ import json
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from database import get_session, Portfolio, PortfolioValuationHistory, User, AnalysisHistory
 from services.llm_utils import contains_devanagari
+from services.yfinance_client import _yf_price, _to_ns
 
 logger = logging.getLogger(__name__)
 
@@ -24,24 +26,31 @@ logger = logging.getLogger(__name__)
 from config.settings import MORNING_BRIEF_TTL
 _MORNING_BRIEF_NS = "morning_brief"
 
+# A missing price skips the user's snapshot (an honest gap) for at most this many
+# days; after that, today's row is written over the priced holdings only, so one
+# delisted / mistyped ticker cannot freeze PortfolioValuationHistory forever.
+_SNAPSHOT_MAX_GAP_DAYS = 3
+
+
 def get_current_price(ticker: str) -> float | None:
-    """Fetch latest price with NSE → BSE fallback.
+    """Latest price via the shared helper (retry, BSE→NSE fallback, WARNING on miss).
+
+    _to_ns keeps already-suffixed tickers ("TCS.NS") and applies
+    NSE_TICKER_OVERRIDES, so this prices exactly what GET /portfolio prices.
+    Blocking (time.sleep in the retry): call it via asyncio.to_thread.
 
     Args:
-        ticker (str): The base ticker symbol.
+        ticker (str): The stored ticker symbol, with or without exchange suffix.
 
     Returns:
         float | None: The latest closing price, or None if unavailable.
     """
-    for suffix in [".NS", ".BO"]:
-        try:
-            t = yf.Ticker(ticker + suffix)
-            hist = t.history(period="2d")
-            if not hist.empty:
-                return float(hist["Close"].iloc[-1])
-        except Exception as _e:
-            continue
-    return None
+    try:
+        return _yf_price(_to_ns(ticker))[0]
+    except Exception as e:
+        logger.warning(f"[Snapshot] price lookup failed for {ticker}: {e}")
+        return None
+
 
 async def snapshot_all_users():
     """Take valuation snapshot for all users and save to the database."""
@@ -76,16 +85,38 @@ async def snapshot_all_users():
                 if not holdings:
                     continue
 
-                total_invested = sum(h.shares * h.buy_price for h in holdings)
+                total_invested = 0.0
                 total_value = 0.0
+                missing = []
 
                 for holding in holdings:
-                    price = get_current_price(holding.ticker)
+                    ticker = str(holding.ticker)
+                    shares = float(holding.shares)  # type: ignore[arg-type]
+                    price = await asyncio.to_thread(get_current_price, ticker)
                     if price:
-                        total_value += holding.shares * price
+                        total_value += shares * price
+                        total_invested += shares * float(holding.buy_price)  # type: ignore[arg-type]
                     else:
-                        # Fall back to cost basis if price unavailable
-                        total_value += holding.shares * holding.buy_price
+                        missing.append(ticker)
+
+                if missing:
+                    latest = db.query(PortfolioValuationHistory.snapshot_date).filter(
+                        PortfolioValuationHistory.user_id == user.id
+                    ).order_by(PortfolioValuationHistory.snapshot_date.desc()).first()
+                    gap_ok = latest is not None and date.fromisoformat(latest[0]) >= (
+                        date.today() - timedelta(days=_SNAPSHOT_MAX_GAP_DAYS)
+                    )
+                    if gap_ok or len(missing) == len(holdings):
+                        # Never persist a cost-basis valuation as the day's real value.
+                        # The scheduler runs once a day, so this leaves a gap for today.
+                        logger.warning(f"Snapshot skipped: user={user.id} no price for {missing}")
+                        continue
+                    # Unpriced holdings are left out of BOTH sides (same policy as
+                    # /portfolio/benchmark), so value and P&L stay consistent.
+                    logger.warning(
+                        f"Snapshot partial: user={user.id} excluded unpriced {missing} "
+                        f"(no snapshot in {_SNAPSHOT_MAX_GAP_DAYS}+ days)"
+                    )
 
                 pnl = total_value - total_invested
                 pnl_pct = (pnl / total_invested * 100) if total_invested > 0 else 0.0

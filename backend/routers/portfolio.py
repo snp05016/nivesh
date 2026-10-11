@@ -10,15 +10,17 @@ import random
 import re
 import threading
 from datetime import datetime, date, timedelta, timezone
-from typing import Optional
+from typing import Any, Optional
 from collections import Counter, defaultdict
+from types import SimpleNamespace
 
 from fastapi import APIRouter, Depends, HTTPException, Header, Request
 from fastapi.responses import FileResponse, StreamingResponse
 import yfinance as yf
 
 from services.disk_cache import invalidate as _cache_invalidate
-from services.ledger_service import record_transaction, get_or_create_default_group
+from services.ledger_service import record_transaction, get_or_create_default_group, adjust_position, close_position
+from services.yfinance_client import _yf_price_with_status
 
 from helpers import (
     get_session, verify_access_token, EXCHANGE_SUFFIX, _resolve_ticker,
@@ -123,8 +125,12 @@ def portfolio_benchmark(user_id: int, authorization: str = Header(None)):
     if token_user != user_id:
         raise HTTPException(status_code=401, detail="Unauthorized")
     with get_session() as db:
-        holdings = db.query(Portfolio).filter(Portfolio.user_id == user_id).all()
-        
+        holdings = db.query(Portfolio).filter(
+            Portfolio.user_id == user_id,
+            Portfolio.group_name != "watchlist",
+            Portfolio.is_virtual == False,  # noqa: E712
+        ).all()
+
     if not holdings:
         raise HTTPException(status_code=404, detail="No holdings to benchmark")
         
@@ -147,37 +153,36 @@ def portfolio_benchmark(user_id: int, authorization: str = Header(None)):
         
     years = period_days / 365.25
     
-    # Get Nifty price
-    # No Nifty data means no benchmark — never fabricate a 0% Nifty CAGR.
+    # Get Nifty price — no data means no benchmark (never a fake flat 1.0 → 1.0)
     try:
         t = yf.Ticker("^NSEI")
         hist = t.history(start=earliest_date.strftime("%Y-%m-%d"))
+        if hist.empty:
+            raise ValueError("empty ^NSEI history")
+        nifty_start = float(hist["Close"].iloc[0])
+        nifty_end = float(hist["Close"].iloc[-1])
     except Exception as e:
-        import logging
-        logging.warning(f"[BENCHMARK] Nifty history failed: {e}")
-        hist = None
-    if hist is None or hist.empty:
-        raise HTTPException(status_code=503, detail="Nifty benchmark data temporarily unavailable")
-    nifty_start = float(hist["Close"].iloc[0])
-    nifty_end = float(hist["Close"].iloc[-1])
-        
+        logging.warning(f"[benchmark] NIFTY history unavailable: {e}")
+        raise HTTPException(status_code=503, detail="Benchmark data unavailable")
+
     nifty_cagr_pct = (((nifty_end / nifty_start) ** (1 / years)) - 1) * 100 if nifty_start > 0 and years > 0 else 0.0
-    
-    # Portfolio value
+
+    # Portfolio value — unpriced holdings are excluded from both sides (not valued at cost)
     total_invested = 0.0
     total_current = 0.0
+    unpriced: list[str] = []
     for h in holdings:
-        total_invested += h.buy_price * h.shares
-        try:
-            ht = yf.Ticker(h.ticker)
-            cp = getattr(ht.fast_info, "last_price", h.buy_price)
-            if math.isnan(cp): cp = h.buy_price
-        except Exception as e:
-            import logging
-            logging.warning(f"Caught exception: {e}")
-            cp = h.buy_price
-        total_current += cp * h.shares
-        
+        ticker = str(h.ticker)
+        cp = _yf_price(_to_ns(ticker))[0]
+        if not cp:
+            unpriced.append(ticker)
+            continue
+        total_invested += float(h.buy_price) * float(h.shares)  # type: ignore[arg-type]
+        total_current += cp * float(h.shares)  # type: ignore[arg-type]
+    if total_invested <= 0:
+        logging.warning(f"[benchmark] no live price for any holding of user {user_id}: {unpriced}")
+        raise HTTPException(status_code=503, detail="Benchmark data unavailable")
+
     port_cagr_pct = (((total_current / total_invested) ** (1 / years)) - 1) * 100 if total_invested > 0 and years > 0 else 0.0
     
     return {
@@ -186,7 +191,8 @@ def portfolio_benchmark(user_id: int, authorization: str = Header(None)):
         "alpha_pct": round(port_cagr_pct - nifty_cagr_pct, 2),
         "period_days": period_days,
         "earliest_holding_date": earliest_date.isoformat(),
-        "current_portfolio_value": total_current
+        "current_portfolio_value": total_current,
+        "unpriced_tickers": unpriced,
     }
 
 # ── Item 50: Portfolio Stress Test ────────────────────────────────────
@@ -196,28 +202,28 @@ def portfolio_stress_test(user_id: int, authorization: str = Header(None)):
     if token_user != user_id:
         raise HTTPException(status_code=401, detail="Unauthorized")
     with get_session() as db:
-        holdings = db.query(Portfolio).filter(Portfolio.user_id == user_id).all()
-        
+        holdings = db.query(Portfolio).filter(
+            Portfolio.user_id == user_id, Portfolio.group_name != "watchlist"
+        ).all()
+
     if not holdings:
         return []
 
     holding_data = []
     for h in holdings:
-        try:
-            t = yf.Ticker(h.ticker)
-            cp = getattr(t.fast_info, "last_price", h.buy_price)
-            if math.isnan(cp):
-                cp = h.buy_price
-        except Exception as e:
-            logging.warning(f"Caught exception: {e}")
-            cp = h.buy_price
+        cp = _yf_price(_to_ns(str(h.ticker)))[0]
+        if not cp:
+            logging.warning(f"[stress-test] no price for {h.ticker}; excluded instead of valued at cost")
+            continue
 
-        val = cp * h.shares
+        val = cp * float(h.shares)  # type: ignore[arg-type]
         holding_data.append({
             "ticker": h.ticker,
             "sector": get_stress_sector(h.company_name),
             "value": val,
         })
+    if not holding_data:
+        raise HTTPException(status_code=503, detail="Price data unavailable")
 
     return compute_stress_test_results(holding_data)
 
@@ -292,55 +298,54 @@ async def portfolio_endpoint(user_id: int, authorization: str = Header(None), is
         loop = asyncio.get_event_loop()
         with ThreadPoolExecutor(max_workers=min(len(holdings), 10)) as pool:
             price_results = await asyncio.gather(
-                *[loop.run_in_executor(pool, _yf_price, _to_ns(h.ticker)) for h in holdings],
+                *[loop.run_in_executor(pool, _yf_price_with_status, _to_ns(h.ticker)) for h in holdings],
                 return_exceptions=True
             )
         prices = {
-            h.ticker: (r if not isinstance(r, Exception) else (None, None))
+            h.ticker: (r if not isinstance(r, Exception) else (None, None, "unavailable", None))
             for h, r in zip(holdings, price_results)
         }
 
         rows = []
+        unpriced: list[str] = []
         total_invested = Decimal("0")
         total_current = Decimal("0")
 
         for h in holdings:
-            current_price, prev_close = prices.get(h.ticker, (None, None))
+            current_price, prev_close, price_status, price_as_of = prices.get(
+                h.ticker, (None, None, "unavailable", None)
+            )
+            shares = float(h.shares or 0)  # type: ignore[arg-type]
+            buy_price = float(h.buy_price or 0)  # type: ignore[arg-type]
+            # An unpriced holding is valued at cost (P&L 0), never at a fake ₹0 price.
+            pnl_data = compute_holding_pnl(shares, buy_price, current_price, prev_close, price_status)
+            if pnl_data["price_status"] == "unavailable":
+                unpriced.append(str(h.ticker))
 
-            shares = Decimal(str(h.shares or 0))
-            buy_price = Decimal(str(h.buy_price or 0))
-            current_price_dec = Decimal(str(current_price)) if current_price is not None else None
-
-            invested = shares * buy_price
-            current_value = shares * current_price_dec if current_price_dec is not None else Decimal("0")
-            pnl = current_value - invested if current_price_dec is not None else Decimal("0")
-            pnl_pct = (pnl / invested * Decimal("100")) if invested > 0 and current_price_dec is not None else Decimal("0")
-            day_change_pct = 0.0
-            if current_price and prev_close and prev_close > 0:
-                day_change_pct = round((current_price - prev_close) / prev_close * 100, 2)
-
-            total_invested += invested
-            total_current += current_value
+            total_invested += Decimal(str(pnl_data["invested_inr"]))
+            total_current += Decimal(str(pnl_data["current_value_inr"]))
 
             rows.append({
                 "ticker": h.ticker,
                 "company_name": h.company_name,
                 "group": h.group_name,
-                "shares": float(shares),
-                "buy_price": float(buy_price),
+                "shares": shares,
+                "buy_price": buy_price,
                 "purchase_date": getattr(h, "purchase_date", "N/A"),
                 "notes": getattr(h, "notes", ""),
                 "target_price": float(getattr(h, "target_price", 0.0) or 0.0),
-                "current_price": current_price or 0.0,
-                "day_change_pct": day_change_pct,
-                "invested_inr": round(float(invested), 2),
-                "current_value_inr": round(float(current_value), 2),
-                "pnl_inr": round(float(pnl), 2),
-                "pnl_pct": round(float(pnl_pct), 2),
+                "current_price": current_price or buy_price,
+                "price_status": pnl_data["price_status"],
+                "price_as_of": price_as_of,
+                "day_change_pct": pnl_data["day_change_pct"],
+                "invested_inr": pnl_data["invested_inr"],
+                "current_value_inr": pnl_data["current_value_inr"],
+                "pnl_inr": pnl_data["pnl_inr"],
+                "pnl_pct": pnl_data["pnl_pct"],
                 "notes": h.notes or "",
                 "staleness": compute_staleness(
                     last_analyses.get(h.ticker),
-                    day_change_pct,
+                    pnl_data["day_change_pct"],
                     last_signals.get(h.ticker, "HOLD"),
                 ),
             })
@@ -355,6 +360,7 @@ async def portfolio_endpoint(user_id: int, authorization: str = Header(None), is
             "total_current_inr": round(float(total_current), 2),
             "total_pnl_inr": round(float(total_pnl), 2),
             "total_pnl_pct": round(float(total_pnl / total_invested * Decimal("100")), 2) if total_invested > 0 else 0,
+            "unpriced_tickers": unpriced,
             "holdings": sorted(rows, key=lambda x: (x["pnl_pct"] or 0), reverse=True),
         }
     except HTTPException:
@@ -694,7 +700,7 @@ def portfolio_add_endpoint(req: PortfolioAddRequest, authorization: str = Header
             "group": "holdings",
             "shares": req.shares,
             "buy_price": req.buy_price,
-            "current_price": current_price or 0.0,
+            "current_price": current_price or req.buy_price,
             **pnl_data,
         }
     except HTTPException:
@@ -713,15 +719,10 @@ def portfolio_remove_endpoint(req: PortfolioRemoveRequest, authorization: str = 
         raise HTTPException(status_code=401, detail="Unauthorized")
     ticker = req.ticker.upper().strip()
     try:
-        with get_session() as session:
-            holding = session.query(Portfolio).filter_by(
-                user_id=req.user_id, ticker=ticker, group_name="holdings"
-            ).first()
-            if not holding:
-                raise HTTPException(status_code=404, detail="Holding not found.")
-            session.delete(holding)
-            session.commit()
-            _cache_invalidate("morning_brief", str(req.user_id))
+        # Through the ledger, so a later BUY cannot resurrect the removed lots.
+        if not close_position(req.user_id, ticker):
+            raise HTTPException(status_code=404, detail="Holding not found.")
+        _cache_invalidate("morning_brief", str(req.user_id))
         return {"success": True, "ticker": ticker}
     except HTTPException:
         raise
@@ -744,21 +745,14 @@ def portfolio_update_endpoint(req: PortfolioUpdateRequest, authorization: str = 
 
     ticker = req.ticker.upper().strip()
     try:
-        with get_session() as session:
-            holding = session.query(Portfolio).filter_by(
-                user_id=req.user_id, ticker=ticker, group_name="holdings"
-            ).first()
-            if not holding:
-                raise HTTPException(status_code=404, detail="Holding not found.")
-            holding.shares = req.shares
-            holding.buy_price = req.buy_price
-            if req.target_price is not None:
-                holding.target_price = req.target_price
-            if req.purchase_date is not None:
-                holding.purchase_date = req.purchase_date
-            session.commit()
-            _cache_invalidate("morning_brief", str(req.user_id))
-            company_name = holding.company_name
+        # Through the ledger (ADJUST entry), so the next BUY/SELL keeps this edit.
+        company_name = adjust_position(
+            req.user_id, ticker, req.shares, req.buy_price,
+            target_price=req.target_price, purchase_date=req.purchase_date,
+        )
+        if company_name is None:
+            raise HTTPException(status_code=404, detail="Holding not found.")
+        _cache_invalidate("morning_brief", str(req.user_id))
 
         ns = _to_ns(ticker)
         current_price, prev_close = _yf_price(ns)
@@ -771,7 +765,7 @@ def portfolio_update_endpoint(req: PortfolioUpdateRequest, authorization: str = 
             "group": "holdings",
             "shares": req.shares,
             "buy_price": req.buy_price,
-            "current_price": current_price or 0.0,
+            "current_price": current_price or req.buy_price,
             **pnl_data,
         }
     except HTTPException:
@@ -1114,11 +1108,12 @@ async def get_valuation_history(user_id: int, days: int = 90, authorization: str
     with get_session() as session:
         cutoff_date = (datetime.now(timezone.utc) - timedelta(days=days)).date().isoformat()
 
-        snapshots = session.query(PortfolioValuationHistory).filter(
+        snapshots: list[Any] = session.query(PortfolioValuationHistory).filter(
             PortfolioValuationHistory.user_id == user_id,
             PortfolioValuationHistory.snapshot_date >= cutoff_date
         ).order_by(PortfolioValuationHistory.snapshot_date.asc()).all()
 
+        estimated_points: list[Any] = []
         if not snapshots:
             holdings = session.query(Portfolio).filter(
                 Portfolio.user_id == user_id,
@@ -1167,27 +1162,20 @@ async def get_valuation_history(user_id: int, days: int = 90, authorization: str
                             pnl = total_value - total_invested
                             pnl_pct = (pnl / total_invested * 100) if total_invested > 0 else 0.0
 
-                            existing = session.query(PortfolioValuationHistory).filter_by(
-                                user_id=user_id, snapshot_date=date_str
-                            ).first()
-                            if not existing:
-                                session.add(PortfolioValuationHistory(
-                                    user_id=user_id,
-                                    snapshot_date=date_str,
-                                    total_value=round(total_value, 2),
-                                    total_invested=round(total_invested, 2),
-                                    total_pnl=round(pnl, 2),
-                                    pnl_percent=round(pnl_pct, 2),
-                                ))
-                        session.commit()
-
-                        snapshots = session.query(PortfolioValuationHistory).filter(
-                            PortfolioValuationHistory.user_id == user_id,
-                            PortfolioValuationHistory.snapshot_date >= cutoff_date
-                        ).order_by(PortfolioValuationHistory.snapshot_date.asc()).all()
+                            # REL-10: back-filled from TODAY's shares and cost, so it is an
+                            # estimate. Return it flagged, never persist it as real history.
+                            estimated_points.append(SimpleNamespace(
+                                snapshot_date=date_str,
+                                total_value=round(total_value, 2),
+                                total_invested=round(total_invested, 2),
+                                total_pnl=round(pnl, 2),
+                                pnl_percent=round(pnl_pct, 2),
+                                nifty_close=None,
+                            ))
+                        estimated_points = [p for p in estimated_points if p.snapshot_date >= cutoff_date]
+                        snapshots = estimated_points
                 except Exception as e:
                     logging.info(f"[Valuation Seeding] Error for user {user_id}: {e}")
-                    session.rollback()
 
         if snapshots:
             first = snapshots[0]
@@ -1203,6 +1191,7 @@ async def get_valuation_history(user_id: int, days: int = 90, authorization: str
         return {
             "user_id": user_id,
             "days": days,
+            "estimated": bool(estimated_points),
             "snapshots": [
                 {
                     "date": s.snapshot_date,
