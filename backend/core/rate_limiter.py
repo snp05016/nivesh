@@ -17,6 +17,7 @@ _RATE_LIMITS = {
     # Keys must match request.url.path (auth router is mounted at root).
     "/login": {"window": 60, "max_requests": 5},
     "/register": {"window": 3600, "max_requests": 10},
+    "research_compute": {"window": 3600, "max_requests": 20},
     "default": {"window": 60, "max_requests": 120}
 }
 
