@@ -31,6 +31,18 @@ _PROVIDER_NAME: Optional[str] = os.getenv("YOUTUBE_SUMMARY_PROVIDER", "deepseek"
 _VIDEO_URL_TEMPLATE = "https://www.youtube.com/watch?v={}"
 
 
+def is_registry_video(video_id: str) -> bool:
+    """True when video_id was harvested from a SEBI-registered registry channel (REG-03)."""
+    from database import get_session
+    from models.db_models import YouTubeVideo
+
+    with get_session() as session:
+        return session.query(YouTubeVideo.id).filter(
+            YouTubeVideo.video_id == video_id,
+            YouTubeVideo.sebi_reg.isnot(None),
+        ).first() is not None
+
+
 def _has_content(summary_dict: Optional[dict]) -> bool:
     """True when a summary dict carries a TL;DR or at least one key point."""
     if not summary_dict:
@@ -175,7 +187,9 @@ class YouTubeSummaryService:
             finance_insights=summary_dict.get("finance_insights", []),
             tickers_mentioned=summary_dict.get("tickers_mentioned", []),
             risks_or_red_flags=summary_dict.get("risks_or_red_flags", []),
-            action_items=summary_dict.get("action_items", []),
+            # REG-03: a presenter's views are never served as action items; also blanks
+            # rows cached before the prompt stopped asking for them. Field kept for iOS decode.
+            action_items=[],
             sentiment=summary_dict.get("sentiment", "neutral"),
             confidence=float(summary_dict.get("confidence", 0.0)),
         )

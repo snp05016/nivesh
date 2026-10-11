@@ -1081,8 +1081,15 @@ def _normalize_response(result: dict, scan_type: str = "standard", quant_payload
     if not isinstance(result.get("extreme_thesis"), list):
         result["extreme_thesis"] = []
 
-    # 15. analysis_date — always the IST trading date, never trust AI-generated date
-    result["analysis_date"] = ist_today().strftime("%Y-%m-%d")
+    # 15. analysis_date — keep a stored YYYY-MM-DD so cache hits show the day they were
+    # generated; analyze() stamps the IST date on fresh output, so an LLM date never survives.
+    _ad = result.get("analysis_date")
+    try:
+        if not (isinstance(_ad, str) and len(_ad) == 10):
+            raise ValueError(_ad)
+        datetime.strptime(_ad, "%Y-%m-%d")
+    except ValueError:
+        result["analysis_date"] = ist_today().strftime("%Y-%m-%d")
 
     # 16. EXTREME superset — additive guarantees so the iOS extra sections/graphs
     # always decode. Standard analyses skip this entirely.
@@ -2202,6 +2209,7 @@ def analyze(
         language=language
     )
     result = _normalize_response(result, scan_type, quant_payload)
+    result["analysis_date"] = analysis_date  # fresh report: server IST date, never the LLM's
 
     # Inject statistical calibration results from the calibration pipeline
     if isinstance(final_state, dict):

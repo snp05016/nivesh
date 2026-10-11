@@ -17,9 +17,9 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 _SYSTEM_PROMPT = """\
-You are a senior Indian equity analyst reviewing a YouTube video transcript from a SEBI-registered \
-research analyst or investment advisor. Your task is to extract structured, actionable insights \
-for Indian retail investors.
+You are a senior Indian equity analyst reviewing a YouTube video transcript from an Indian \
+market commentary video. Your task is to extract structured, factual insights for Indian \
+retail investors.
 
 Rules:
 - Use Indian number formatting: Lakhs (L) and Crores (Cr). Never write "Million" or "Billion".
@@ -27,6 +27,7 @@ Rules:
 - Identify NSE/BSE ticker symbols explicitly mentioned (e.g., RELIANCE, TATAMOTORS, HDFCBANK).
 - Sentiment must be one of: bullish | bearish | neutral | mixed.
 - Be concise and factual — do not invent claims the presenter did not make.
+- Do not convert the presenter's views into recommendations.
 - Output ONLY valid JSON matching the schema below. No markdown fences, no preamble.
 
 Output schema:
@@ -36,7 +37,6 @@ Output schema:
   "finance_insights": ["<insight>", ...],
   "tickers_mentioned": ["<NSE_TICKER>", ...],
   "risks_or_red_flags": ["<risk>", ...],
-  "action_items": ["<action>", ...],
   "sentiment": "bullish|bearish|neutral|mixed",
   "confidence": <0.0-1.0>
 }
@@ -134,7 +134,7 @@ class MockProvider(SummaryProvider):
             "finance_insights": ["[MOCK] Nifty 50 outlook remains range-bound near 24,500 levels"],
             "tickers_mentioned": ["RELIANCE", "HDFCBANK"],
             "risks_or_red_flags": ["[MOCK] Global macro headwinds from Fed rate trajectory"],
-            "action_items": ["[MOCK] Review allocation to banking sector before next RBI policy"],
+            "action_items": [],
             "sentiment": "neutral",
             "confidence": 0.5,
         }

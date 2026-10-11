@@ -8,8 +8,8 @@ Endpoints:
 
 from __future__ import annotations
 
+import asyncio
 import logging
-import re
 
 from fastapi import APIRouter, Depends, Header, HTTPException
 
@@ -37,6 +37,17 @@ class SummaryRequest(BaseModel):
 # request time rather than crashing the whole application at import time.
 # ---------------------------------------------------------------------------
 
+_NOT_REGISTRY_DETAIL = (
+    "Summaries are available only for videos from SEBI-registered channels in Nivesh's registry."
+)
+
+
+def _is_registry_video(video_id: str) -> bool:
+    """REG-03: only videos harvested from SEBI-registry channels may be summarised."""
+    from services.youtube_summary.summarizer import is_registry_video
+    return is_registry_video(video_id)
+
+
 def _get_service():
     """Return the shared YouTubeSummaryService singleton (imported lazily)."""
     try:
@@ -52,30 +63,20 @@ def _get_service():
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-_YT_ID_RE = re.compile(
-    r"(?:v=|youtu\.be/|embed/|shorts/)([A-Za-z0-9_-]{11})"
-)
-
-
 def _extract_video_id(url: str) -> str:
-    """Extract the 11-character YouTube video ID from a URL.
+    """Return the 11-character YouTube video ID from a URL or bare ID, or raise 400.
 
-    Args:
-        url (str): A YouTube watch URL, short URL, embed URL, or Shorts URL.
-
-    Returns:
-        str: The extracted video ID.
-
-    Raises:
-        HTTPException: 400 if the URL does not contain a recognisable video ID.
+    Uses the summary service's own parser so the ID checked against the registry is the
+    ID that gets summarised (REG-03).
     """
-    match = _YT_ID_RE.search(url)
-    if not match:
+    from services.youtube_summary.transcript import _parse_video_id
+    video_id = _parse_video_id(url)
+    if not video_id:
         raise HTTPException(
             status_code=400,
             detail="Could not extract a YouTube video ID from the provided URL.",
         )
-    return match.group(1)
+    return video_id
 
 
 # ---------------------------------------------------------------------------
@@ -106,16 +107,19 @@ async def post_summary(
     Raises:
         HTTPException 400: URL does not contain a valid YouTube video ID.
         HTTPException 401: Missing or invalid authorisation header.
+        HTTPException 403: The video is not from a SEBI-registry channel.
         HTTPException 429: The caller's daily AI budget is spent.
         HTTPException 503: Summary service is not available, or AI is paused.
         HTTPException 500: Unexpected error during summarisation.
     """
     video_id = _extract_video_id(req.url)
+    if not await asyncio.to_thread(_is_registry_video, video_id):
+        raise HTTPException(status_code=403, detail=_NOT_REGISTRY_DETAIL)
     service = _get_service()
 
     try:
         result: YouTubeVideoSummaryResponse = await service.summarize(
-            url_or_id=req.url,
+            url_or_id=video_id,  # REG-03: summarise exactly the registry-checked ID
             force_refresh=req.force_refresh,
         )
         return result
@@ -143,7 +147,8 @@ def get_summary(
 
     Raises:
         HTTPException 401: Missing or invalid authorisation header.
-        HTTPException 404: No cached summary exists for this video ID.
+        HTTPException 404: No cached summary exists for this video ID, or the video is
+            not from a SEBI-registry channel.
         HTTPException 503: Summary service is not available.
         HTTPException 500: Unexpected error during cache lookup.
     """
@@ -158,7 +163,8 @@ def get_summary(
     service = _get_service()
 
     try:
-        result = service.get_cached(video_id)
+        # REG-03: a non-registry video has no servable summary (any old cached row included).
+        result = service.get_cached(video_id) if _is_registry_video(video_id) else None
     except HTTPException:
         raise
     except Exception as exc:

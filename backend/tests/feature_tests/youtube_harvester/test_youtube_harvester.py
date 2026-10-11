@@ -1,13 +1,18 @@
-import pytest
-from database import get_session, YouTubeVideo
+import asyncio
 
-@pytest.mark.asyncio
-async def test_run_youtube_harvester_real():
-    from services.youtube_harvester import harvest_portfolio_videos, harvest_youtube_metadata
-    with get_session() as session:
-        initial_count = session.query(YouTubeVideo).count()
-    added_portfolio = await harvest_portfolio_videos()
-    added_metadata = await harvest_youtube_metadata()
-    with get_session() as session:
-        final_count = session.query(YouTubeVideo).count()
-        assert final_count >= initial_count
+from services import youtube_harvester
+
+
+def test_portfolio_harvest_runs_without_searching_youtube(monkeypatch):
+    # REG-03: the portfolio harvest only tags registry rows already in the DB.
+    def _no_network(*_a, **_k):
+        raise AssertionError("portfolio harvest must not search YouTube")
+
+    monkeypatch.setattr(youtube_harvester.requests, "get", _no_network)
+    monkeypatch.setattr(youtube_harvester.yt_dlp, "YoutubeDL", _no_network)
+    monkeypatch.setattr(youtube_harvester, "get_company_name", lambda t: t)
+
+    result = asyncio.run(youtube_harvester.harvest_portfolio_videos())
+
+    assert "error" not in result, result
+    assert {"tickers_processed", "videos_added"} <= result.keys()

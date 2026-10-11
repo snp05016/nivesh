@@ -3,9 +3,11 @@ Nivesh YouTube Harvester — SEBI-Registered Channels Only
 =========================================================
 Two harvest modes:
   1. channel_harvest  — Fetches latest N videos from each curated SEBI channel nightly
-  2. portfolio_harvest — Searches for ticker-specific videos based on user holdings
+  2. portfolio_harvest — Tags already-harvested registry videos with the held tickers
+     they mention. It never searches YouTube: open search returned unregistered
+     finfluencer videos (REG-03).
 
-Both modes use YouTube Data API v3 when YOUTUBE_API_KEY is set, falling back
+Channel harvest uses YouTube Data API v3 when YOUTUBE_API_KEY is set, falling back
 silently to yt-dlp. Never raises. Never blocks the main request pipeline.
 Zero Anthropic API calls.
 """
@@ -16,6 +18,7 @@ import logging
 import requests
 import yt_dlp
 from datetime import datetime, timezone
+from sqlalchemy import or_
 from database import get_session, YouTubeVideo, Portfolio
 # SEBI-registered channels only; the registry and every INH/INA number live there.
 from services.sebi_registry import REGISTERED_CHANNELS as CHANNEL_REGISTRY
@@ -115,10 +118,12 @@ def _upsert_video(db, video_dict: dict) -> bool:
         video_dict (dict): A dictionary containing the video data to upsert.
 
     Returns:
-        bool: True if a new row was inserted, False otherwise.
+        bool: True if a new row was inserted, False otherwise (including any video
+            without a registry sebi_reg, which is never stored).
     """
     vid_id = video_dict.get("video_id", "")
-    if not vid_id:
+    # REG-03: only videos from SEBI-registered registry channels are ever persisted.
+    if not vid_id or not video_dict.get("sebi_reg"):
         return False
 
     existing = db.query(YouTubeVideo).filter(YouTubeVideo.video_id == vid_id).first()
@@ -328,155 +333,60 @@ async def harvest_youtube_metadata() -> dict:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# PORTFOLIO HARVEST — Ticker-specific search for user holdings
+# PORTFOLIO HARVEST — Tag registry videos with the held tickers they mention
 # ─────────────────────────────────────────────────────────────────────────────
 
-def search_videos_for_ticker(ticker: str, company_name: str, max_results: int = 3) -> list[dict]:
-    """Searches YouTube for videos about a specific NSE ticker/company.
-
-    PATH A: YouTube Data API v3 (structured, stable, preferred)
-    PATH B: yt-dlp keyword search (fallback when API unavailable or quota exceeded)
-
-    Args:
-        ticker (str): The stock ticker symbol.
-        company_name (str): The human-readable company name for search queries.
-        max_results (int, optional): The maximum number of results to fetch. Defaults to 3.
-
-    Returns:
-        list[dict]: A list of video dictionaries found during the search. Returns an empty
-            list on any failure. Never raises an exception.
-    """
-    query = f"{company_name} NSE stock analysis India"
-
-    # PATH A — YouTube Data API v3
-    if YOUTUBE_API_AVAILABLE:
-        try:
-            resp = requests.get(
-                "https://www.googleapis.com/youtube/v3/search",
-                params={
-                    "q": query,
-                    "type": "video",
-                    "order": "relevance",
-                    "maxResults": max_results,
-                    "regionCode": "IN",
-                    "relevanceLanguage": "en",
-                    "key": YOUTUBE_API_KEY,
-                },
-                timeout=10,
-            )
-            if resp.status_code == 200:
-                videos = []
-                for item in resp.json().get("items", []):
-                    vid_id = item.get("id", {}).get("videoId", "")
-                    snippet = item.get("snippet", {})
-                    if not vid_id:
-                        continue
-                    videos.append({
-                        "video_id": vid_id,
-                        "title": snippet.get("title", ""),
-                        "channel_name": snippet.get("channelTitle", ""),
-                        "channel_url": f"https://www.youtube.com/channel/{snippet.get('channelId','')}",
-                        "thumbnail_url": snippet.get("thumbnails", {}).get("medium", {}).get("url", ""),
-                        "video_url": f"https://www.youtube.com/watch?v={vid_id}",
-                        "published_at": snippet.get("publishedAt", ""),
-                "description": snippet.get("description", ""),
-                "description": snippet.get("description", ""),
-                        "duration_seconds": 0,
-                        "view_count": 0,
-                        "source": "api_search",
-                        "matched_ticker": ticker,
-                        "sebi_reg": None,
-                    })
-                return videos
-            elif resp.status_code == 403:
-                logger.warning("[API] Quota exhausted — falling back to yt-dlp for ticker search")
-        except Exception as e:
-            logger.warning(f"[API search] failed for {ticker}: {e}")
-
-    # PATH B — yt-dlp keyword search
-    try:
-        opts = {
-            "quiet": True,
-            "extract_flat": True,
-            "playlist_items": f"1-{max_results}",
-            "default_search": "ytsearch",
-        }
-        with yt_dlp.YoutubeDL(opts) as ydl:
-            info = ydl.extract_info(f"ytsearch{max_results}:{query}", download=False)
-            entries = info.get("entries") or []
-            return [
-                {
-                    "video_id": e.get("id", ""),
-                    "title": e.get("title", ""),
-                    "channel_name": e.get("uploader") or e.get("channel", ""),
-                    "channel_url": e.get("uploader_url", ""),
-                    "thumbnail_url": f"https://i.ytimg.com/vi/{e.get('id','')}/mqdefault.jpg",
-                    "video_url": f"https://www.youtube.com/watch?v={e.get('id','')}",
-                    "published_at": str(e.get("upload_date", "")),
-                "description": "",
-                    "duration_seconds": int(e.get("duration") or 0),
-                    "view_count": int(e.get("view_count") or 0),
-                    "source": "ytdlp_search",
-                    "matched_ticker": ticker,
-                    "sebi_reg": None,
-                }
-                for e in entries if e.get("id")
-            ]
-    except Exception as e:
-        logger.warning(f"[yt-dlp search] failed for {ticker}: {e}")
-        return []
-
-
 async def harvest_portfolio_videos() -> dict:
-    """Runs after harvest_youtube_metadata to search for videos for portfolio holdings.
+    """Tags already-harvested registry videos with the portfolio tickers they mention.
 
-    For every unique ticker held across ALL user portfolios:
-      - Searches YouTube for relevant analysis videos
-      - Inserts new results tagged with matched_ticker
-    Rate-limited: 1.2s sleep between tickers.
+    Searches nothing (REG-03): for every unique ticker held across all portfolios,
+    untagged rows from SEBI-registered channels whose title names the company or the
+    ticker as a whole word get matched_ticker set.
 
     Returns:
-        dict: A summary containing 'tickers_processed', 'videos_added', and a 'by_ticker' breakdown.
-            May contain 'error' if an exception is caught.
+        dict: A summary containing 'tickers_processed', 'videos_added' (rows tagged), and a
+            'by_ticker' breakdown. May contain 'error' if an exception is caught.
     """
+    import re
     total_added = 0
 
     with get_session() as db:
         try:
-            holdings = db.query(Portfolio).all()
-            tickers = sorted(set(h.ticker.upper() for h in holdings))
+            tickers = sorted({t.upper() for (t,) in db.query(Portfolio.ticker).distinct() if t})
 
             if not tickers:
                 logger.info("[Portfolio Harvest] No holdings found — skipping")
                 return {"tickers_processed": 0, "videos_added": 0}
 
-            logger.info(f"[Portfolio Harvest] Processing {len(tickers)} tickers")
+            logger.info(f"[Portfolio Harvest] Tagging registry videos for {len(tickers)} tickers")
             by_ticker = {}
 
             for ticker in tickers:
                 company_name = get_company_name(ticker)
-                # Fetch more candidates so we have enough to filter after 50k+ view threshold
-                videos = search_videos_for_ticker(ticker, company_name, max_results=10)
-
-                # Only persist search results with 50k+ views — channel-registry videos bypass this
-                quality_videos = [
-                    v for v in videos
-                    if v.get("source") != "ytdlp_search" or int(v.get("view_count") or 0) >= 50_000
-                ]
-
+                terms = {company_name, ticker}
+                pattern = re.compile(
+                    "|".join(rf"(?<!\w){re.escape(t)}(?!\w)" for t in terms), re.IGNORECASE
+                )
+                candidates = (
+                    db.query(YouTubeVideo)
+                    .filter(
+                        YouTubeVideo.sebi_reg.isnot(None),
+                        YouTubeVideo.matched_ticker.is_(None),
+                        or_(*(YouTubeVideo.title.ilike(f"%{t}%") for t in terms)),
+                    )
+                    .all()
+                )
                 added = 0
-                for v in quality_videos:
-                    v["matched_ticker"] = ticker
-                    if _upsert_video(db, v):
+                for video in candidates:
+                    if pattern.search(str(video.title or "")):
+                        video.matched_ticker = ticker
                         added += 1
-
-                if added > 0:
+                if added:
                     db.commit()
 
                 by_ticker[ticker] = added
                 total_added += added
-                logger.info(f"[Portfolio Harvest] {ticker} ({company_name}): {added} new")
-                time.sleep(1.2)
+                logger.info(f"[Portfolio Harvest] {ticker} ({company_name}): {added} tagged")
 
         except Exception as e:
             logger.error(f"[Portfolio Harvest ERROR] {e}")

@@ -510,10 +510,11 @@ kills the run. One running job per user (guarded by the DB job state).
     # The cache holds English reports only (LLM-07), so other languages always generate.
     try:
         from database import get_analysis_for_date, get_session
-        from datetime import date
+        from core.timeutil import ist_today
         with get_session() as cache_session:
+            # Same-day rows only; save_analysis stores the IST date in analysis_date.
             cached = get_analysis_for_date(
-                cache_session, ticker, date.today().strftime("%Y-%m-%d"), req.scan_type
+                cache_session, ticker, ist_today().strftime("%Y-%m-%d"), req.scan_type
             ) if req.language in (None, "English") else None
             if cached:
                 from services.orchestrator import _normalize_response, _inject_live_data
@@ -850,32 +851,24 @@ def get_home_feed(user_id: int, ticker: str = None, caller: int | None = Depends
 
         holding_tickers_set = {h.ticker.upper() for h in holdings}
         cutoff_7d = datetime.now(timezone.utc) - timedelta(days=7)
-        # Quality threshold cascade: prefer SEBI registry channels, then 50k+ views,
-        # then 10k+ views so the section never silently disappears.
-        def _quality_base(q, min_views: int):
-            return q.filter(
-                (YouTubeVideo.source != "ytdlp_search") | (YouTubeVideo.view_count >= min_views)
-            )
+        # REG-03: only videos from SEBI-registered registry channels are served; legacy
+        # open-search rows (sebi_reg NULL) never reach users.
+        def _quality_base(q):
+            return q.filter(YouTubeVideo.sebi_reg.isnot(None))
 
-        def _fetch_portfolio_videos(min_views: int):
-            vids = _quality_base(
+        portfolio_videos = _quality_base(
+            session.query(YouTubeVideo).filter(
+                YouTubeVideo.matched_ticker.in_(holding_tickers_set),
+                YouTubeVideo.published_at >= cutoff_7d,
+            )
+        ).order_by(YouTubeVideo.view_count.desc()).limit(15).all()
+        # Widen past 7 days if < 5 found
+        if len(portfolio_videos) < 5:
+            portfolio_videos = _quality_base(
                 session.query(YouTubeVideo).filter(
                     YouTubeVideo.matched_ticker.in_(holding_tickers_set),
-                    YouTubeVideo.published_at >= cutoff_7d,
-                ), min_views
+                )
             ).order_by(YouTubeVideo.view_count.desc()).limit(15).all()
-            # Widen to 30 days if < 5 found
-            if len(vids) < 5:
-                vids = _quality_base(
-                    session.query(YouTubeVideo).filter(
-                        YouTubeVideo.matched_ticker.in_(holding_tickers_set),
-                    ), min_views
-                ).order_by(YouTubeVideo.view_count.desc()).limit(15).all()
-            return vids
-
-        portfolio_videos = _fetch_portfolio_videos(50_000)
-        if len(portfolio_videos) < 3:
-            portfolio_videos = _fetch_portfolio_videos(10_000)
 
         portfolio_vid_ids = {v.video_id for v in portfolio_videos}
         remaining = 15 - len(portfolio_videos)
@@ -885,7 +878,7 @@ def get_home_feed(user_id: int, ticker: str = None, caller: int | None = Depends
                 session.query(YouTubeVideo).filter(
                     ~YouTubeVideo.video_id.in_(portfolio_vid_ids),
                     YouTubeVideo.published_at >= cutoff_7d,
-                ), 10_000
+                )
             ).order_by(YouTubeVideo.view_count.desc()).limit(remaining).all()
 
         all_videos = portfolio_videos + general_videos

@@ -76,17 +76,40 @@ def test_get_analysis_for_date(mock_compute_staleness, mock_session):
         raw_output="raw",
         created_at=datetime(2026, 6, 29, tzinfo=timezone.utc)
     )
-    # Mock the chain: query().filter().order_by().first()
+    # Mock the chain: query().filter(ticker, scan_type).filter(analysis_date).order_by().first()
     mock_query = mock_session.query.return_value
     mock_filter = mock_query.filter.return_value
-    mock_order = mock_filter.order_by.return_value
-    mock_order.first.return_value = row
-    
+    mock_date_filter = mock_filter.filter.return_value
+    mock_date_filter.order_by.return_value.first.return_value = row
+
     res = get_analysis_for_date(mock_session, "RELIANCE", "2026-06-30")
-    
+
     assert res is not None
     assert res["signal"] == "BULLISH"
     assert res["_staleness_score"] == 50
+    # LLM-V1: the target date is a real filter, not ignored.
+    (date_clause,), _ = mock_filter.filter.call_args
+    assert str(date_clause.compile(compile_kwargs={"literal_binds": True})) == (
+        "analysis_history.analysis_date = '2026-06-30'"
+    )
+
+
+@patch("services.staleness.compute_staleness")
+def test_get_analysis_for_date_empty_date_returns_latest(mock_compute_staleness, mock_session):
+    mock_compute_staleness.return_value = {"score": 10, "urgency": "Fresh", "reason": "Time"}
+    row = MagicMock(
+        full_json=json.dumps({"signal": "HOLD"}),
+        confidence_math_breakdown={},
+        raw_output="raw",
+        created_at=datetime(2026, 6, 1, tzinfo=timezone.utc)
+    )
+    mock_filter = mock_session.query.return_value.filter.return_value
+    mock_filter.order_by.return_value.first.return_value = row
+
+    res = get_analysis_for_date(mock_session, "RELIANCE", "")
+
+    assert res is not None and res["signal"] == "HOLD"
+    mock_filter.filter.assert_not_called()
 
 def test_get_all_ticker_history(mock_session):
     row1 = MagicMock(full_json=json.dumps({"signal": "BULLISH"}), confidence_math_breakdown={}, raw_output="raw")

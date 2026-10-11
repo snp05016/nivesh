@@ -124,22 +124,21 @@ def get_analysis_for_date(session: Session, ticker: str, target_date: str, scan_
     Args:
         session (Session): The SQLAlchemy database session.
         ticker (str): The stock ticker symbol.
-        target_date (str): The target date string (currently ignored, fetches latest).
+        target_date (str): YYYY-MM-DD (IST) the row's analysis_date must equal; "" returns
+            the latest row of any date (read-only cache introspection).
         scan_type (str, optional): The type of scan to filter by. Defaults to "standard".
 
     Returns:
         Optional[dict]: The parsed analysis dictionary with staleness metrics, or None if not found.
     """
     from services.staleness import compute_staleness as _cs
-    row = (
-        session.query(AnalysisHistory)
-        .filter(
-            AnalysisHistory.ticker == ticker.upper(),
-            AnalysisHistory.scan_type == scan_type,
-        )
-        .order_by(AnalysisHistory.created_at.desc())
-        .first()
+    q = session.query(AnalysisHistory).filter(
+        AnalysisHistory.ticker == ticker.upper(),
+        AnalysisHistory.scan_type == scan_type,
     )
+    if target_date:
+        q = q.filter(AnalysisHistory.analysis_date == target_date)
+    row = q.order_by(AnalysisHistory.created_at.desc()).first()
     if not row:
         return None
     res = json.loads(row.full_json)
