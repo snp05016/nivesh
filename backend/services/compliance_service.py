@@ -24,7 +24,7 @@ from database import get_session, verify_password
 from models.db_models import AuditLogEntry, Base, DataDeletionRequest, User
 
 # Reuse the existing KYC consent revoke logic rather than duplicating it.
-from services import kyc_consent_service
+from services import audit_service, kyc_consent_service
 
 
 def _audit_to_dict(entry: AuditLogEntry) -> dict:
@@ -59,15 +59,7 @@ def _log_action(
     """Internal helper — must be called with an already-open session so the
     audit row is written atomically alongside the state change it records.
     """
-    entry = AuditLogEntry(
-        user_id=user_id,
-        action=action,
-        details=details or {},
-        created_at=datetime.now(timezone.utc),
-        ip_address=ip_address,
-    )
-    session.add(entry)
-    return entry
+    return audit_service.audit(session, user_id, action, details, ip_address)
 
 
 def password_matches(user_id: int, password: str) -> bool:
@@ -182,27 +174,17 @@ def withdraw_consent(
 ) -> dict:
     """Withdraw (revoke) a KYC consent for user_id + consent_type, reusing
     kyc_consent_service.revoke_consent() rather than duplicating the revoke
-    logic, and log an AuditLogEntry in the same transaction, so a withdrawal is
-    never left unaudited. Nothing is logged when no active consent existed
-    (revoked False), so the trail records real withdrawals only.
+    logic. revoke_consent writes the "consent_withdrawn" AuditLogEntry in the
+    same transaction, so a withdrawal is never left unaudited. Nothing is
+    logged when no active consent existed (revoked False), so the trail
+    records real withdrawals only.
     """
     with get_session() as session:
-        revoke_result = kyc_consent_service.revoke_consent(user_id, consent_type, session=session)
+        revoke_result = kyc_consent_service.revoke_consent(
+            user_id, consent_type, session=session, ip_address=ip_address
+        )
         if not revoke_result["revoked"]:
             return revoke_result
-
-        _log_action(
-            session,
-            user_id=user_id,
-            action="consent_withdrawn",
-            details={
-                "consent_type": consent_type,
-                "consent_id": revoke_result["id"],
-                "revoked_count": revoke_result["revoked_count"],
-                "revoked_at": revoke_result["revoked_at"],
-            },
-            ip_address=ip_address,
-        )
         session.commit()
 
     return revoke_result

@@ -21,6 +21,8 @@ from datetime import datetime, timezone
 import httpx
 
 request_id_context_var = contextvars.ContextVar("request_id", default="-")
+# {"ip", "user_agent"} of the current request, read by services/audit_service.py.
+request_client_context_var: contextvars.ContextVar = contextvars.ContextVar("request_client", default=None)
 
 class RequestIDLogFilter(logging.Filter):
     def filter(self, record):
@@ -325,6 +327,10 @@ class CorrelationIDMiddleware(BaseHTTPMiddleware):
         
         # Thread through logging
         token = request_id_context_var.set(req_id)
+        client_token = request_client_context_var.set({
+            "ip": request.client.host if request.client else None,
+            "user_agent": request.headers.get("user-agent", "")[:256],
+        })
 
         try:
             response: Response = await call_next(request)
@@ -332,4 +338,5 @@ class CorrelationIDMiddleware(BaseHTTPMiddleware):
             response.headers["X-Correlation-ID"] = req_id
             return response
         finally:
+            request_client_context_var.reset(client_token)
             request_id_context_var.reset(token)

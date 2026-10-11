@@ -13,7 +13,7 @@ def fd_env(monkeypatch):
     """A throwaway user + 7.25% scheme (0.50 senior bonus, 1-120 months), KYC gate passing."""
     import database
     import services.fixed_deposit_service as fds
-    from models.db_models import FixedDepositScheme, User  # pyright: ignore[reportMissingImports]  (checker resolves `models` to ml-engine/models)
+    from models.db_models import AuditLogEntry, FixedDepositScheme, User  # pyright: ignore[reportMissingImports]  (checker resolves `models` to ml-engine/models)
 
     monkeypatch.setattr(fds, "_check_kyc_gate", lambda _uid, _dev: (True, "test gate"))
     with database.get_session() as session:
@@ -31,6 +31,8 @@ def fd_env(monkeypatch):
         row = session.get(FixedDepositScheme, ids[1])
         if row is not None:
             session.delete(row)  # ORM cascade removes the bookings
+        # Audit rows (FINSEC-22) reference the user; drop them before the user.
+        session.query(AuditLogEntry).filter(AuditLogEntry.user_id == ids[0]).delete(synchronize_session=False)
         user_row = session.get(User, ids[0])
         if user_row is not None:
             session.delete(user_row)

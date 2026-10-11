@@ -248,6 +248,49 @@ extension NetworkManager {
         catch { throw NetworkError.decodingError(error.localizedDescription) }
     }
 
+    /// The caller's loan-marketplace bank accounts (disbursement destinations).
+    /// GET /api/finance/linked-bank-accounts
+    func fetchLoanBankAccounts() async throws -> [LoanBankAccountDTO] {
+        let endpoint = "/api/finance/linked-bank-accounts"
+        guard let url = URL(string: "\(baseURL)\(endpoint)") else {
+            throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Invalid URL")
+        }
+        var request = authRequest(url)
+        request.timeoutInterval = 20
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Not HTTP")
+        }
+        guard (200...299).contains(http.statusCode) else {
+            let bodyStr = String(data: data, encoding: .utf8)?.prefix(300) ?? "<binary>"
+            throw NetworkError.fetchFailed(endpoint: endpoint, status: http.statusCode, body: String(bodyStr))
+        }
+        do { return try JSONDecoder().decode([LoanBankAccountDTO].self, from: data) }
+        catch { throw NetworkError.decodingError(error.localizedDescription) }
+    }
+
+    /// Links a MOCK bank account for loan disbursement. Only "XXXX" + the last
+    /// 4 digits is sent; the full account number never leaves the device.
+    /// POST /api/finance/linked-bank-accounts (409 = already linked).
+    func linkLoanBankAccount(bankName: String, last4: String) async throws -> LoanBankAccountDTO {
+        let endpoint = "/api/finance/linked-bank-accounts"
+        let body = LinkLoanBankAccountRequest(bankName: bankName, maskedAccountNumber: "XXXX" + last4, accountType: "savings")
+        let request = try makeJSONPOST(endpoint: endpoint, body: body, idempotencyKey: nil)
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Not HTTP")
+        }
+        if http.statusCode == 409 || http.statusCode == 422 {
+            throw NetworkError.serverError(http.statusCode, NetworkError.serverDetail(from: data))
+        }
+        guard (200...299).contains(http.statusCode) else {
+            let bodyStr = String(data: data, encoding: .utf8)?.prefix(300) ?? "<binary>"
+            throw NetworkError.fetchFailed(endpoint: endpoint, status: http.statusCode, body: String(bodyStr))
+        }
+        do { return try JSONDecoder().decode(LoanBankAccountDTO.self, from: data) }
+        catch { throw NetworkError.decodingError(error.localizedDescription) }
+    }
+
     /// Polls (mock) disbursement status for a loan application.
     /// GET /api/finance/loan-applications/{id}/disbursement
     func fetchDisbursementStatus(applicationId: Int) async throws -> DisbursementDTO {

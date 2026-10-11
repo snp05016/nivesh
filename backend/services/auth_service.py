@@ -3,6 +3,7 @@ import logging
 
 from helpers import get_session, get_user_by_credentials, User, DeviceToken, create_access_token
 from database import create_user as _create_user, _hash_password, verify_password
+from services.audit_service import audit
 from services.disclosure_service import CURRENT_POLICY_VERSION
 from services.kyc_consent_service import record_consent
 
@@ -26,6 +27,16 @@ def _username_digest(username: str) -> str:
     return hashlib.sha256(username.strip().lower().encode()).hexdigest()[:16]
 
 
+def _audit_auth(session, user_id, action):
+    # FINSEC-22: an audit failure must never block sign-in or sign-up.
+    try:
+        audit(session, user_id, action)
+        session.commit()
+    except Exception as exc:
+        session.rollback()
+        _auth_log.warning("auth.audit_failed action=%s user_id=%s: %s", action, user_id, type(exc).__name__)
+
+
 def login_user(username, password):
     with get_session() as session:
         user = get_user_by_credentials(session, username, password)
@@ -33,7 +44,9 @@ def login_user(username, password):
             # AUTH-23: audit trail for brute force, without the raw username or password.
             _auth_log.warning("auth.login_failed user=%s", _username_digest(username))
             raise PermissionError("Invalid username or password")
-        return _auth_payload(user)
+        payload = _auth_payload(user)
+        _audit_auth(session, payload["user_id"], "login")
+        return payload
 
 PASSWORD_MIN_LENGTH = 8
 # bcrypt only accepts 72 bytes (bcrypt>=5 raises on longer input, which
@@ -97,6 +110,7 @@ def register_user(username, password, display_name, accepted_policy_version=None
         if not user:
             raise RuntimeError("Failed to create user")
         payload = _auth_payload(user)
+        _audit_auth(session, payload["user_id"], "account_registered")
 
     # FINSEC-09 / REG-12: server-side record of the notice and the age
     # attestation the user accepted at sign-up.

@@ -123,3 +123,42 @@ struct LinkAccountDemoRequest: Codable {
         case accountType = "account_type"
     }
 }
+
+// MARK: - Loan Marketplace Linked Bank Accounts (FINSEC-28)
+//
+// MOCK DATA - the disbursement destination for the loan marketplace demo
+// (GET/POST /api/finance/linked-bank-accounts). Distinct from the Finance
+// Tracker's LinkedBankAccountDTO above (/api/finance/accounts, has a balance).
+// Only a masked number ("XXXX" + last 4 digits) is ever sent or stored.
+
+struct LoanBankAccountDTO: Codable, Identifiable, Equatable {
+    let id: Int
+    let bankName: String
+    let accountType: String
+    let maskedAccountNumber: String
+    let ifscCode: String?
+    let isPrimary: Bool
+    let linkedAt: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case bankName = "bank_name"
+        case accountType = "account_type"
+        case maskedAccountNumber = "masked_account_number"
+        case ifscCode = "ifsc_code"
+        case isPrimary = "is_primary"
+        case linkedAt = "linked_at"
+    }
+}
+
+struct LinkLoanBankAccountRequest: Codable {
+    let bankName: String
+    let maskedAccountNumber: String
+    let accountType: String
+
+    enum CodingKeys: String, CodingKey {
+        case bankName = "bank_name"
+        case maskedAccountNumber = "masked_account_number"
+        case accountType = "account_type"
+    }
+}

@@ -41,3 +41,26 @@ def test_duplicate_mask_returns_409(client):
     resp = client.post(_URL, json=body, headers=headers)
     assert resp.status_code == 409
     assert "already linked" in resp.json()["detail"]
+
+
+def test_rejects_malformed_ifsc(client, monkeypatch):
+    import config.settings
+
+    monkeypatch.setattr(config.settings, "DEMO_MODE", True)
+    headers = _new_user_headers()
+    body = {"bank_name": "HDFC", "masked_account_number": "XXXX9012"}
+    assert client.post(_URL, json={**body, "ifsc_code": "hdfc0001"}, headers=headers).status_code == 422
+    resp = client.post(_URL, json={**body, "ifsc_code": "HDFC0001234"}, headers=headers)
+    assert resp.status_code == 200, resp.text
+
+
+def test_request_model_rejects_digits_only():
+    import pytest
+    from pydantic import ValidationError
+
+    from routers.finance import LinkBankAccountRequest
+
+    with pytest.raises(ValidationError):
+        LinkBankAccountRequest.model_validate({"bank_name": "HDFC", "masked_account_number": "50100123456789"})
+    ok = LinkBankAccountRequest.model_validate({"bank_name": "HDFC", "masked_account_number": "**1234"})
+    assert ok.masked_account_number == "**1234"

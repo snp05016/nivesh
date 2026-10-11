@@ -39,6 +39,7 @@ from sqlalchemy.exc import IntegrityError
 
 from database import get_session
 from models.db_models import DeviceBinding, DeviceBindingAttempt, KYCConsent
+from services.audit_service import audit
 from services.disclosure_service import CONSENT_PURPOSES, CURRENT_POLICY_VERSION, notice_hash
 
 CREDIT_CHECK_CONSENT = "credit_check"
@@ -130,8 +131,9 @@ def record_consent(
                 # Re-consent to a different policy version (FINSEC-09): supersede
                 # the old grant so the new version is recorded, still one active row.
                 _revoke_active(session, user_id, consent_type, now)
+            revoked_count = 0
         else:
-            _revoke_active(session, user_id, consent_type, now)
+            revoked_count = _revoke_active(session, user_id, consent_type, now)
         consent = KYCConsent(
             user_id=user_id,
             consent_type=consent_type,
@@ -145,6 +147,13 @@ def record_consent(
         )
         session.add(consent)
         try:
+            session.flush()  # assign consent.id for the audit row
+            audit(
+                session, user_id, "consent_granted" if granted else "consent_withdrawn",
+                {"consent_id": consent.id, "consent_type": consent_type,
+                 "policy_version": policy_version, "revoked_count": revoked_count},
+                ip_address,
+            )
             session.commit()
         except IntegrityError:
             # A concurrent grant (double tap) won uq_kyc_consents_active.
@@ -170,23 +179,24 @@ def _active_row(session, user_id: int, consent_type: str) -> Optional[KYCConsent
     )
 
 
-def revoke_consent(user_id: int, consent_type: str, session=None) -> dict:
+def revoke_consent(user_id: int, consent_type: str, session=None, ip_address: Optional[str] = None) -> dict:
     """Revoke every active (granted, not-yet-revoked) consent of consent_type
     for user_id. Sets revoked_at — never deletes rows, so the audit trail is
     preserved. Returns the newest revoked row plus revoked_count.
 
-    With ``session`` the caller owns the transaction (no commit here), so it
-    can write its audit row atomically with the revoke (compliance_service).
+    A real revoke writes one "consent_withdrawn" AuditLogEntry in the same
+    transaction. With ``session`` the caller owns the transaction (no commit
+    here; compliance_service.withdraw_consent).
     """
     if session is None:
         with get_session() as own_session:
-            result = _revoke(own_session, user_id, consent_type)
+            result = _revoke(own_session, user_id, consent_type, ip_address)
             own_session.commit()
             return result
-    return _revoke(session, user_id, consent_type)
+    return _revoke(session, user_id, consent_type, ip_address)
 
 
-def _revoke(session, user_id: int, consent_type: str) -> dict:
+def _revoke(session, user_id: int, consent_type: str, ip_address: Optional[str] = None) -> dict:
     count = _revoke_active(session, user_id, consent_type, datetime.now(timezone.utc))
     if count == 0:
         return {
@@ -206,7 +216,14 @@ def _revoke(session, user_id: int, consent_type: str) -> dict:
         .order_by(KYCConsent.granted_at.desc(), KYCConsent.id.desc())
         .first()
     )
-    return {"revoked": True, "revoked_count": count, **_consent_to_dict(newest)}  # type: ignore[arg-type]
+    result = {"revoked": True, "revoked_count": count, **_consent_to_dict(newest)}  # type: ignore[arg-type]
+    audit(
+        session, user_id, "consent_withdrawn",
+        {"consent_type": consent_type, "consent_id": result["id"],
+         "revoked_count": count, "revoked_at": result["revoked_at"]},
+        ip_address,
+    )
+    return result
 
 
 def get_active_consents(user_id: int) -> list[dict]:
@@ -417,8 +434,10 @@ def bind_device(user_id: int, device_id: str, is_primary: bool = True) -> dict:
             DeviceBinding.device_id != device_id,
             DeviceBinding.is_primary.is_(True),
         ).update({DeviceBinding.is_primary: False}, synchronize_session=False)
+        previous_is_primary = None
         if existing is not None:
-            existing.is_primary = True
+            previous_is_primary = bool(existing.is_primary)
+            existing.is_primary = True  # pyright: ignore[reportAttributeAccessIssue]
             binding = existing
         else:
             binding = DeviceBinding(
@@ -431,6 +450,11 @@ def bind_device(user_id: int, device_id: str, is_primary: bool = True) -> dict:
 
         _log_bind_attempt(session, user_id, device_id, "bound", None)
         try:
+            session.flush()  # assign binding.id for the audit row
+            audit(session, user_id, "device_bound", {
+                "binding_id": binding.id, "device_id_suffix": device_id[-6:],
+                "is_primary": True, "previous_is_primary": previous_is_primary,
+            })
             session.commit()
         except IntegrityError:
             # A concurrent bind of the same (user, device) won uq_device_binding_user_device.

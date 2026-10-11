@@ -17,6 +17,7 @@ from sqlalchemy.exc import IntegrityError
 
 from database import get_session
 from models.db_models import LinkedBankAccount, LoanApplication, LoanDisbursement, LoanOffer
+from services.audit_service import audit
 from services.credit_bureau_mock_service import get_mock_credit_score
 from services.finance_calculators import calculate_apr, calculate_emi
 from services.kyc_consent_service import check_kyc_gate
@@ -224,6 +225,12 @@ def submit_loan_application(
         )
         session.add(application)
         try:
+            session.flush()  # assign application.id for the audit row
+            audit(session, user_id, "loan_application_submitted", {
+                "application_id": application.id, "loan_offer_id": loan_offer_id,
+                "requested_amount": requested_amount, "requested_tenure_months": requested_tenure_months,
+                "status": status, "decision_reason": reason,
+            })
             session.commit()
         except IntegrityError:
             # A concurrent request with the same key won the insert.
@@ -303,11 +310,90 @@ def link_bank_account(
         )
         session.add(account)
         try:
+            session.flush()  # assign account.id for the audit row
+            audit(session, user_id, "bank_account_linked", {
+                "account_id": account.id, "bank_name": bank_name,
+                "masked_account_number": masked_account_number, "is_primary": account.is_primary,
+            })
             session.commit()
         except IntegrityError:
             # unique (user_id, masked_account_number): same mask already linked.
             session.rollback()
             raise ValueError("This masked account number is already linked")
+        session.refresh(account)
+        return account
+
+
+class BankAccountNotFound(ValueError):
+    """The linked bank account does not exist or belongs to another user."""
+
+
+class BankAccountInUse(ValueError):
+    """A loan disbursement points at this account, so it cannot be unlinked."""
+
+
+def _owned_account(session, user_id: int, account_id: int) -> LinkedBankAccount:
+    account = (
+        session.query(LinkedBankAccount)
+        .filter(LinkedBankAccount.id == account_id, LinkedBankAccount.user_id == user_id)
+        .first()
+    )
+    if account is None:
+        raise BankAccountNotFound(f"Linked bank account {account_id} not found")
+    return account
+
+
+def unlink_bank_account(user_id: int, account_id: int) -> None:
+    """Remove one of the caller's MOCK linked bank accounts. If it was the
+    primary, the most recently linked remaining account becomes primary, so
+    disbursement keeps a destination. Accounts a disbursement already paid
+    into stay (BankAccountInUse): the disbursement row references them.
+    """
+    with get_session() as session:
+        account = _owned_account(session, user_id, account_id)
+        in_use = (
+            session.query(LoanDisbursement.id)
+            .filter(LoanDisbursement.linked_bank_account_id == account_id)
+            .first()
+        )
+        if in_use is not None:
+            raise BankAccountInUse("This bank account has received a loan disbursement and cannot be unlinked")
+        was_primary = bool(account.is_primary)
+        session.delete(account)
+        promoted = None
+        if was_primary:
+            promoted = (
+                session.query(LinkedBankAccount)
+                .filter(LinkedBankAccount.user_id == user_id, LinkedBankAccount.id != account_id)
+                .order_by(LinkedBankAccount.linked_at.desc(), LinkedBankAccount.id.desc())
+                .first()
+            )
+            if promoted is not None:
+                promoted.is_primary = True  # type: ignore[assignment]
+        audit(session, user_id, "bank_account_unlinked", {
+            "account_id": account_id, "was_primary": was_primary,
+            "promoted_id": promoted.id if promoted is not None else None,
+        })
+        session.commit()
+
+
+def set_primary_bank_account(user_id: int, account_id: int) -> LinkedBankAccount:
+    """Make one of the caller's MOCK linked bank accounts the only primary."""
+    with get_session() as session:
+        account = _owned_account(session, user_id, account_id)
+        previous = (
+            session.query(LinkedBankAccount.id)
+            .filter(LinkedBankAccount.user_id == user_id, LinkedBankAccount.is_primary.is_(True))
+            .first()
+        )
+        session.query(LinkedBankAccount).filter(
+            LinkedBankAccount.user_id == user_id, LinkedBankAccount.id != account_id
+        ).update({LinkedBankAccount.is_primary: False}, synchronize_session=False)
+        account.is_primary = True  # type: ignore[assignment]
+        audit(session, user_id, "bank_account_primary_changed", {
+            "from_id": previous.id if previous is not None else None, "to_id": account_id,
+        })
+        session.commit()
         session.refresh(account)
         return account
 
@@ -402,6 +488,12 @@ def disburse_loan(application_id: int, user_id: int) -> LoanDisbursement:
         )
         session.add(disbursement)
         try:
+            session.flush()  # assign disbursement.id for the audit row
+            audit(session, user_id, "loan_disbursement_completed", {
+                "application_id": application.id, "disbursement_id": disbursement.id,
+                "amount": application.requested_amount, "linked_bank_account_id": primary_account.id,
+                "previous_status": "approved",
+            })
             session.commit()
         except IntegrityError:
             session.rollback()

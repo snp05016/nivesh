@@ -17,6 +17,7 @@ from sqlalchemy.exc import IntegrityError
 
 from database import get_session
 from models.db_models import UserSubscription
+from services.audit_service import audit
 
 VALID_TIERS = ("free", "pro", "super_pro")
 VALID_BILLING_CYCLES = ("monthly", "annual")
@@ -69,6 +70,7 @@ def _load_subscription(session, user_id: int) -> UserSubscription:
             session.rollback()
         sub = query.one()
     if _is_lapsed(_to_dict(sub), datetime.now(timezone.utc)):
+        audit(session, user_id, "subscription_lapsed", {"from_tier": sub.tier, "renews_at": sub.renews_at})
         sub.tier = "free"
         sub.billing_cycle = None
         sub.renews_at = None
@@ -107,14 +109,19 @@ def mock_upgrade(user_id: int, tier: str, billing_cycle: str) -> dict:
 
     with get_session() as session:
         sub = _load_subscription(session, user_id)  # a lapsed plan is already back to free here
+        before = _to_dict(sub)
 
-        if _to_dict(sub)["tier"] != tier:
+        if before["tier"] != tier:
             sub.tier = tier
             sub.billing_cycle = billing_cycle
             sub.started_at = sub.started_at or now
             sub.renews_at = now + delta
         sub.is_active = True
         sub.cancelled_at = None
+        audit(session, user_id, "subscription_upgraded", {
+            "from_tier": before["tier"], "to_tier": tier, "billing_cycle": billing_cycle,
+            "was_active": before["is_active"], "renews_at": sub.renews_at,
+        })
         session.commit()
         session.refresh(sub)
         return _to_dict(sub)
@@ -136,6 +143,7 @@ def mock_cancel(user_id: int) -> dict:
 
         sub.is_active = False
         sub.cancelled_at = datetime.now(timezone.utc)
+        audit(session, user_id, "subscription_cancelled", {"tier": current["tier"], "renews_at": current["renews_at"]})
         session.commit()
         session.refresh(sub)
         return _to_dict(sub)

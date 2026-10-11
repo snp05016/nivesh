@@ -406,6 +406,9 @@ struct LoanDisbursementCard: View {
 
             // A legacy "failed" row must not dead-end the flow: allow a retry.
             if vm.disbursement == nil || vm.disbursement?.status == "failed" {
+                if !vm.hasPrimaryBankAccount {
+                    LoanBankLinkForm(vm: vm)
+                }
                 Button {
                     HapticManager.selection()
                     Task { await vm.requestDisbursement() }
@@ -426,11 +429,70 @@ struct LoanDisbursementCard: View {
                     .cornerRadius(Theme.CornerRadius.medium)
                 }
                 .buttonStyle(EKPressStyle())
-                .disabled(vm.isRequestingDisbursement)
+                .disabled(vm.isRequestingDisbursement || !vm.hasPrimaryBankAccount)
+                .opacity(vm.hasPrimaryBankAccount ? 1 : 0.5)
             }
         }
         .padding(Theme.Spacing.card)
         .banknoteCard()
+        .task { await vm.loadLoanBankAccounts() }
+    }
+}
+
+/// FINSEC-28: links the disbursement destination before "Request
+/// Disbursement". Collects only the bank name and the last 4 digits; MOCK
+/// DATA - no real bank account is verified.
+private struct LoanBankLinkForm: View {
+    @ObservedObject var vm: LoanApplicationViewModel
+    @State private var bankName = ""
+    @State private var last4 = ""
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.small) {
+            Text("Link a bank account to receive the (demo) disbursement.")
+                .font(Theme.engravedSerif(size: 12, relativeTo: .footnote))
+                .foregroundColor(Theme.inkSecondary)
+            TextField("Bank name", text: $bankName)
+                .font(Theme.serialNumberFont(size: 14))
+                .foregroundColor(Theme.inkPrimary)
+                .padding(Theme.Spacing.standard)
+                .background(Theme.canvasShadow)
+                .cornerRadius(Theme.CornerRadius.medium)
+            TextField("Last 4 digits of account number", text: $last4)
+                .keyboardType(.numberPad)
+                .font(Theme.serialNumberFont(size: 14))
+                .foregroundColor(Theme.inkPrimary)
+                .padding(Theme.Spacing.standard)
+                .background(Theme.canvasShadow)
+                .cornerRadius(Theme.CornerRadius.medium)
+                .onChange(of: last4) { _, newValue in
+                    let digits = String(newValue.filter(\.isNumber).prefix(4))
+                    if digits != newValue { last4 = digits }
+                }
+            Button {
+                HapticManager.selection()
+                Task { await vm.linkLoanBankAccount(bankName: bankName, last4: last4) }
+            } label: {
+                HStack {
+                    Spacer()
+                    if vm.isLinkingBankAccount {
+                        ProgressView().tint(Theme.securityGold)
+                    } else {
+                        Text("Link Bank Account (Demo)")
+                            .font(Theme.labelStyle)
+                    }
+                    Spacer()
+                }
+                .padding(Theme.Spacing.card)
+                .foregroundColor(Theme.securityGold)
+                .overlay(
+                    RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
+                        .stroke(Theme.securityGold, lineWidth: 1)
+                )
+            }
+            .buttonStyle(EKPressStyle())
+            .disabled(vm.isLinkingBankAccount)
+        }
     }
 }
 

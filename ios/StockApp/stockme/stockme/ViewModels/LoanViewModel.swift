@@ -87,6 +87,12 @@ class LoanApplicationViewModel: ObservableObject {
     @Published var isRequestingDisbursement: Bool = false
     @Published var disbursementError: String? = nil
 
+    /// Loan-marketplace bank accounts (FINSEC-28): disbursement needs a primary one.
+    @Published var loanBankAccounts: [LoanBankAccountDTO] = []
+    @Published var isLinkingBankAccount: Bool = false
+
+    var hasPrimaryBankAccount: Bool { loanBankAccounts.contains { $0.isPrimary } }
+
     /// IOSCORE-17: one Idempotency-Key per user intent, reused on retry after a
     /// failure (the first attempt may have committed), cleared on success.
     private var submitKey: String?
@@ -205,6 +211,39 @@ class LoanApplicationViewModel: ObservableObject {
             disbursementError = error.moneyActionMessage(fallback: "Couldn't request disbursement. Please try again.")
         }
         isRequestingDisbursement = false
+    }
+
+    func loadLoanBankAccounts() async {
+        do {
+            loanBankAccounts = try await NetworkManager.shared.fetchLoanBankAccounts()
+        } catch {
+            // Non-fatal: the link form stays visible and disbursement disabled.
+        }
+    }
+
+    /// "Link Bank Account (Demo)": only the last 4 digits are collected and
+    /// sent as "XXXX" + last4. MOCK DATA - no real bank is contacted.
+    func linkLoanBankAccount(bankName: String, last4: String) async {
+        let name = bankName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard name.count >= 2 else {
+            disbursementError = "Enter your bank's name."
+            return
+        }
+        guard last4.count == 4, last4.allSatisfy({ $0.isASCII && $0.isNumber }) else {
+            disbursementError = "Enter the last 4 digits of your account number."
+            return
+        }
+        isLinkingBankAccount = true
+        disbursementError = nil
+        defer { isLinkingBankAccount = false }
+        do {
+            _ = try await NetworkManager.shared.linkLoanBankAccount(bankName: name, last4: last4)
+            await loadLoanBankAccounts()
+        } catch NetworkError.serverError(_, let message?) {
+            disbursementError = message
+        } catch {
+            disbursementError = "Couldn't link the bank account. Please try again."
+        }
     }
 
     /// Polls the mock disbursement status, e.g. on view appear/refresh for

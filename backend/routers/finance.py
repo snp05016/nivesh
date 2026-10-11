@@ -23,6 +23,8 @@ from services.finance_tracker_service import (
     list_spend_categories,
 )
 from services.loan_marketplace_service import (
+    BankAccountInUse,
+    BankAccountNotFound,
     DisbursementNotFound,
     DisbursementRejected,
     disburse_loan,
@@ -34,7 +36,9 @@ from services.loan_marketplace_service import (
     list_loan_offers,
     offer_emi_at_min,
     offer_max_apr,
+    set_primary_bank_account,
     submit_loan_application,
+    unlink_bank_account,
 )
 from services.product_bounds import ProductBoundsError
 
@@ -138,7 +142,7 @@ class LinkBankAccountRequest(BaseModel):
     # Masked only: 2-16 mask chars then the last 4 digits ("XXXX1234"); full numbers fail with 422.
     masked_account_number: str = Field(..., min_length=6, max_length=20, pattern=r"^[Xx*]{2,16}\d{4}$")
     account_type: str = Field("savings", pattern="^(savings|current)$")
-    ifsc_code: Optional[str] = Field(None, max_length=15)
+    ifsc_code: Optional[str] = Field(None, pattern=r"^[A-Z]{4}0[A-Z0-9]{6}$")
 
 
 # ---------------------------------------------------------------------------
@@ -334,30 +338,31 @@ def get_loan_application_disbursement(application_id: int, user_id: int = Depend
 # numbers or account-aggregator integration)
 # ---------------------------------------------------------------------------
 
+def _serialize_linked_bank_account(a) -> LinkedBankAccountResponse:
+    return LinkedBankAccountResponse(
+        id=a.id,
+        bank_name=a.bank_name,
+        account_type=a.account_type,
+        masked_account_number=a.masked_account_number,
+        ifsc_code=a.ifsc_code,
+        is_primary=a.is_primary,
+        linked_at=a.linked_at.isoformat() if a.linked_at else None,
+    )
+
+
 @router.get("/linked-bank-accounts", response_model=List[LinkedBankAccountResponse])
 def get_my_linked_bank_accounts(user_id: int = Depends(require_auth)):
     """List the caller's MOCK linked bank accounts."""
-    accounts = list_linked_bank_accounts(user_id)
-    return [
-        LinkedBankAccountResponse(
-            id=a.id,
-            bank_name=a.bank_name,
-            account_type=a.account_type,
-            masked_account_number=a.masked_account_number,
-            ifsc_code=a.ifsc_code,
-            is_primary=a.is_primary,
-            linked_at=a.linked_at.isoformat() if a.linked_at else None,
-        )
-        for a in accounts
-    ]
+    return [_serialize_linked_bank_account(a) for a in list_linked_bank_accounts(user_id)]
 
 
 @router.post("/linked-bank-accounts", response_model=LinkedBankAccountResponse)
 def create_linked_bank_account(payload: LinkBankAccountRequest, user_id: int = Depends(rate_limited_user("money_write"))):
     """Register a MOCK linked bank account for the loan marketplace demo.
 
-    masked_account_number must already be masked by the client (e.g.
-    "XXXX1234") — this endpoint never accepts or stores full account numbers.
+    The server only accepts a masked number (2-16 of X/x/* then the last 4
+    digits, e.g. "XXXX1234"); a full account number is rejected with 422 and
+    never stored. 409 if the same masked number is already linked.
     """
     try:
         account = link_bank_account(
@@ -369,15 +374,31 @@ def create_linked_bank_account(payload: LinkBankAccountRequest, user_id: int = D
         )
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc))
-    return LinkedBankAccountResponse(
-        id=account.id,
-        bank_name=account.bank_name,
-        account_type=account.account_type,
-        masked_account_number=account.masked_account_number,
-        ifsc_code=account.ifsc_code,
-        is_primary=account.is_primary,
-        linked_at=account.linked_at.isoformat() if account.linked_at else None,
-    )
+    return _serialize_linked_bank_account(account)
+
+
+@router.delete("/linked-bank-accounts/{account_id}", status_code=204)
+def delete_linked_bank_account(account_id: int, user_id: int = Depends(rate_limited_user("money_write"))):
+    """Unlink one of the caller's MOCK bank accounts. Unlinking the primary
+    promotes the most recently linked remaining account. 404 if unknown; 409
+    if a loan disbursement was paid into it."""
+    try:
+        unlink_bank_account(user_id, account_id)
+    except BankAccountNotFound as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except BankAccountInUse as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+
+
+@router.patch("/linked-bank-accounts/{account_id}/primary", response_model=LinkedBankAccountResponse)
+def make_linked_bank_account_primary(account_id: int, user_id: int = Depends(rate_limited_user("money_write"))):
+    """Make one of the caller's MOCK bank accounts the disbursement (primary)
+    account; every other account of the caller stops being primary."""
+    try:
+        account = set_primary_bank_account(user_id, account_id)
+    except BankAccountNotFound as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    return _serialize_linked_bank_account(account)
 
 
 # ---------------------------------------------------------------------------

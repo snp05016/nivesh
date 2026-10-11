@@ -35,7 +35,7 @@ def clean_bindings(test_user_id):
 @pytest.fixture
 def other_user():
     import database
-    from models.db_models import User  # pyright: ignore[reportMissingImports]
+    from models.db_models import AuditLogEntry, User  # pyright: ignore[reportMissingImports]
 
     with database.get_session() as session:
         user = User(username=f"_finsec18_{uuid.uuid4().hex[:10]}", password_hash="x", display_name="Other")
@@ -46,6 +46,8 @@ def other_user():
     yield uid
     _clear([uid])
     with database.get_session() as session:
+        # Audit rows (FINSEC-22) reference the user; drop them before the user.
+        session.query(AuditLogEntry).filter(AuditLogEntry.user_id == uid).delete(synchronize_session=False)
         session.query(User).filter(User.id == uid).delete(synchronize_session=False)
         session.commit()
 

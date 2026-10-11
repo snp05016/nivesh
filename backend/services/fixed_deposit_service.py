@@ -20,6 +20,7 @@ from sqlalchemy.exc import IntegrityError
 
 from database import get_session
 from models.db_models import FixedDepositBooking, FixedDepositScheme
+from services.audit_service import audit
 from services.kyc_consent_service import check_kyc_gate
 from services.product_bounds import check_product_bounds
 
@@ -288,6 +289,11 @@ def book_fixed_deposit(
         )
         session.add(booking)
         try:
+            session.flush()  # assign booking.id for the audit row
+            audit(session, user_id, "fd_booked", {
+                "booking_id": booking.id, "scheme_id": scheme_id, "principal": principal_amount,
+                "tenure_months": tenure_months, "interest_rate_pct": rate_pct, "status": status,
+            })
             session.commit()
         except IntegrityError:
             # A concurrent request with the same key won the insert.
