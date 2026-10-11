@@ -39,6 +39,12 @@ _SPEND_CATEGORY_WEIGHTS = [
 _MOCK_MONTHLY_INCOME_RATIO = 0.12
 _MOCK_MONTHLY_SPEND_RATIO = 0.08
 
+# Credit-card balances are amounts owed (liabilities), not assets.
+_LIABILITY_ACCOUNT_TYPES = {"credit_card"}
+
+# Per-user cap on fabricated demo accounts (keeps the mock table bounded).
+MAX_DEMO_ACCOUNTS_PER_USER = 10
+
 
 def list_accounts(user_id: int) -> list[FinanceTrackerAccount]:
     """List the caller's MOCK Finance Tracker linked accounts."""
@@ -55,10 +61,11 @@ def create_summary(user_id: int) -> dict:
     """Aggregate balance summary across the caller's MOCK linked accounts.
 
     total_balance / linked_account_count are derived from real rows in
-    finance_tracker_accounts. monthly_income / monthly_spend are
-    MOCK DATA — simulated for demo purposes, not a real integration —
-    deterministic figures scaled off total_balance, not real transaction
-    aggregation.
+    finance_tracker_accounts. total_balance is a NET figure: credit_card
+    balances are owed, so they are subtracted (the result may be negative).
+    monthly_income / monthly_spend are MOCK DATA — simulated for demo
+    purposes, not a real integration — deterministic figures scaled off
+    the asset (non-credit-card) balance, not real transaction aggregation.
     """
     with get_session() as session:
         accounts = (
@@ -66,12 +73,15 @@ def create_summary(user_id: int) -> dict:
             .filter(FinanceTrackerAccount.user_id == user_id)
             .all()
         )
-        total_balance = sum(float(a.balance) for a in accounts)
+        assets = sum(float(a.balance) for a in accounts if a.account_type not in _LIABILITY_ACCOUNT_TYPES)
+        liabilities = sum(float(a.balance) for a in accounts if a.account_type in _LIABILITY_ACCOUNT_TYPES)
+        total_balance = assets - liabilities
         count = len(accounts)
 
     # MOCK DATA - simulated for demo purposes, not a real integration.
-    monthly_income = round(total_balance * _MOCK_MONTHLY_INCOME_RATIO, 2)
-    monthly_spend = round(total_balance * _MOCK_MONTHLY_SPEND_RATIO, 2)
+    income_base = max(assets, 0.0)
+    monthly_income = round(income_base * _MOCK_MONTHLY_INCOME_RATIO, 2)
+    monthly_spend = round(income_base * _MOCK_MONTHLY_SPEND_RATIO, 2)
 
     return {
         "total_balance": round(total_balance, 2),
@@ -138,6 +148,8 @@ def link_demo_account(user_id: int, bank_name: str, account_type: str) -> Financ
             .filter(FinanceTrackerAccount.user_id == user_id)
             .count()
         )
+        if salt >= MAX_DEMO_ACCOUNTS_PER_USER:
+            raise ValueError(f"demo account limit reached ({MAX_DEMO_ACCOUNTS_PER_USER} per user)")
         account = FinanceTrackerAccount(
             user_id=user_id,
             bank_name=bank_name,

@@ -26,6 +26,11 @@ struct FinanceTrackerView: View {
                     FinanceErrorState(message: error) { Task { await vm.loadAll() } }
                         .padding(.horizontal, Theme.screenPadding)
                 } else {
+                    if let error = vm.errorMessage {
+                        FinancePartialErrorBanner(message: error)
+                            .padding(.horizontal, Theme.screenPadding)
+                    }
+
                     FinanceBalanceSummaryCard(summary: vm.summary)
                         .padding(.horizontal, Theme.screenPadding)
 
@@ -94,7 +99,7 @@ struct FinanceBalanceSummaryCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.card) {
-            Text("TOTAL BALANCE")
+            Text("NET BALANCE")
                 .font(Theme.officialStampFont(size: 11, relativeTo: .caption))
                 .tracking(1.5)
                 .foregroundColor(Theme.inkTertiary)
@@ -289,6 +294,22 @@ private struct SpendCategoryRow: View {
 }
 
 // MARK: - Error State
+
+/// Inline banner shown above real data when only some finance calls failed,
+/// so a stale or missing figure is never mistaken for a real balance.
+struct FinancePartialErrorBanner: View {
+    let message: String
+
+    var body: some View {
+        Label(message, systemImage: "exclamationmark.triangle.fill")
+            .font(Theme.engravedSerif(size: 13, relativeTo: .footnote))
+            .foregroundColor(Theme.bearRed)
+            .padding(Theme.Spacing.medium)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Theme.bearRed.opacity(0.1))
+            .cornerRadius(Theme.CornerRadius.badge)
+    }
+}
 
 struct FinanceErrorState: View {
     let message: String

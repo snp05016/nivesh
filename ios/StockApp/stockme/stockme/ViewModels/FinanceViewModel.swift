@@ -20,16 +20,21 @@ class FinanceViewModel: ObservableObject {
     func loadAll() async {
         isLoading = true
         errorMessage = nil
-        async let accountsResult = try? NetworkManager.shared.fetchLinkedAccounts()
-        async let summaryResult = try? NetworkManager.shared.fetchFinanceSummary()
-        async let categoriesResult = try? NetworkManager.shared.fetchSpendCategories()
+        async let accountsResult = NetworkManager.shared.fetchLinkedAccounts()
+        async let summaryResult = NetworkManager.shared.fetchFinanceSummary()
+        async let categoriesResult = NetworkManager.shared.fetchSpendCategories()
 
-        accounts = await accountsResult ?? []
-        summary = await summaryResult ?? .empty
-        spendCategories = await categoriesResult ?? []
+        // Each call fails independently; a failed part keeps its previous
+        // value instead of being replaced by zeros that look like real data.
+        var failedParts = 0
+        do { accounts = try await accountsResult } catch { failedParts += 1 }
+        do { summary = try await summaryResult } catch { failedParts += 1 }
+        do { spendCategories = try await categoriesResult } catch { failedParts += 1 }
 
-        if accounts.isEmpty && summary == .empty {
+        if failedParts == 3 {
             errorMessage = "Couldn't load your finance overview. Pull to retry."
+        } else if failedParts > 0 {
+            errorMessage = "Some finance data couldn't load. Pull to retry."
         }
         isLoading = false
     }
