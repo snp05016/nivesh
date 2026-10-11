@@ -22,23 +22,26 @@ def test_confidence_fusion_weights():
     w_calibrated = _ml_weight_for_mode("trained_live_calibrated")
     w_unavailable = _ml_weight_for_mode("unavailable")
 
-    assert w_fallback == 0.05
+    # ML-12: only a gated model carries ML weight.
+    assert w_fallback == 0.0
     assert w_unavailable == 0.00
-    assert w_baseline == 0.15
+    assert w_baseline == 0.0
     assert w_calibrated == 0.25
 
-def test_fused_confidence_incorporates_mode():
-    """Verify the fusion equation applies the correct weights dynamically."""
+def test_fused_confidence_incorporates_mode(monkeypatch):
+    """Verify the fusion equation applies the mode's ML weight (static weights)."""
+    monkeypatch.delenv("FUSION_DYNAMIC_WEIGHTS_ENABLED", raising=False)
     fused, breakdown = _fuse_final_confidence(
         llm_conf=80,
         quant_conf=0.7,
         venn_abers_conf=0.6,
         signal_agreement=0.5,
         ml_conf=0.9,
-        ml_engine_mode="trained_lightgbm_baseline"
+        ml_engine_mode="trained_live_calibrated",
+        final_direction=1,
+        ml_direction=1,
     )
-    
-    # ml weight should be 0.15 in breakdown
-    assert breakdown["ml_engine_mode"] == "trained_lightgbm_baseline"
-    assert breakdown["ml_weight_applied"] == 0.15
-    assert breakdown["weights"]["ml"] == 0.15
+
+    assert breakdown["ml_engine_mode"] == "trained_live_calibrated"
+    assert breakdown["ml_weight_applied"] == 0.25
+    assert breakdown["weights"]["ml"] == 0.25

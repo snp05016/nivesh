@@ -33,8 +33,8 @@ def successful_ml_response():
     }
 
 
-def _history(rows: int = 30) -> pd.DataFrame:
-    """Daily OHLCV frame shaped like yfinance Ticker.history()."""
+def _history(rows: int = 200) -> pd.DataFrame:
+    """Daily OHLCV frame shaped like yfinance Ticker.history() (>= ML_MIN_HISTORY_ROWS bars)."""
     index = pd.date_range("2026-01-01", periods=rows, freq="D", tz="Asia/Kolkata")
     return pd.DataFrame(
         {"Open": 100.0, "High": 101.0, "Low": 99.0, "Close": 100.5, "Volume": 1_000_000.0},
@@ -84,8 +84,7 @@ def _signal(symbol, payload=None, *, error=None, json_error=None):
 class TestMLSignalSuccess:
     """Verify the happy path: a validated model returns a prediction."""
 
-    @patch("services.ml_signal_service._fetch_reliability", return_value=None)
-    def test_ml_signal_success(self, _mock_rel, successful_ml_response):
+    def test_ml_signal_success(self, successful_ml_response):
         """A signal_state 'ok' response maps to a ready MLSignalResponse."""
         result = _signal("RELIANCE", successful_ml_response)
 
@@ -146,8 +145,7 @@ class TestMLSignalNoEdge:
 class TestMLSignalTimeout:
     """ML engine timeout produces graceful unavailable response."""
 
-    @patch("services.ml_signal_service._fetch_reliability", return_value=None)
-    def test_ml_signal_timeout(self, _mock_rel):
+    def test_ml_signal_timeout(self):
         result = _signal("TCS", error=httpx.TimeoutException("timed out"))
 
         assert result.status == "unavailable"
@@ -166,8 +164,7 @@ class TestMLSignalTimeout:
 class TestMLSignalConnectionError:
     """ML engine connection refusal returns unavailable with warning."""
 
-    @patch("services.ml_signal_service._fetch_reliability", return_value=None)
-    def test_ml_signal_connection_error(self, _mock_rel):
+    def test_ml_signal_connection_error(self):
         result = _signal("INFY", error=httpx.ConnectError("connection refused"))
 
         assert result.status == "unavailable"
@@ -185,8 +182,7 @@ class TestMLSignalConnectionError:
 class TestMLSignalInvalidResponse:
     """Non-JSON or malformed ML engine response handled gracefully."""
 
-    @patch("services.ml_signal_service._fetch_reliability", return_value=None)
-    def test_ml_signal_invalid_response(self, _mock_rel):
+    def test_ml_signal_invalid_response(self):
         result = _signal("HDFC", json_error=ValueError("Invalid JSON"))
 
         assert result.status == "unavailable"
@@ -219,8 +215,7 @@ class TestMLSignalDirectionLabels:
         (-1, "BEARISH"),
         (0, "NEUTRAL"),
     ])
-    @patch("services.ml_signal_service._fetch_reliability", return_value=None)
-    def test_ml_signal_direction_labels(self, _mock_rel, direction, expected_label):
+    def test_ml_signal_direction_labels(self, direction, expected_label):
         """End-to-end: direction integer in a validated ML response produces correct label."""
         result = _signal("SBIN", {
             "signal_state": "ok",
@@ -246,8 +241,7 @@ class TestMLSignalConfidencePct:
         (0.999, 99),
         (0.501, 50),
     ])
-    @patch("services.ml_signal_service._fetch_reliability", return_value=None)
-    def test_ml_signal_confidence_pct_calculation(self, _mock_rel, raw_confidence, expected_pct):
+    def test_ml_signal_confidence_pct_calculation(self, raw_confidence, expected_pct):
         result = _signal("WIPRO", {
             "signal_state": "ok",
             "direction": 1,
@@ -256,8 +250,7 @@ class TestMLSignalConfidencePct:
         })
         assert result.confidence_pct == expected_pct
 
-    @patch("services.ml_signal_service._fetch_reliability", return_value=None)
-    def test_ml_signal_null_confidence_yields_null_pct(self, _mock_rel):
+    def test_ml_signal_null_confidence_yields_null_pct(self):
         """When ML engine omits confidence, both confidence and confidence_pct are None."""
         result = _signal("LT", {
             "signal_state": "ok",
@@ -375,3 +368,95 @@ class TestMLSignalSchemaValidation:
                 symbol="BAD",
                 # missing direction, direction_label, ml_engine_mode, generated_at, status
             )
+
+
+# ---------------------------------------------------------------------------
+# 8. Reliability of the served model (ML-13): real query, no patching of _fetch_reliability
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def reliability_db():
+    """In-memory DB (shared across threads) behind prediction_calibration_service.get_session."""
+    from contextlib import contextmanager
+
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    from sqlalchemy.pool import StaticPool
+
+    from models.db_models import Base  # pyright: ignore[reportMissingImports]
+
+    engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine, autoflush=False)
+
+    @contextmanager
+    def _get_session():
+        session = Session()
+        try:
+            yield session
+            session.commit()
+        finally:
+            session.close()
+
+    with patch("services.prediction_calibration_service.get_session", _get_session):
+        yield _get_session
+    engine.dispose()
+
+
+def _seed_ml_rows(get_session, model_version, n, positive, direction=1):
+    """n matured rows for model_version; the first ``positive`` have a positive 30d return."""
+    from models.db_models import AnalysisPrediction  # pyright: ignore[reportMissingImports]
+
+    with get_session() as session:
+        for i in range(n):
+            session.add(AnalysisPrediction(
+                symbol=f"REL{model_version}{i}.NS",
+                recommendation="BULLISH",
+                confidence_pct=60,
+                model_version=model_version,
+                ml_direction=direction,
+                ml_p_up=0.6,
+                actual_return_30d=4.0 if i < positive else -3.0,
+            ))
+
+
+def _ok_payload(model_version="v1"):
+    return {"signal_state": "ok", "direction": 1, "confidence": 0.6,
+            "model_version": model_version, "ml_engine_mode": "trained_live_calibrated"}
+
+
+class TestMLSignalReliability:
+
+    def test_hit_rate_for_served_model(self, reliability_db):
+        _seed_ml_rows(reliability_db, "v1", n=40, positive=28)
+        _seed_ml_rows(reliability_db, "v2", n=40, positive=0)  # other model: ignored
+
+        rel = _signal("RELIANCE", _ok_payload("v1")).reliability
+
+        assert rel is not None
+        assert rel.sample_size_30d == 40
+        assert rel.hit_rate_30d == pytest.approx(0.7)
+        assert rel.brier_score_30d == pytest.approx(0.7 * 0.16 + 0.3 * 0.36)
+        assert rel.calibration_error_30d == pytest.approx(0.1)
+
+    def test_small_sample_hides_metrics(self, reliability_db):
+        _seed_ml_rows(reliability_db, "v1", n=10, positive=10)
+
+        rel = _signal("RELIANCE", _ok_payload("v1")).reliability
+
+        assert rel is not None
+        assert rel.sample_size_30d == 10
+        assert rel.hit_rate_30d is None
+        assert rel.brier_score_30d is None
+
+    def test_db_error_logs_warning_and_returns_none(self, caplog):
+        def _broken(*_a, **_k):
+            raise RuntimeError("db down")
+
+        with patch("services.prediction_calibration_service.get_ml_signal_reliability", _broken), \
+                caplog.at_level("WARNING", logger="services.ml_signal_service"):
+            result = _signal("RELIANCE", _ok_payload("v1"))
+
+        assert result.status == "ready"
+        assert result.reliability is None
+        assert any("Reliability metrics unavailable" in r.getMessage() for r in caplog.records)

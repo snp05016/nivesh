@@ -74,28 +74,16 @@ def _build_unavailable_response(symbol: str, warning: str) -> MLSignalResponse:
     )
 
 
-def _fetch_reliability() -> MLReliability | None:
-    """Attempt to fetch reliability metrics from the calibration service."""
+async def _fetch_reliability(model_version: str | None) -> MLReliability | None:
+    """30d track record of the served model's own signal; None if unknown or on error (ML-13)."""
+    if not model_version:
+        return None
     try:
-        from services.prediction_calibration_service import get_model_version_analytics
+        from services.prediction_calibration_service import get_ml_signal_reliability
 
-        analytics = get_model_version_analytics()
-        if not analytics or not analytics.get("versions"):
-            return None
-
-        # Use the latest version's metrics
-        versions = analytics["versions"]
-        if not versions:
-            return None
-
-        latest = versions[0]
-        return MLReliability(
-            hit_rate_30d=latest.get("hit_rate"),
-            brier_score_30d=latest.get("brier_score"),
-            calibration_error_30d=latest.get("calibration_error"),
-        )
-    except Exception as _e:
-        logger.debug("Reliability metrics unavailable", exc_info=True)
+        return MLReliability(**await asyncio.to_thread(get_ml_signal_reliability, model_version))
+    except Exception:
+        logger.warning("Reliability metrics unavailable for model %s", model_version, exc_info=True)
         return None
 
 
@@ -186,8 +174,8 @@ async def get_ml_signal(symbol: str) -> MLSignalResponse:
         except Exception as _e:
             continue
 
-    # Fetch reliability metrics (best-effort, never crash)
-    reliability = _fetch_reliability()
+    # Reliability of the model version actually served (best-effort, never crash)
+    reliability = await _fetch_reliability(data.get("model_version"))
 
     return MLSignalResponse(
         symbol=symbol,

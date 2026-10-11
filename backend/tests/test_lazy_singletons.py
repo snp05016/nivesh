@@ -74,6 +74,7 @@ def test_dynamic_weights_cached_when_not_confident(monkeypatch):
         calls.append(min_sample)
         return {"is_confident": False}
 
+    monkeypatch.setenv("FUSION_DYNAMIC_WEIGHTS_ENABLED", "true")  # off by default (ML-04)
     monkeypatch.setattr(pcs, "get_fusion_weight_recommendations", fake_recs)
     monkeypatch.setattr(confidence_fusion, "_WEIGHTS_CACHE", None)
     monkeypatch.setattr(confidence_fusion, "_WEIGHTS_CACHE_TIME", 0.0)

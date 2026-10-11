@@ -1,14 +1,16 @@
 """
 Deterministic Confidence Fusion Engine
 
-Fuses LLM-generated confidence, quantitative model outputs, statistical calibration, 
-and ML predictions into a single, measurable confidence score.
+Blends LLM-generated confidence, quantitative model outputs, statistical calibration
+and ML predictions into a single 0-100 score.
 
-Formula:
-    Dynamic weights from prediction_calibration_service (if available & confident),
-    else fallback to static mode-aware weights.
+This is a heuristic blend with hand-set weights, NOT a calibrated probability that
+the call is right (ML-12). Static mode-aware weights are the default; calibration-
+recommended weights are used only when FUSION_DYNAMIC_WEIGHTS_ENABLED is set and the
+recommendation is confident on matured outcomes (ML-04).
 """
 
+import os
 import time
 import logging
 import threading
@@ -23,11 +25,25 @@ _NON_ML_BASE_WEIGHTS = {
     "signal_agreement": 0.10,
 }
 
+# Only a model that passed the ml-engine promotion gate (ml_client maps it to
+# trained_live_calibrated) gets weight; unvalidated modes contribute nothing.
 _ML_WEIGHTS_BY_MODE = {
-    "fallback_technical_heuristic": 0.05,
-    "unavailable": 0.00,
-    "trained_lightgbm_baseline": 0.15,
+    "fallback_technical_heuristic": 0.0,
+    "unavailable": 0.0,
+    "trained_lightgbm_baseline": 0.0,
     "trained_live_calibrated": 0.25,
+}
+
+STATIC_WEIGHTS_VERSION = "static-v1"
+CONFIDENCE_KIND = "heuristic_blend_uncalibrated"
+_PILLARS = ("llm", "quant", "venn_abers", "signal_agreement", "ml")
+# Calibration-service column name for each fusion pillar.
+_DYNAMIC_KEYS = {
+    "llm": "llm_confidence",
+    "quant": "quant_confidence",
+    "venn_abers": "venn_abers_confidence",
+    "signal_agreement": "signal_agreement",
+    "ml": "ml_confidence",
 }
 
 _WEIGHTS_CACHE = None
@@ -35,8 +51,20 @@ _WEIGHTS_CACHE_TIME = 0.0
 _CACHE_TTL = 3600  # 1 hour
 _WEIGHTS_LOCK = threading.Lock()
 
+
+def dynamic_weights_enabled() -> bool:
+    """Manual opt-in for calibration-recommended fusion weights (off by default)."""
+    return os.getenv("FUSION_DYNAMIC_WEIGHTS_ENABLED", "false").strip().lower() in ("1", "true", "yes")
+
+
 def _get_dynamic_weights():
-    # A None result (calibration not confident) is cached for the TTL too, not re-queried per call.
+    """The applied calibration recommendation dict, or None for static weights.
+
+    Flag off: returns None without touching the DB. A None result (recommendation
+    not confident / not approved) is cached for the TTL too, not re-queried per call.
+    """
+    if not dynamic_weights_enabled():
+        return None
     global _WEIGHTS_CACHE, _WEIGHTS_CACHE_TIME
     with _WEIGHTS_LOCK:
         now = time.time()
@@ -44,9 +72,12 @@ def _get_dynamic_weights():
             try:
                 from services.prediction_calibration_service import get_fusion_weight_recommendations
                 rec = get_fusion_weight_recommendations(min_sample=100)
-                if rec.get("is_confident"):
-                    _WEIGHTS_CACHE = rec.get("recommended_weights")
-                    _LOG.info("Confidence fusion updated dynamic weights from calibration system: %s", _WEIGHTS_CACHE)
+                if rec.get("is_confident") and rec.get("apply_recommendation"):
+                    _WEIGHTS_CACHE = rec
+                    _LOG.info(
+                        "Confidence fusion using dynamic weights %s: %s",
+                        rec.get("weights_version"), rec.get("recommended_weights"),
+                    )
                 else:
                     _WEIGHTS_CACHE = None
             except Exception as e:
@@ -58,7 +89,11 @@ def _get_dynamic_weights():
 
 def _ml_weight_for_mode(ml_engine_mode: str | None) -> float:
     """Return the capped ML pillar weight for the active engine mode."""
-    return _ML_WEIGHTS_BY_MODE.get(ml_engine_mode or "fallback_technical_heuristic", 0.05)
+    return _ML_WEIGHTS_BY_MODE.get(ml_engine_mode or "fallback_technical_heuristic", 0.0)
+
+
+def _clamp01(value) -> float | None:
+    return None if value is None else max(0.0, min(1.0, float(value)))
 
 
 def _fuse_final_confidence(
@@ -68,86 +103,77 @@ def _fuse_final_confidence(
     signal_agreement: float | None,
     ml_conf: float | None,
     ml_engine_mode: str | None = None,
+    final_direction: int | None = None,
+    ml_direction: int | None = None,
 ) -> tuple[int, dict]:
     """
     Fuses multiple confidence sources into a single 0-100 score.
+
+    Missing pillars (None) are excluded and the remaining weights renormalized.
+    The ML pillar is direction-conditional: it counts as ml_conf when the ML call
+    agrees with final_direction and as 1 - ml_conf when it disagrees; it is excluded
+    when either direction is 0/None or the engine mode carries no weight.
+
     Returns:
         fused_int: Final confidence score scaled to 0-100 integer.
         breakdown: Dictionary detailing the inputs and calculation.
     """
-    # 1. Normalize all inputs to [0, 1] range
-    n_llm = float(llm_conf) / 100.0 if llm_conf is not None else 0.5
-    n_quant = float(quant_conf) if quant_conf is not None else 0.5
-    n_va = float(venn_abers_conf) if venn_abers_conf is not None else 0.5
-    n_agree = float(signal_agreement) if signal_agreement is not None else 0.5
-    n_ml = float(ml_conf) if ml_conf is not None else 0.0  # Default to 0 if ML not available
-    
-    # Bound check
-    n_llm = max(0.0, min(1.0, n_llm))
-    n_quant = max(0.0, min(1.0, n_quant))
-    n_va = max(0.0, min(1.0, n_va))
-    n_agree = max(0.0, min(1.0, n_agree))
-    n_ml = max(0.0, min(1.0, n_ml))
+    mode = ml_engine_mode or "fallback_technical_heuristic"
+    ml_cap = _ml_weight_for_mode(mode)
 
-    # 2. Apply weights. Prefer dynamic weights from calibration system if confident,
-    # otherwise fallback to mode-aware static weights.
     dynamic = _get_dynamic_weights()
     if dynamic:
-        w_llm = dynamic.get("llm_confidence", 0.45)
-        w_quant = dynamic.get("quant_confidence", 0.25)
-        w_va = dynamic.get("venn_abers_confidence", 0.15)
-        w_agree = dynamic.get("signal_agreement", 0.10)
-        w_ml = dynamic.get("ml_confidence", 0.05)
-        total = w_llm + w_quant + w_va + w_agree + w_ml
-        if total > 0:
-            w_llm /= total
-            w_quant /= total
-            w_va /= total
-            w_agree /= total
-            w_ml /= total
+        rec_weights = dynamic.get("recommended_weights") or {}
+        base = {p: float(rec_weights.get(_DYNAMIC_KEYS[p], 0.0)) for p in _PILLARS}
+        # An unvalidated or absent ML engine never gains weight from the recommendation.
+        base["ml"] = min(base["ml"], ml_cap)
+        weights_version = dynamic.get("weights_version") or "dynamic"
     else:
-        w_ml = _ml_weight_for_mode(ml_engine_mode)
-        non_ml_total = sum(_NON_ML_BASE_WEIGHTS.values())
-        non_ml_scale = (1.0 - w_ml) / non_ml_total
-        w_llm = _NON_ML_BASE_WEIGHTS["llm"] * non_ml_scale
-        w_quant = _NON_ML_BASE_WEIGHTS["quant"] * non_ml_scale
-        w_va = _NON_ML_BASE_WEIGHTS["venn_abers"] * non_ml_scale
-        w_agree = _NON_ML_BASE_WEIGHTS["signal_agreement"] * non_ml_scale
+        non_ml_scale = (1.0 - ml_cap) / sum(_NON_ML_BASE_WEIGHTS.values())
+        base = {p: w * non_ml_scale for p, w in _NON_ML_BASE_WEIGHTS.items()}
+        base["ml"] = ml_cap
+        weights_version = STATIC_WEIGHTS_VERSION
 
-    fused = (
-        (w_llm * n_llm) +
-        (w_quant * n_quant) +
-        (w_va * n_va) +
-        (w_agree * n_agree) +
-        (w_ml * n_ml)
-    )
-    
-    # 3. Scale back to 0-100
-    fused_int = int(round(fused * 100.0))
-    fused_int = max(0, min(100, fused_int))
-    
-    breakdown = {
-        "llm_confidence": llm_conf if llm_conf is not None else 50,
-        "quant_confidence": round(n_quant, 4),
-        "venn_abers_confidence": round(n_va, 4),
-        "signal_agreement": round(n_agree, 4),
-        "ml_confidence": round(n_ml, 4),
-        "ml_engine_mode": ml_engine_mode or "fallback_technical_heuristic",
-        "ml_weight_applied": round(w_ml, 4),
-        "dynamic_weights_active": bool(dynamic),
-        "weights": {
-            "llm": round(w_llm, 4),
-            "quant": round(w_quant, 4),
-            "venn_abers": round(w_va, 4),
-            "signal_agreement": round(w_agree, 4),
-            "ml": round(w_ml, 4),
-        },
-        "formula": (
-            f"{w_llm:.4f}*llm + {w_quant:.4f}*quant + "
-            f"{w_va:.4f}*va + {w_agree:.4f}*agreement + {w_ml:.4f}*ml"
-        ),
+    n_ml = None
+    c_ml = _clamp01(ml_conf)
+    if c_ml is not None and base["ml"] > 0 and final_direction and ml_direction:
+        n_ml = c_ml if (ml_direction > 0) == (final_direction > 0) else 1.0 - c_ml
+
+    values = {
+        "llm": _clamp01(float(llm_conf) / 100.0) if llm_conf is not None else None,
+        "quant": _clamp01(quant_conf),
+        "venn_abers": _clamp01(venn_abers_conf),
+        "signal_agreement": _clamp01(signal_agreement),
+        "ml": n_ml,
     }
-    
+    used = [p for p in _PILLARS if values[p] is not None and base[p] > 0]
+    total = sum(base[p] for p in used)
+    weights = {p: (base[p] / total if p in used else 0.0) for p in _PILLARS}
+
+    if total > 0:
+        fused = sum(weights[p] * values[p] for p in used)  # type: ignore[operator]
+        fused_int = max(0, min(100, int(round(fused * 100.0))))
+    else:
+        fused_int = 50
+
+    breakdown = {
+        "llm_confidence": llm_conf,
+        "quant_confidence": None if values["quant"] is None else round(values["quant"], 4),
+        "venn_abers_confidence": None if values["venn_abers"] is None else round(values["venn_abers"], 4),
+        "signal_agreement": None if values["signal_agreement"] is None else round(values["signal_agreement"], 4),
+        "ml_confidence": None if n_ml is None else round(n_ml, 4),
+        "ml_engine_mode": mode,
+        "ml_weight_applied": round(weights["ml"], 4),
+        "dynamic_weights_active": bool(dynamic),
+        "weights_version": weights_version,
+        "confidence_kind": CONFIDENCE_KIND,
+        "pillars_used": used,
+        "weights": {p: round(weights[p], 4) for p in _PILLARS},
+        "formula": " + ".join(f"{weights[p]:.4f}*{p}" for p in used) or "no inputs",
+    }
+    if total <= 0:
+        breakdown["no_inputs"] = True
+
     return fused_int, breakdown
 
 def get_ml_engine_mode(ml_model_loaded: bool, reported_mode: str | None = None) -> str:

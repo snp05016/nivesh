@@ -12,6 +12,7 @@ class MLReliability(BaseModel):
     hit_rate_30d: Optional[float] = None
     brier_score_30d: Optional[float] = None
     calibration_error_30d: Optional[float] = None
+    sample_size_30d: Optional[int] = None  # matured rows behind the metrics (None metrics below the minimum)
 
 
 class MLSignalResponse(BaseModel):

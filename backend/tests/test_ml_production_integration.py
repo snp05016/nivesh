@@ -86,15 +86,19 @@ def test_ml_client_sends_engine_key_only_when_configured(monkeypatch, key, expec
 @pytest.mark.parametrize(
     ("mode", "expected_weight"),
     [
-        ("fallback_technical_heuristic", 0.05),
-        ("trained_lightgbm_baseline", 0.15),
+        # ML-12: only a gated model (trained_live_calibrated) carries ML weight.
+        ("fallback_technical_heuristic", 0.0),
+        ("trained_lightgbm_baseline", 0.0),
         ("trained_live_calibrated", 0.25),
         ("unavailable", 0.0),
     ],
 )
-def test_confidence_fusion_caps_ml_weight_by_engine_mode(mode, expected_weight):
+def test_confidence_fusion_caps_ml_weight_by_engine_mode(monkeypatch, mode, expected_weight):
+    from services import confidence_fusion
     from services.confidence_fusion import _fuse_final_confidence
 
+    monkeypatch.delenv("FUSION_DYNAMIC_WEIGHTS_ENABLED", raising=False)
+    monkeypatch.setattr(confidence_fusion, "_WEIGHTS_CACHE", None)
     _, breakdown = _fuse_final_confidence(
         llm_conf=70,
         quant_conf=0.65,
@@ -102,6 +106,8 @@ def test_confidence_fusion_caps_ml_weight_by_engine_mode(mode, expected_weight):
         signal_agreement=0.75,
         ml_conf=0.80,
         ml_engine_mode=mode,
+        final_direction=1,
+        ml_direction=1,
     )
 
     assert breakdown["ml_engine_mode"] == mode

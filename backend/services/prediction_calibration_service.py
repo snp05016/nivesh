@@ -7,6 +7,8 @@ empty tables, missing values, and division by zero.
 """
 
 from typing import Any, Dict, List, Optional, Tuple
+import hashlib
+import json
 import math
 
 from sqlalchemy import func, case, cast, Float
@@ -718,6 +720,49 @@ def get_model_version_analytics() -> Dict[str, Any]:
 # 4. get_calibration_health
 # ---------------------------------------------------------------------------
 
+def get_ml_signal_reliability(model_version: str, min_matured: int = 30) -> Dict[str, Any]:
+    """30d track record of the ML signal itself for one served model_version (ML-13).
+
+    Scores the ml-engine's own direction and P(up) on matured rows, not the fused
+    recommendation that get_model_version_analytics measures. Metrics are None until
+    min_matured rows exist; sample_size_30d is always returned.
+    """
+    with get_session() as session:
+        rows = (
+            session.query(
+                AnalysisPrediction.ml_direction,
+                AnalysisPrediction.ml_p_up,
+                AnalysisPrediction.actual_return_30d,
+            )
+            .filter(
+                AnalysisPrediction.model_version == model_version,
+                AnalysisPrediction.ml_direction.in_((1, -1)),
+                AnalysisPrediction.actual_return_30d.isnot(None),
+            )
+            .all()
+        )
+
+    n = len(rows)
+    result: Dict[str, Any] = {
+        "sample_size_30d": n,
+        "hit_rate_30d": None,
+        "brier_score_30d": None,
+        "calibration_error_30d": None,
+    }
+    if n < min_matured:
+        return result
+
+    hits = sum(1 for d, _p, ret in rows if ret * d > 0)  # sign(return) == ml_direction; flat is a miss
+    result["hit_rate_30d"] = round(hits / n, 4)
+    probs = [(float(p), 1.0 if ret > 0 else 0.0) for _d, p, ret in rows if p is not None]
+    if probs:
+        result["brier_score_30d"] = round(sum((p - y) ** 2 for p, y in probs) / len(probs), 4)
+        result["calibration_error_30d"] = round(
+            abs(sum(p for p, _ in probs) / len(probs) - sum(y for _, y in probs) / len(probs)), 4
+        )
+    return result
+
+
 def get_calibration_health() -> Dict[str, Any]:
     """
     Returns counts and readiness flags to determine if there is enough data
@@ -757,21 +802,37 @@ def get_calibration_health() -> Dict[str, Any]:
 # 5. get_fusion_weight_recommendations
 # ---------------------------------------------------------------------------
 
+def _corr_lower_bound(r: Optional[float], n: int, z: float = 1.96) -> Optional[float]:
+    """Fisher-z lower bound of the 95% CI for correlation r over n rows (None if n <= 3)."""
+    if r is None or n <= 3:
+        return None
+    r = max(-0.999, min(0.999, float(r)))
+    return math.tanh(math.atanh(r) - z / math.sqrt(n - 3))
+
+
 def get_fusion_weight_recommendations(min_sample: int = 100) -> Dict[str, Any]:
     """
-    Generate advisory weights for confidence fusion based on historical 
-    point-biserial correlations from pillar attribution.
+    Generate advisory weights for confidence fusion from the pillars' point-biserial
+    correlations with matured 30d outcomes (ML-04).
+
+    A pillar earns weight only when the lower 95% bound of its correlation is > 0.
+    is_confident needs every pillar to have at least min_sample matured rows and one
+    pillar with such a bound. apply_recommendation additionally needs the manual
+    FUSION_DYNAMIC_WEIGHTS_ENABLED opt-in; otherwise fusion keeps its static weights.
 
     Args:
-        min_sample (int, optional): The minimum sample size required to use historical
-            correlations instead of base weights. Defaults to 100.
+        min_sample (int, optional): Minimum matured (hit_direction_30d known) rows per
+            pillar before historical correlations are trusted. Defaults to 100.
 
     Returns:
-        Dict[str, Any]: Recommended weights, warnings, and confidence flags.
+        Dict[str, Any]: Recommended weights, warnings, confidence/apply flags,
+            matured_sample and weights_version.
     """
+    from services.confidence_fusion import STATIC_WEIGHTS_VERSION, dynamic_weights_enabled
+
     attr = get_pillar_attribution()
-    total = attr.get("total_predictions", 0)
-    
+    pillars = attr.get("pillars", {})
+
     # Base weights if not enough data or fallback needed
     base_weights = {
         "llm_confidence": 0.45,
@@ -780,40 +841,41 @@ def get_fusion_weight_recommendations(min_sample: int = 100) -> Dict[str, Any]:
         "signal_agreement": 0.10,
         "ml_confidence": 0.05,
     }
-    
-    if total < min_sample:
+
+    matured = [int((pillars.get(p) or {}).get("sample_size") or 0) for p in PILLAR_COLUMNS]
+    min_n = min(matured)
+
+    raw_weights: Dict[str, float] = {}
+    for p_name in PILLAR_COLUMNS:
+        p_info = pillars.get(p_name) or {}
+        lo = _corr_lower_bound(p_info.get("correlation_with_hit_30d"), int(p_info.get("sample_size") or 0))
+        missing_rate = p_info.get("missing_rate") or 0.0
+        raw_weights[p_name] = max(lo, 0.0) * (1.0 - missing_rate) if lo is not None else 0.0
+
+    total_raw = sum(raw_weights.values())
+    warnings: List[str] = []
+    if min_n < min_sample:
+        warnings.append(f"Only {min_n} matured 30d outcomes (need {min_sample}). Using base weights.")
+    elif total_raw <= 0:
+        warnings.append("No pillar correlation significantly > 0. Using base weights.")
+
+    if warnings:
         return {
             "recommended_weights": base_weights,
-            "warnings": [f"Sample size ({total}) below minimum ({min_sample}). Using base weights."],
+            "warnings": warnings,
             "apply_recommendation": False,
             "is_confident": False,
+            "matured_sample": min_n,
+            "weights_version": STATIC_WEIGHTS_VERSION,
         }
-        
-    pillars = attr.get("pillars", {})
-    raw_weights = {}
-    
-    for p_name in PILLAR_COLUMNS:
-        p_info = pillars.get(p_name, {})
-        corr = p_info.get("correlation_with_hit_30d")
-        missing_rate = p_info.get("missing_rate", 0.0)
-        
-        if corr is None or corr <= 0:
-            raw_weights[p_name] = 0.01  # Minimum floor
-        else:
-            # Penalize by missing rate
-            effective_corr = corr * (1.0 - missing_rate)
-            raw_weights[p_name] = max(0.01, effective_corr)
-            
-    total_raw = sum(raw_weights.values())
-    
-    if total_raw <= 0:
-        recommended = base_weights
-    else:
-        recommended = {k: round(v / total_raw, 4) for k, v in raw_weights.items()}
-        
+
+    recommended = {k: round(v / total_raw, 4) for k, v in raw_weights.items()}
+    digest = hashlib.sha1(json.dumps(recommended, sort_keys=True).encode()).hexdigest()[:8]
     return {
         "recommended_weights": recommended,
         "warnings": [],
-        "apply_recommendation": False,  # Always False to ensure manual application
+        "apply_recommendation": dynamic_weights_enabled(),
         "is_confident": True,
+        "matured_sample": min_n,
+        "weights_version": f"dyn-{digest}",
     }

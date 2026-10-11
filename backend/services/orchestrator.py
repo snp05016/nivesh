@@ -936,6 +936,15 @@ _SIGNAL_MAP = {
     "SELL ON RALLIES": "BEARISH",
 }
 
+# Direction of the normalized final call, for the direction-conditional ML pillar (ML-12).
+_SIGNAL_DIRECTION = {
+    "BULLISH": 1,
+    "CAUTIOUSLY BULLISH": 1,
+    "BEARISH": -1,
+    "CAUTIOUSLY BEARISH": -1,
+}
+CONFIDENCE_DISCLOSURE = "Heuristic blend of several signals; not a probability that the call is right."
+
 
 def _sanitize_nan_inf(obj):
     """Recursively replace NaN/Inf/-Inf with None (JSON null) in dicts/lists.
@@ -1949,41 +1958,10 @@ def analyze(
             _inject_piotroski(cached_today, ticker)
             cached_today = _inject_live_data(cached_today, ticker)
 
-            # === DETERMINISTIC CONFIDENCE FUSION (cache path) ===
-            _llm_conf = cached_today.get("confidence_pct")
-            _quant_conf = _quant_from_cache.get("calibrated_confidence")
-            _va_conf = cached_today.get("venn_abers_confidence")
-            _ml_conf = cached_today.get("ml_confidence")
-            _agree = cached_today.get("signal_agreement")
-            _ml_engine_mode = cached_today.get("ml_engine_mode", "fallback_technical_heuristic")
-            _lightgbm_loaded = cached_today.get("lightgbm_loaded", False)
-            _ml_model_version = cached_today.get("model_version")
-            _ml_feature_count = cached_today.get("ml_feature_count")
-            _ml_fallback_used = cached_today.get("ml_fallback_used", True)
-
-            try:
-                fused_conf, breakdown = _fuse_final_confidence(
-                    llm_conf=_llm_conf,
-                    quant_conf=_quant_conf,
-                    venn_abers_conf=_va_conf,
-                    signal_agreement=_agree,
-                    ml_conf=_ml_conf,
-                    ml_engine_mode=_ml_engine_mode,
-                )
-                breakdown["ml_engine_mode"] = get_ml_engine_mode(_lightgbm_loaded, _ml_engine_mode)
-                breakdown["ml_model_loaded"] = _lightgbm_loaded
-                breakdown["model_version"] = _ml_model_version
-                breakdown["feature_count"] = _ml_feature_count
-                breakdown["fallback_used"] = _ml_fallback_used
-                breakdown["_cache_path"] = True
-
-                cached_today["confidence_pct"] = fused_conf
-                cached_today["confidence_breakdown"] = breakdown
-                cached_today["ml_engine_mode"] = breakdown["ml_engine_mode"]
-                cached_today["model_version"] = _ml_model_version
-                # No AnalysisPrediction here: the full run that produced this report already logged it (ML-16).
-            except Exception as _fuse_err:
-                logging.info(f"[WARN] Cache-path confidence fusion failed: {_fuse_err}")
+            # ML-12: no re-fusion here. The stored report already carries the confidence_pct
+            # and confidence_breakdown fused on first view; re-fusing fed that fused value
+            # back in as the LLM pillar and drifted the headline number between views.
+            cached_today.setdefault("confidence_disclosure", CONFIDENCE_DISCLOSURE)
 
             return cached_today
 
@@ -2319,6 +2297,8 @@ def analyze(
         signal_agreement=_agree,
         ml_conf=_ml_conf,
         ml_engine_mode=_ml_engine_mode,
+        final_direction=_SIGNAL_DIRECTION.get(str(result.get("signal", "")).upper(), 0),
+        ml_direction=final_state.get("_ml_direction") if isinstance(final_state, dict) else None,
     )
     
     breakdown["ml_engine_mode"] = get_ml_engine_mode(_lightgbm_loaded, _ml_engine_mode)
@@ -2331,6 +2311,7 @@ def analyze(
     # Overwrite the LLM-generated confidence with the deterministic fused value
     result["confidence_pct"] = fused_conf
     result["confidence_breakdown"] = breakdown
+    result["confidence_disclosure"] = CONFIDENCE_DISCLOSURE
     result["ml_direction"] = final_state.get("_ml_direction") if isinstance(final_state, dict) else None
     result["ml_confidence"] = _ml_conf
     result["ml_engine_mode"] = breakdown["ml_engine_mode"]
