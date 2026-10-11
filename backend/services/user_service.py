@@ -13,6 +13,7 @@ from services.harvester_reformatter import strip_emoji
 from services.notifications_inbox import create_notification
 from services.preferences import push_allowed
 from services.sebi_registry import registration_for_channel
+from services import entitlement_service
 
 _watchlist_price_cache: dict = {}
 _WATCHLIST_CACHE_TTL = 120
@@ -38,6 +39,10 @@ def add_to_watchlist(user_id: int, ticker: str, company_name: str) -> dict:
         ).first()
         if existing:
             return {"already_exists": True, "message": "Already in watchlist"}
+        count = session.query(Portfolio).filter_by(user_id=user_id, group_name="watchlist").count()
+    # Outside the session: get_effective_tier may create the subscription row.
+    entitlement_service.enforce_quota(user_id, "watchlist_size", count)
+    with get_session() as session:
         new_item = Portfolio(
             user_id=user_id,
             ticker=ticker,

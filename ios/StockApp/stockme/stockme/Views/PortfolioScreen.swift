@@ -134,6 +134,7 @@ struct PortfolioScreen: View {
     @State private var showDeleteAlert = false
     @State private var deletingTicker = ""
     @State private var holdingActionError: String? = nil
+    @State private var watchlistAddError: String? = nil
     @State private var showNoteEditor = false
     @State private var noteEditingHolding: PortfolioHolding? = nil
     @State private var noteEditorText = ""
@@ -451,12 +452,19 @@ struct PortfolioScreen: View {
                 onAdd: { entry in
                     guard let user = authManager.currentUser else { return }
                     Task {
-                        let added = (try? await NetworkManager.shared.addToWatchlist(
-                            userId: user.userId,
-                            ticker: entry.ticker,
-                            exchange: entry.exchange,
-                            companyName: entry.companyName
-                        )) ?? false
+                        var added = false
+                        do {
+                            added = try await NetworkManager.shared.addToWatchlist(
+                                userId: user.userId,
+                                ticker: entry.ticker,
+                                exchange: entry.exchange,
+                                companyName: entry.companyName
+                            )
+                        } catch {
+                            // 402 = plan's watchlist cap reached: show the upsell, not a silent close.
+                            watchlistAddError = (error as? NetworkError)?.upgradeMessage
+                                ?? "\(entry.ticker) wasn't added. Check your connection and try again."
+                        }
                         showAddWatchlistSheet = false
                         await viewModel.fetchWatchlist(userId: user.userId)
                         if added {
@@ -522,6 +530,12 @@ struct PortfolioScreen: View {
             "Couldn't update holding",
             isPresented: Binding(get: { holdingActionError != nil }, set: { if !$0 { holdingActionError = nil } }),
             message: holdingActionError,
+            buttons: [.init("OK")]
+        )
+        .banknoteDialog(
+            "Couldn't add to watchlist",
+            isPresented: Binding(get: { watchlistAddError != nil }, set: { if !$0 { watchlistAddError = nil } }),
+            message: watchlistAddError,
             buttons: [.init("OK")]
         )
         .banknoteDialog(

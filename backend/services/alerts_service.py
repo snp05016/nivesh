@@ -10,6 +10,7 @@ from helpers import _yf_price, _to_ns, get_session, PriceTarget
 from models.db_models import DeviceToken
 from services.notifications_inbox import create_notification
 from services.preferences import push_allowed
+from services import entitlement_service
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +21,9 @@ def add_price_alert(user_id: int, ticker: str, target_price: float, direction: s
         raise ValueError("target_price must be greater than 0")
         
     ticker = ticker.upper()
+    with get_session() as session:
+        active = session.query(PriceTarget).filter_by(user_id=user_id, triggered=False).count()
+    entitlement_service.enforce_quota(user_id, "price_alerts", active)
     with get_session() as session:
         new_alert = PriceTarget(
             user_id=user_id,

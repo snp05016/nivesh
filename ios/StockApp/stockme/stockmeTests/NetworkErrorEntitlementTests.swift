@@ -34,6 +34,17 @@ final class NetworkErrorEntitlementTests: XCTestCase {
         XCTAssertTrue((err.errorDescription ?? "").contains("Super PRO"))
     }
 
+    /// CMON-22: a plan-cap 402 shows the server's cap message plus the upgrade tier;
+    /// non-402 errors have no upgradeMessage so callers keep their own copy.
+    func testQuotaUpgradeMessage() {
+        let data = Data(#"{"detail":{"message":"Your plan allows 10 watchlist stocks.","required_tier":"pro","current_tier":"free"}}"#.utf8)
+        let err = NetworkError.fromHTTP(status: 402, data: data, endpoint: "/watchlist/add")
+        XCTAssertEqual(err.upgradeMessage, "Your plan allows 10 watchlist stocks. Upgrade to Nivesh PRO for more.")
+        XCTAssertEqual(NetworkError.paymentRequired(requiredTier: nil, message: nil).upgradeMessage,
+                       NetworkError.paymentRequired(requiredTier: nil, message: nil).errorDescription)
+        XCTAssertNil(NetworkError.fromHTTP(status: 500, data: Data(), endpoint: "/x").upgradeMessage)
+    }
+
     func test402WithUnparseableBodyDefaultsToPro() {
         let err = NetworkError.fromHTTP(status: 402, data: Data("<html>".utf8), endpoint: "/x")
         XCTAssertEqual(err.requiredTier, .pro)

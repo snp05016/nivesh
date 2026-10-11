@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from core.logging_config import get_logger
 from helpers import AlertAddRequest, AlertRemoveRequest
 from core.security import require_auth, require_user_match, assert_same_user
+from services.entitlement_service import QuotaExceeded
 from services.alerts_service import (
     add_price_alert,
     remove_price_alert,
@@ -17,6 +18,8 @@ def alerts_add_endpoint(req: AlertAddRequest, token_user: int = Depends(require_
     assert_same_user(req.user_id, token_user)
     try:
         return add_price_alert(req.user_id, req.ticker, req.target_price, req.direction)
+    except QuotaExceeded as e:
+        raise HTTPException(status_code=402, detail=e.http_detail())
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception:

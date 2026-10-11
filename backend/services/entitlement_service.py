@@ -32,6 +32,42 @@ FEATURE_MIN_TIER = {
     "ideas_for_profit": "pro",        # routers/options_strategy.py /options/payoff — real multi-leg options P&L/strategy builder
 }
 
+# Per-tier count caps, enforced on create via enforce_quota(). None == unlimited.
+TIER_LIMITS = {
+    "watchlist_size": {"free": 10, "pro": 100, "super_pro": None},
+    "price_alerts": {"free": 5, "pro": 50, "super_pro": None},
+}
+
+QUOTA_NOUNS = {"watchlist_size": "watchlist stocks", "price_alerts": "active price alerts"}
+
+
+class QuotaExceeded(Exception):
+    """Raised by enforce_quota(); routers map it to HTTP 402 (same detail shape
+    as core/entitlement_gate.py so iOS shows the upgrade prompt)."""
+
+    def __init__(self, feature: str, limit: int, tier: str):
+        self.feature, self.limit, self.tier = feature, limit, tier
+        # Next tier up (limits rise strictly with rank).
+        self.required_tier = next(
+            (t for t, rank in sorted(TIER_RANK.items(), key=lambda kv: kv[1]) if rank > TIER_RANK.get(tier, 0)),
+            None,
+        )
+        super().__init__(f"Your plan allows {limit} {QUOTA_NOUNS.get(feature, feature)}.")
+
+    def http_detail(self) -> dict:
+        return {"message": str(self), "required_tier": self.required_tier, "current_tier": self.tier}
+
+
+def enforce_quota(user_id: int, feature: str, current_count: int) -> None:
+    """Raises QuotaExceeded when adding one more item would exceed the
+    user's effective-tier cap for `feature` (current_count is the count
+    before the add)."""
+    tier = get_effective_tier(user_id)
+    limit = TIER_LIMITS[feature].get(tier, TIER_LIMITS[feature]["free"])
+    if limit is not None and current_count >= limit:
+        raise QuotaExceeded(feature, limit, tier)
+
+
 # User-facing paywall titles for FEATURE_MIN_TIER keys.
 FEATURE_TITLES = {
     "advanced_analysis": "Prediction performance dashboards",

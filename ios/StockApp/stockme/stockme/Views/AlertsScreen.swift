@@ -474,7 +474,7 @@ struct AddAlertSheet: View {
                                     onAdded()
                                     dismiss()
                                 } catch {
-                                    errorText = "Failed to set alert. Try again."
+                                    errorText = (error as? NetworkError)?.upgradeMessage ?? "Failed to set alert. Try again."
                                 }
                                 isAdding = false
                             }

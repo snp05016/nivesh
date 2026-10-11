@@ -8,6 +8,7 @@ from typing import Optional
 from helpers import WatchlistAddRequest, WatchlistRemoveRequest, upsert_device_token
 from core.security import require_admin, require_auth, require_user_match, assert_same_user
 import services.user_service as user_service
+from services.entitlement_service import QuotaExceeded
 
 router = APIRouter(tags=["User"])
 
@@ -36,6 +37,8 @@ def watchlist_add_endpoint(req: WatchlistAddRequest, token_user: int = Depends(r
     assert_same_user(req.user_id, token_user)
     try:
         return user_service.add_to_watchlist(req.user_id, req.ticker, req.company_name)
+    except QuotaExceeded as e:
+        raise HTTPException(status_code=402, detail=e.http_detail())
     except Exception as e:
         raise HTTPException(status_code=500, detail="Internal server error")
 

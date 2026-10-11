@@ -50,6 +50,14 @@ enum NetworkError: Error, LocalizedError {
         return raw.flatMap(SubscriptionTier.init(rawValue:)) ?? .pro
     }
 
+    /// Upsell copy for a 402 plan cap: the server's message (e.g. "Your plan allows
+    /// 10 watchlist stocks.") plus the tier to upgrade to; nil for other errors.
+    var upgradeMessage: String? {
+        guard case .paymentRequired(_, let message) = self, let tier = requiredTier else { return nil }
+        guard let message, !message.isEmpty else { return errorDescription }
+        return "\(message) Upgrade to Nivesh \(tier.displayName) for more."
+    }
+
     /// Maps a non-2xx response to a typed error: 402 -> paymentRequired (parsing
     /// `{"detail": {"required_tier", "message"}}`), 401 -> unauthorized, else fetchFailed.
     static func fromHTTP(status: Int, data: Data, endpoint: String) -> NetworkError {
@@ -547,7 +555,7 @@ class NetworkManager: ObservableObject {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONEncoder().encode(Req(user_id: userId, ticker: ticker, exchange: exchange, company_name: companyName))
         let (data, response) = try await session.data(for: request)
-        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { throw NetworkError.invalidResponse }
+        try NetworkError.ensureOK(data: data, response: response)  // 402 = plan cap reached (upsell)
         let resp = try JSONDecoder().decode(Resp.self, from: data)
         return resp.success == true
     }
@@ -611,7 +619,7 @@ class NetworkManager: ObservableObject {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONEncoder().encode(Req(user_id: userId, ticker: ticker, target_price: targetPrice, direction: direction, company_name: companyName))
         let (data, response) = try await session.data(for: request)
-        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { throw NetworkError.invalidResponse }
+        try NetworkError.ensureOK(data: data, response: response)  // 402 = plan cap reached (upsell)
         return (try? JSONDecoder().decode(Resp.self, from: data))?.alert_id ?? 0
     }
 

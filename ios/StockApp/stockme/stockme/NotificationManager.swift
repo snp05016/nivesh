@@ -143,11 +143,15 @@ final class NotificationManager: NSObject, ObservableObject, UNUserNotificationC
         didReceive response: UNNotificationResponse,
         withCompletionHandler completionHandler: @escaping () -> Void
     ) {
-        if let raw = response.notification.request.content.userInfo["ticker"] as? String,
-           let ticker = DeepLink.validTicker(raw) {
+        route(userInfo: response.notification.request.content.userInfo)
+        completionHandler()
+    }
+
+    /// Hands a valid push `ticker` to DeepLinkRouter; ignores missing or unknown tickers.
+    func route(userInfo: [AnyHashable: Any]) {
+        if let raw = userInfo["ticker"] as? String, let ticker = DeepLink.validTicker(raw) {
             DeepLinkRouter.shared.pendingTicker = ticker
         }
-        completionHandler()
     }
 
     /// Schedule a local notification immediately, honouring the Push Notifications

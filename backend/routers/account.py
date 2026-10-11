@@ -11,7 +11,7 @@ state is not backed by a real payment processor (see subscription_service.py
 / routers/subscription.py). Account deletion records a request that
 compliance_service erases after a grace period (see compliance_service.py).
 """
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 
 from core.security import require_auth
 from routers.subscription import SubscriptionResponse
@@ -33,12 +33,14 @@ def get_my_consents(user_id: int = Depends(require_auth)):
 
 
 @router.delete("/account")
-def delete_my_account(user_id: int = Depends(require_auth)):
+def delete_my_account(request: Request, user_id: int = Depends(require_auth)):
     """Request deletion of the current user's account. The daily erasure job
     deletes or de-identifies the user's data once the request is
     scheduled_erasure_after_days old; until then
     POST /api/v1/compliance/deletion-requests/cancel withdraws it. If a
     request is already pending, the service reports that instead of creating
     a duplicate."""
-    result = compliance_service.request_account_deletion(user_id, reason=None)
+    result = compliance_service.request_account_deletion(
+        user_id, reason=None, ip_address=request.client.host if request.client else None
+    )
     return {**result, "scheduled_erasure_after_days": compliance_service.ERASURE_GRACE_DAYS}
