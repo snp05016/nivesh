@@ -7,6 +7,7 @@ import gc
 import logging
 from datetime import datetime, timezone
 import os
+import threading
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from sentence_transformers import SentenceTransformer
 
@@ -19,6 +20,7 @@ CHUNK_SIZE = 800
 CHUNK_OVERLAP = 100
 
 _model: SentenceTransformer | None = None
+_model_lock = threading.Lock()
 
 
 def _get_embedding_model() -> SentenceTransformer:
@@ -29,8 +31,10 @@ def _get_embedding_model() -> SentenceTransformer:
     """
     global _model
     if _model is None:
-        _model = SentenceTransformer("all-MiniLM-L6-v2", token=os.getenv("HF_TOKEN"))
-        logger.info("MiniLM embedding model loaded")
+        with _model_lock:
+            if _model is None:
+                _model = SentenceTransformer("all-MiniLM-L6-v2", token=os.getenv("HF_TOKEN"))
+                logger.info("MiniLM embedding model loaded")
     return _model
 
 

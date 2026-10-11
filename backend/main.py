@@ -295,7 +295,9 @@ app.add_middleware(
 )
 
 
-# Global OPTIONS handler — returns 200 for all preflight requests
+# Global OPTIONS handler — returns 200 for all preflight requests.
+# Kept on purpose: CORSMiddleware answers real preflights before routing, iOS never sends OPTIONS,
+# and tests/test_ios_endpoints.py asserts 200/204 for OPTIONS on many paths.
 @app.options("/{rest_of_path:path}")
 async def global_options_handler(rest_of_path: str):
     return Response(status_code=200)
@@ -410,7 +412,7 @@ async def _global_exception_handler(_req: _FRequest, exc: Exception):
 # ---------------------------------------------------------------------------
 # Import and register routers
 # ---------------------------------------------------------------------------
-from routers import auth, portfolio, market, analysis, alerts, user, dashboard, notifications, brainstorming, strategy, copilot, anomalies, correlation, nl_screener, stress_test, sector_rotation, earnings_surprise, options_strategy, predictions, fundamentals, backtests, stock_financials, preferences, notifications_inbox, markets, search, stocks, compare, ipo, mutual_funds, forum, finance, compliance, subscription, kyc, fixed_deposits, account
+from routers import auth, portfolio, market, analysis, alerts, user, dashboard, notifications, brainstorming, strategy, copilot, anomalies, correlation, nl_screener, stress_test, sector_rotation, earnings_surprise, options_strategy, predictions, fundamentals, backtests, stock_financials, preferences, notifications_inbox, search, stocks, compare, ipo, mutual_funds, forum, finance, compliance, subscription, kyc, fixed_deposits, account
 from routers import harvester as harvester_router
 from routers.health import router as health_router  # Task 56
 from routers import youtube_summary as youtube_summary_router
@@ -445,7 +447,6 @@ app.include_router(preferences.router)
 app.include_router(subscription.router)
 app.include_router(notifications_inbox.router)
 app.include_router(youtube_summary_router.router)
-app.include_router(markets.router)
 app.include_router(search.router)
 app.include_router(stocks.router)
 app.include_router(compare.router)
@@ -895,26 +896,6 @@ from schemas import (
     BatchAnalyzeRequest,
     TradeJournalAddRequest, TradeJournalUpdateRequest,
 )
-
-
-# ---------------------------------------------------------------------------
-# Health check
-# ---------------------------------------------------------------------------
-
-@app.get("/health")
-def health_endpoint():
-    """
-    Deep health check endpoint for readiness probes.
-
-    Verifies database connectivity by querying the User table.
-    """
-    try:
-        with get_session() as session:
-            from sqlalchemy import text as _text
-            session.execute(_text("SELECT 1"))
-        return {"status": "ok"}
-    except Exception as _e:
-        raise HTTPException(status_code=503, detail="Service unavailable")
 
 
 # ---------------------------------------------------------------------------

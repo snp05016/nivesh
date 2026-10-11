@@ -5,17 +5,28 @@ Loads the model once at module import time and reuses it (singleton pattern).
 """
 from datetime import timezone
 import logging
+import threading
+import time
 from typing import Optional
 
 logger = logging.getLogger(__name__)
 
 _classifier = None
+_classifier_lock = threading.Lock()
+_load_failed_at: float | None = None
+_RETRY_AFTER_SEC = 600  # one load attempt per 10 min after a failure, not one per article
 
 
 def get_classifier():
-    """Load FinBERT once and cache it. Thread-safe for single-process use."""
-    global _classifier
-    if _classifier is None:
+    """Load FinBERT once and cache it. Thread-safe; a failed load is retried at most every _RETRY_AFTER_SEC."""
+    global _classifier, _load_failed_at
+    if _classifier is not None:
+        return _classifier
+    with _classifier_lock:
+        if _classifier is not None:
+            return _classifier
+        if _load_failed_at is not None and time.monotonic() - _load_failed_at < _RETRY_AFTER_SEC:
+            return None
         try:
             from transformers import pipeline
             # yiyanghkust/finbert-tone incompatible with transformers 5.x
@@ -28,10 +39,12 @@ def get_classifier():
                 truncation=True,
                 max_length=512,
             )
+            _load_failed_at = None
             logger.info("FinBERT loaded successfully (ProsusAI/finbert).")
         except Exception as e:
             logger.warning(f"FinBERT load failed: {e}")
             _classifier = None
+            _load_failed_at = time.monotonic()
     return _classifier
 
 

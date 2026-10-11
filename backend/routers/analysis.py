@@ -7,6 +7,7 @@ import os
 import json
 import time as _time
 import time
+import threading
 import asyncio
 import multiprocessing
 import math
@@ -57,6 +58,7 @@ _BEARISH_SIGNALS = {"BEARISH", "CAUTIOUSLY BEARISH"}
 # Circuit breaker for yfinance-dependent endpoints (Task 38: values now from settings)
 _yf_circuit_failures = 0
 _yf_circuit_open_until = 0.0
+_yf_circuit_lock = threading.Lock()
 
 # ---------------------------------------------------------------------------
 # DeepSeek helpers — now imported from services.llm_utils (single source)
@@ -87,21 +89,24 @@ def _normalize_signal(result: dict) -> dict:
 # ---------------------------------------------------------------------------
 def _yf_circuit_is_open() -> bool:
     global _yf_circuit_failures, _yf_circuit_open_until
-    if _yf_circuit_failures >= _YF_CIRCUIT_THRESHOLD:
-        if time.time() < _yf_circuit_open_until:
-            return True
-        _yf_circuit_failures = 0
-    return False
+    with _yf_circuit_lock:
+        if _yf_circuit_failures >= _YF_CIRCUIT_THRESHOLD:
+            if time.time() < _yf_circuit_open_until:
+                return True
+            _yf_circuit_failures = 0
+        return False
 
 def _yf_circuit_record_failure():
     global _yf_circuit_failures, _yf_circuit_open_until
-    _yf_circuit_failures += 1
-    if _yf_circuit_failures >= _YF_CIRCUIT_THRESHOLD:
-        _yf_circuit_open_until = time.time() + _YF_CIRCUIT_TIMEOUT
+    with _yf_circuit_lock:
+        _yf_circuit_failures += 1
+        if _yf_circuit_failures >= _YF_CIRCUIT_THRESHOLD:
+            _yf_circuit_open_until = time.time() + _YF_CIRCUIT_TIMEOUT
 
 def _yf_circuit_record_success():
     global _yf_circuit_failures
-    _yf_circuit_failures = 0
+    with _yf_circuit_lock:
+        _yf_circuit_failures = 0
 
 # ── Item 47: Batch Analysis ───────────────────────────────────────────
 @router.post("/batch")

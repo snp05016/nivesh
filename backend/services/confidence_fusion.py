@@ -11,6 +11,7 @@ Formula:
 
 import time
 import logging
+import threading
 
 _LOG = logging.getLogger(__name__)
 
@@ -32,24 +33,27 @@ _ML_WEIGHTS_BY_MODE = {
 _WEIGHTS_CACHE = None
 _WEIGHTS_CACHE_TIME = 0.0
 _CACHE_TTL = 3600  # 1 hour
+_WEIGHTS_LOCK = threading.Lock()
 
 def _get_dynamic_weights():
+    # A None result (calibration not confident) is cached for the TTL too, not re-queried per call.
     global _WEIGHTS_CACHE, _WEIGHTS_CACHE_TIME
-    now = time.time()
-    if _WEIGHTS_CACHE is None or (now - _WEIGHTS_CACHE_TIME) > _CACHE_TTL:
-        try:
-            from services.prediction_calibration_service import get_fusion_weight_recommendations
-            rec = get_fusion_weight_recommendations(min_sample=100)
-            if rec.get("is_confident"):
-                _WEIGHTS_CACHE = rec.get("recommended_weights")
-                _LOG.info("Confidence fusion updated dynamic weights from calibration system: %s", _WEIGHTS_CACHE)
-            else:
+    with _WEIGHTS_LOCK:
+        now = time.time()
+        if (now - _WEIGHTS_CACHE_TIME) > _CACHE_TTL:
+            try:
+                from services.prediction_calibration_service import get_fusion_weight_recommendations
+                rec = get_fusion_weight_recommendations(min_sample=100)
+                if rec.get("is_confident"):
+                    _WEIGHTS_CACHE = rec.get("recommended_weights")
+                    _LOG.info("Confidence fusion updated dynamic weights from calibration system: %s", _WEIGHTS_CACHE)
+                else:
+                    _WEIGHTS_CACHE = None
+            except Exception as e:
+                _LOG.warning("Failed to fetch dynamic weights from calibration system: %s", e)
                 _WEIGHTS_CACHE = None
-        except Exception as e:
-            _LOG.warning("Failed to fetch dynamic weights from calibration system: %s", e)
-            _WEIGHTS_CACHE = None
-        _WEIGHTS_CACHE_TIME = now
-    return _WEIGHTS_CACHE
+            _WEIGHTS_CACHE_TIME = now
+        return _WEIGHTS_CACHE
 
 
 def _ml_weight_for_mode(ml_engine_mode: str | None) -> float:

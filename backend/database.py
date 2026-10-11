@@ -424,8 +424,8 @@ def promote_initial_admins() -> None:
     """Promote the default seed users to admin status."""
     with get_session() as session:
         admins = session.query(User).filter(User.username.in_(["saumya", "nirav"])).all()
-        for u in admins:
-            _admin_users.add(u.id)
+        with _admin_lock:
+            _admin_users.update(u.id for u in admins)
 
 # ---------------------------------------------------------------------------
 # Repository re-exports (bottom of file to avoid circular imports)

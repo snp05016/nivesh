@@ -5,12 +5,14 @@ Used by the search_filings LangChain tool (defined in orchestrator.py).
 """
 import logging
 import os
+import threading
 from sentence_transformers import SentenceTransformer
 from services.vector_store import query_collection
 
 logger = logging.getLogger(__name__)
 
 _model: SentenceTransformer | None = None
+_model_lock = threading.Lock()
 
 
 def _get_model() -> SentenceTransformer:
@@ -21,7 +23,9 @@ def _get_model() -> SentenceTransformer:
     """
     global _model
     if _model is None:
-        _model = SentenceTransformer("all-MiniLM-L6-v2", token=os.getenv("HF_TOKEN"))
+        with _model_lock:
+            if _model is None:
+                _model = SentenceTransformer("all-MiniLM-L6-v2", token=os.getenv("HF_TOKEN"))
     return _model
 
 
