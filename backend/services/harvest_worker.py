@@ -390,6 +390,13 @@ def start_scheduler() -> bool:
     _scheduler.add_job(sweep_stale_jobs, "interval", minutes=2, id="job_sweep",
                        max_instances=1, coalesce=True, replace_existing=True)
 
+    # Research Engine jobs (spec 2.2): a failure here must not stop the others (REL-12).
+    try:
+        from services.research.jobs import register_research_jobs
+        register_research_jobs(_scheduler)
+    except Exception:
+        logging.critical("research job registration failed; research jobs NOT scheduled", exc_info=True)
+
     _scheduler.start()
     logging.info(
         "All schedulers started — existing: (advisor 1:30, news 12:30, yt-channel 1:00, "

@@ -16,9 +16,9 @@ def test_batch_routes_not_registered():
 
 
 def test_batch_routes_unreachable(client):
-    # 405 rather than 404 because main.py's global OPTIONS route matches every path.
-    assert client.post("/analyze/batch", json={"tickers": ["RELIANCE"]}).status_code in (404, 405)
-    assert client.get("/analyze/batch/abc").status_code in (404, 405)
+    # The research legacy gate answers /analyze/batch* with 410 in every state (spec 6.6).
+    assert client.post("/analyze/batch", json={"tickers": ["RELIANCE"]}).status_code == 410
+    assert client.get("/analyze/batch/abc").status_code == 410
 
 
 def test_batch_history_caps_tickers(client, auth_headers):

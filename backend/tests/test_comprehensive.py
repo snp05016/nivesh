@@ -395,12 +395,12 @@ class TestAnalysisEndpoints:
         assert response.status_code in [200, 202, 401, 429]
     
     def test_analyze_batch(self):
-        """The data-free /analyze/batch route was removed (LLM-03)."""
+        """The data-free /analyze/batch route was removed (LLM-03); the legacy gate 410s it."""
         response = client.post("/analyze/batch", json={
             "tickers": ["RELIANCE", "TCS"],
             "exchange": "NSE"
         })
-        assert response.status_code in [404, 405]
+        assert response.status_code == 410
     
     def test_fundamentals_piotroski(self):
         """Test Piotroski score endpoint."""

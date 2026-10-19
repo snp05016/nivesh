@@ -96,14 +96,23 @@ def _dependency_calls(dependant):
         yield from _dependency_calls(dep)
 
 
+# Mode-gated wrappers in routers/research.py that call require_auth/require_admin.
+_AUTH_WRAPPER_CALL = re.compile(r"\bresearch_(?:user|admin)\(")
+
+
 def _is_protected(route: APIRoute) -> bool:
-    if any(call in _AUTH_DEPS for call in _dependency_calls(route.dependant)):
+    calls = [c for c in _dependency_calls(route.dependant) if c is not None]
+    if any(call in _AUTH_DEPS for call in calls):
         return True
-    try:
-        source = inspect.getsource(route.endpoint)
-    except (OSError, TypeError):
-        return False
-    return bool(_INLINE_AUTH.search(source))
+    # The endpoint, or a dependency of it, calls require_auth(...)/require_admin(...) inline.
+    for fn in (route.endpoint, *calls):
+        try:
+            source = inspect.getsource(fn)
+        except (OSError, TypeError):
+            continue
+        if _INLINE_AUTH.search(source) or (fn is route.endpoint and _AUTH_WRAPPER_CALL.search(source)):
+            return True
+    return False
 
 
 def _route_keys():

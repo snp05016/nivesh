@@ -112,4 +112,11 @@ def healthz(_admin: int = Depends(require_admin)):
         "degraded": sorted(name for name, ok in checks.items() if not ok),
         "checked_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     }
+    # Research block (spec 2.7): informational, never changes the status (REL-12).
+    try:
+        from services.research.health import research_health
+        payload["research"] = research_health()
+    except Exception:
+        logger.exception("research health block failed")
+        payload["research"] = {"degraded": True, "degraded_reasons": ["health_check_failed"]}
     return JSONResponse(content=payload, status_code=200 if db_ok else 503)
