@@ -558,6 +558,7 @@ struct MarketsView: View {
                         }
                     }
                 }
+                LabEntryCard()
             }
             .padding(.bottom, Theme.sectionSpacing)
         }

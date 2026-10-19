@@ -1,0 +1,2567 @@
+{
+ "code_revision": "d09a495aa1343211fbad79a1a6c1acaa0097c371",
+ "command": "python -m lab.forecast --source local_csv --start 2021-01-01 --end 2026-05-31 --horizons 5,20 --targets raw,rel --examples RELIANCE,HDFCBANK,INFY --out ../docs/platform/experiments/forecast-dev-2026-10-19.json",
+ "dataset": {
+  "source": "local_csv",
+  "warnings": [
+   "Development dataset: prices are pre-adjusted for corporate actions, so share counts and per-share prices differ from what traded on the exchange.",
+   "Development dataset: the universe is today's Nifty 50 members, which hides companies that fell out of the index (survivorship bias)."
+  ],
+  "rows": 102545,
+  "first": "2018-01-01",
+  "last": "2026-06-23"
+ },
+ "historical_claim": "LightGBM directional hit rate ~ 52.66% vs momentum ~ 52%",
+ "runs": [
+  {
+   "h": 5,
+   "target": "raw",
+   "start": "2021-01-01",
+   "end": "2026-05-31",
+   "units": "log return from the next close over h sessions",
+   "n_rows": 65138,
+   "n_dates": 1334,
+   "n_entities": 49,
+   "base_rate_up": 0.539317,
+   "always_majority_hit_rate": 0.539317,
+   "momentum_sign_hit": {
+    "hit_rate": 0.494557,
+    "ci95": [
+     0.484202,
+     0.506824
+    ],
+    "n": 65040
+   },
+   "regime_threshold_market_vol_20d": 0.007741,
+   "models": {
+    "climatology": {
+     "pinball": {
+      "mean": 0.008393,
+      "skill_vs_climatology": 0.0,
+      "test": {
+       "mean_loss_diff": 0.0,
+       "hac_t": null,
+       "ci95": [
+        0.0,
+        0.0
+       ],
+       "significant": false,
+       "n_dates": 1334
+      }
+     },
+     "coverage": {
+      "0.8": {
+       "raw": 0.845528,
+       "conformal": 0.852114,
+       "mean_widening": 0.000906
+      },
+      "0.9": {
+       "raw": 0.931177,
+       "conformal": 0.934708,
+       "mean_widening": 0.000901
+      }
+     },
+     "interval_score": {
+      "0.8": {
+       "raw": 0.135566,
+       "conformal": 0.135744
+      },
+      "0.9": {
+       "raw": 0.170437,
+       "conformal": 0.170756
+      }
+     },
+     "p_up": {
+      "brier": 0.249658,
+      "bss_vs_ex_ante_base_rate": -0.003714,
+      "ece": 0.028556,
+      "mce": 0.076323,
+      "reliability": [
+       {
+        "lo": 0.428994,
+        "hi": 0.500666,
+        "n": 6514,
+        "mean_p": 0.484162,
+        "freq": 0.560485,
+        "ci_lo": 0.5484,
+        "ci_hi": 0.572499
+       },
+       {
+        "lo": 0.500671,
+        "hi": 0.513282,
+        "n": 6514,
+        "mean_p": 0.507571,
+        "freq": 0.546976,
+        "ci_lo": 0.534863,
+        "ci_hi": 0.559033
+       },
+       {
+        "lo": 0.513283,
+        "hi": 0.521944,
+        "n": 6514,
+        "mean_p": 0.517729,
+        "freq": 0.539761,
+        "ci_lo": 0.527637,
+        "ci_hi": 0.551837
+       },
+       {
+        "lo": 0.521945,
+        "hi": 0.529544,
+        "n": 6514,
+        "mean_p": 0.525696,
+        "freq": 0.535616,
+        "ci_lo": 0.523487,
+        "ci_hi": 0.547702
+       },
+       {
+        "lo": 0.529545,
+        "hi": 0.536928,
+        "n": 6514,
+        "mean_p": 0.533397,
+        "freq": 0.544519,
+        "ci_lo": 0.532403,
+        "ci_hi": 0.556584
+       },
+       {
+        "lo": 0.536929,
+        "hi": 0.542636,
+        "n": 6514,
+        "mean_p": 0.53987,
+        "freq": 0.550353,
+        "ci_lo": 0.538247,
+        "ci_hi": 0.5624
+       },
+       {
+        "lo": 0.542636,
+        "hi": 0.547354,
+        "n": 6514,
+        "mean_p": 0.544955,
+        "freq": 0.542677,
+        "ci_lo": 0.530558,
+        "ci_hi": 0.554746
+       },
+       {
+        "lo": 0.547355,
+        "hi": 0.554268,
+        "n": 6514,
+        "mean_p": 0.550491,
+        "freq": 0.5109,
+        "ci_lo": 0.498758,
+        "ci_hi": 0.523029
+       },
+       {
+        "lo": 0.554268,
+        "hi": 0.566396,
+        "n": 6513,
+        "mean_p": 0.559716,
+        "freq": 0.535851,
+        "ci_lo": 0.523722,
+        "ci_hi": 0.547938
+       },
+       {
+        "lo": 0.566396,
+        "hi": 0.610302,
+        "n": 6513,
+        "mean_p": 0.576572,
+        "freq": 0.526025,
+        "ci_lo": 0.513887,
+        "ci_hi": 0.538133
+       }
+      ]
+     },
+     "rank_ic_median": {
+      "mean": -0.012986,
+      "hac_t": -1.045529,
+      "ci95": [
+       -0.035616,
+       0.010429
+      ],
+      "n_dates": 1330
+     },
+     "direction": {
+      "hit_rate": 0.528423,
+      "ci95": [
+       0.508832,
+       0.551865
+      ],
+      "n": 64702
+     },
+     "regimes": {
+      "high_vol": {
+       "pinball": 0.00913,
+       "coverage_80_raw": 0.809949,
+       "coverage_80_conformal": 0.822424,
+       "interval_score_80_raw": 0.145737,
+       "median_hit": 0.515269,
+       "skill_vs_climatology": 0.0
+      },
+      "low_vol": {
+       "pinball": 0.007661,
+       "coverage_80_raw": 0.88088,
+       "coverage_80_conformal": 0.881615,
+       "interval_score_80_raw": 0.125459,
+       "median_hit": 0.541498,
+       "skill_vs_climatology": 0.0
+      }
+     }
+    },
+    "ewma_vol": {
+     "pinball": {
+      "mean": 0.008347,
+      "skill_vs_climatology": 0.005486,
+      "test": {
+       "mean_loss_diff": 4.8e-05,
+       "hac_t": 1.824731,
+       "ci95": [
+        -4e-06,
+        9.7e-05
+       ],
+       "significant": false,
+       "n_dates": 1334
+      }
+     },
+     "coverage": {
+      "0.8": {
+       "raw": 0.792318,
+       "conformal": 0.806472,
+       "mean_widening": 0.001825
+      },
+      "0.9": {
+       "raw": 0.897756,
+       "conformal": 0.905447,
+       "mean_widening": 0.001961
+      }
+     },
+     "interval_score": {
+      "0.8": {
+       "raw": 0.13469,
+       "conformal": 0.135032
+      },
+      "0.9": {
+       "raw": 0.167841,
+       "conformal": 0.168353
+      }
+     },
+     "p_up": {
+      "brier": 0.248705,
+      "bss_vs_ex_ante_base_rate": 0.000117,
+      "ece": 0.034758,
+      "mce": 0.098478,
+      "reliability": [
+       {
+        "lo": 0.525999,
+        "hi": 0.52934,
+        "n": 6514,
+        "mean_p": 0.528019,
+        "freq": 0.626497,
+        "ci_lo": 0.614678,
+        "ci_hi": 0.638166
+       },
+       {
+        "lo": 0.52934,
+        "hi": 0.531547,
+        "n": 6514,
+        "mean_p": 0.530599,
+        "freq": 0.554652,
+        "ci_lo": 0.542553,
+        "ci_hi": 0.566685
+       },
+       {
+        "lo": 0.531547,
+        "hi": 0.532904,
+        "n": 6514,
+        "mean_p": 0.532244,
+        "freq": 0.527326,
+        "ci_lo": 0.515189,
+        "ci_hi": 0.53943
+       },
+       {
+        "lo": 0.532904,
+        "hi": 0.534869,
+        "n": 6514,
+        "mean_p": 0.533746,
+        "freq": 0.524562,
+        "ci_lo": 0.512424,
+        "ci_hi": 0.536672
+       },
+       {
+        "lo": 0.534869,
+        "hi": 0.536816,
+        "n": 6514,
+        "mean_p": 0.535863,
+        "freq": 0.523795,
+        "ci_lo": 0.511656,
+        "ci_hi": 0.535906
+       },
+       {
+        "lo": 0.536816,
+        "hi": 0.538376,
+        "n": 6514,
+        "mean_p": 0.53761,
+        "freq": 0.556187,
+        "ci_lo": 0.544092,
+        "ci_hi": 0.568215
+       },
+       {
+        "lo": 0.538376,
+        "hi": 0.539387,
+        "n": 6514,
+        "mean_p": 0.53891,
+        "freq": 0.527019,
+        "ci_lo": 0.514882,
+        "ci_hi": 0.539124
+       },
+       {
+        "lo": 0.539387,
+        "hi": 0.540882,
+        "n": 6514,
+        "mean_p": 0.539857,
+        "freq": 0.482499,
+        "ci_lo": 0.470378,
+        "ci_hi": 0.494641
+       },
+       {
+        "lo": 0.540882,
+        "hi": 0.542602,
+        "n": 6513,
+        "mean_p": 0.541905,
+        "freq": 0.589744,
+        "ci_lo": 0.577748,
+        "ci_hi": 0.601633
+       },
+       {
+        "lo": 0.542602,
+        "hi": 0.546409,
+        "n": 6513,
+        "mean_p": 0.544103,
+        "freq": 0.480884,
+        "ci_lo": 0.468765,
+        "ci_hi": 0.493026
+       }
+      ]
+     },
+     "rank_ic_median": {
+      "mean": 0.01162,
+      "hac_t": 0.953305,
+      "ci95": [
+       -0.011131,
+       0.033683
+      ],
+      "n_dates": 1330
+     },
+     "direction": {
+      "hit_rate": 0.539723,
+      "ci95": [
+       0.516798,
+       0.56605
+      ],
+      "n": 65089
+     },
+     "regimes": {
+      "high_vol": {
+       "pinball": 0.009188,
+       "coverage_80_raw": 0.801848,
+       "coverage_80_conformal": 0.822886,
+       "interval_score_80_raw": 0.147849,
+       "median_hit": 0.527112,
+       "skill_vs_climatology": -0.006357
+      },
+      "low_vol": {
+       "pinball": 0.007511,
+       "coverage_80_raw": 0.782848,
+       "coverage_80_conformal": 0.790163,
+       "interval_score_80_raw": 0.121615,
+       "median_hit": 0.552251,
+       "skill_vs_climatology": 0.01951
+      }
+     }
+    },
+    "lgbm_quantile": {
+     "pinball": {
+      "mean": 0.008329,
+      "skill_vs_climatology": 0.007675,
+      "test": {
+       "mean_loss_diff": 6.4e-05,
+       "hac_t": 2.759774,
+       "ci95": [
+        1.9e-05,
+        0.000107
+       ],
+       "significant": true,
+       "n_dates": 1334
+      }
+     },
+     "coverage": {
+      "0.8": {
+       "raw": 0.806104,
+       "conformal": 0.82012,
+       "mean_widening": 0.001952
+      },
+      "0.9": {
+       "raw": 0.903559,
+       "conformal": 0.913476,
+       "mean_widening": 0.002537
+      }
+     },
+     "interval_score": {
+      "0.8": {
+       "raw": 0.133851,
+       "conformal": 0.134096
+      },
+      "0.9": {
+       "raw": 0.16623,
+       "conformal": 0.166689
+      }
+     },
+     "p_up": {
+      "brier": 0.250055,
+      "bss_vs_ex_ante_base_rate": -0.005307,
+      "ece": 0.030022,
+      "mce": 0.091428,
+      "reliability": [
+       {
+        "lo": 0.385829,
+        "hi": 0.490373,
+        "n": 6514,
+        "mean_p": 0.475044,
+        "freq": 0.566472,
+        "ci_lo": 0.554402,
+        "ci_hi": 0.578464
+       },
+       {
+        "lo": 0.490373,
+        "hi": 0.50373,
+        "n": 6514,
+        "mean_p": 0.497688,
+        "freq": 0.558796,
+        "ci_lo": 0.546707,
+        "ci_hi": 0.570816
+       },
+       {
+        "lo": 0.503731,
+        "hi": 0.511183,
+        "n": 6514,
+        "mean_p": 0.507682,
+        "freq": 0.546515,
+        "ci_lo": 0.534402,
+        "ci_hi": 0.558574
+       },
+       {
+        "lo": 0.511185,
+        "hi": 0.517885,
+        "n": 6514,
+        "mean_p": 0.514491,
+        "freq": 0.531317,
+        "ci_lo": 0.519184,
+        "ci_hi": 0.543413
+       },
+       {
+        "lo": 0.517885,
+        "hi": 0.524395,
+        "n": 6514,
+        "mean_p": 0.521175,
+        "freq": 0.528861,
+        "ci_lo": 0.516726,
+        "ci_hi": 0.540962
+       },
+       {
+        "lo": 0.524396,
+        "hi": 0.531033,
+        "n": 6514,
+        "mean_p": 0.527766,
+        "freq": 0.533466,
+        "ci_lo": 0.521335,
+        "ci_hi": 0.545558
+       },
+       {
+        "lo": 0.531034,
+        "hi": 0.538086,
+        "n": 6514,
+        "mean_p": 0.53448,
+        "freq": 0.528554,
+        "ci_lo": 0.516418,
+        "ci_hi": 0.540656
+       },
+       {
+        "lo": 0.538086,
+        "hi": 0.546979,
+        "n": 6514,
+        "mean_p": 0.54231,
+        "freq": 0.535155,
+        "ci_lo": 0.523026,
+        "ci_hi": 0.547243
+       },
+       {
+        "lo": 0.546982,
+        "hi": 0.560593,
+        "n": 6513,
+        "mean_p": 0.553273,
+        "freq": 0.543375,
+        "ci_lo": 0.531255,
+        "ci_hi": 0.555443
+       },
+       {
+        "lo": 0.560596,
+        "hi": 0.650185,
+        "n": 6513,
+        "mean_p": 0.576314,
+        "freq": 0.520651,
+        "ci_lo": 0.50851,
+        "ci_hi": 0.532768
+       }
+      ]
+     },
+     "rank_ic_median": {
+      "mean": -0.000503,
+      "hac_t": -0.053863,
+      "ci95": [
+       -0.017793,
+       0.016528
+      ],
+      "n_dates": 1330
+     },
+     "direction": {
+      "hit_rate": 0.519166,
+      "ci95": [
+       0.500502,
+       0.540854
+      ],
+      "n": 65089
+     },
+     "regimes": {
+      "high_vol": {
+       "pinball": 0.009171,
+       "coverage_80_raw": 0.799014,
+       "coverage_80_conformal": 0.82418,
+       "interval_score_80_raw": 0.147193,
+       "median_hit": 0.520546,
+       "skill_vs_climatology": -0.004486
+      },
+      "low_vol": {
+       "pinball": 0.007492,
+       "coverage_80_raw": 0.813148,
+       "coverage_80_conformal": 0.816087,
+       "interval_score_80_raw": 0.120594,
+       "median_hit": 0.517795,
+       "skill_vs_climatology": 0.022076
+      }
+     }
+    }
+   },
+   "config": {
+    "quantiles": [
+     0.05,
+     0.1,
+     0.25,
+     0.5,
+     0.75,
+     0.9,
+     0.95
+    ],
+    "ewma_lambda": 0.94,
+    "refit_sessions": 63,
+    "purge_sessions": 6,
+    "embargo_sessions": 5,
+    "conformal_block_sessions": 63,
+    "lgbm": {
+     "n_estimators": 100,
+     "learning_rate": 0.05,
+     "num_leaves": 8,
+     "min_child_samples": 200,
+     "subsample": 0.8,
+     "subsample_freq": 1,
+     "colsample_bytree": 0.8,
+     "random_state": 0,
+     "verbose": -1,
+     "deterministic": true,
+     "force_col_wise": true
+    },
+    "features": [
+     "ret_5",
+     "ret_20",
+     "ret_60",
+     "vol_20",
+     "vol_60",
+     "volume_z",
+     "dist_52w_high",
+     "rk_ret_5",
+     "rk_ret_20",
+     "rk_ret_60",
+     "rk_vol_20",
+     "rk_dist_52w"
+    ],
+    "skill_significance": "block-bootstrap 95% CI of the per-date pinball-loss difference excludes 0 and HAC t > 1.96"
+   },
+   "provenance": {
+    "source": "local_csv",
+    "warnings": [
+     "Development dataset: prices are pre-adjusted for corporate actions, so share counts and per-share prices differ from what traded on the exchange.",
+     "Development dataset: the universe is today's Nifty 50 members, which hides companies that fell out of the index (survivorship bias)."
+    ],
+    "rows": 102545,
+    "first": "2018-01-01",
+    "last": "2026-06-23"
+   },
+   "runtime_s": 30.283889
+  },
+  {
+   "h": 5,
+   "target": "rel",
+   "start": "2021-01-01",
+   "end": "2026-05-31",
+   "units": "log return from the next close over h sessions minus the cross-sectional mean",
+   "n_rows": 65138,
+   "n_dates": 1334,
+   "n_entities": 49,
+   "base_rate_up": 0.482345,
+   "always_majority_hit_rate": 0.517655,
+   "momentum_sign_hit": {
+    "hit_rate": 0.495317,
+    "ci95": [
+     0.487906,
+     0.50288
+    ],
+    "n": 65134
+   },
+   "regime_threshold_market_vol_20d": 0.007741,
+   "models": {
+    "climatology": {
+     "pinball": {
+      "mean": 0.007128,
+      "skill_vs_climatology": 0.0,
+      "test": {
+       "mean_loss_diff": 0.0,
+       "hac_t": null,
+       "ci95": [
+        0.0,
+        0.0
+       ],
+       "significant": false,
+       "n_dates": 1334
+      }
+     },
+     "coverage": {
+      "0.8": {
+       "raw": 0.848982,
+       "conformal": 0.852221,
+       "mean_widening": 0.000397
+      },
+      "0.9": {
+       "raw": 0.931868,
+       "conformal": 0.933879,
+       "mean_widening": 0.000435
+      }
+     },
+     "interval_score": {
+      "0.8": {
+       "raw": 0.11587,
+       "conformal": 0.115894
+      },
+      "0.9": {
+       "raw": 0.147115,
+       "conformal": 0.14716
+      }
+     },
+     "p_up": {
+      "brier": 0.250843,
+      "bss_vs_ex_ante_base_rate": -0.004553,
+      "ece": 0.030633,
+      "mce": 0.063213,
+      "reliability": [
+       {
+        "lo": 0.394218,
+        "hi": 0.443455,
+        "n": 6514,
+        "mean_p": 0.429265,
+        "freq": 0.492478,
+        "ci_lo": 0.480345,
+        "ci_hi": 0.504619
+       },
+       {
+        "lo": 0.443455,
+        "hi": 0.458755,
+        "n": 6514,
+        "mean_p": 0.450917,
+        "freq": 0.470064,
+        "ci_lo": 0.457965,
+        "ci_hi": 0.482199
+       },
+       {
+        "lo": 0.458755,
+        "hi": 0.469512,
+        "n": 6514,
+        "mean_p": 0.464933,
+        "freq": 0.497237,
+        "ci_lo": 0.4851,
+        "ci_hi": 0.509377
+       },
+       {
+        "lo": 0.469512,
+        "hi": 0.478758,
+        "n": 6514,
+        "mean_p": 0.474504,
+        "freq": 0.491864,
+        "ci_lo": 0.479732,
+        "ci_hi": 0.504005
+       },
+       {
+        "lo": 0.478761,
+        "hi": 0.484483,
+        "n": 6514,
+        "mean_p": 0.481812,
+        "freq": 0.498772,
+        "ci_lo": 0.486634,
+        "ci_hi": 0.510911
+       },
+       {
+        "lo": 0.484485,
+        "hi": 0.489754,
+        "n": 6514,
+        "mean_p": 0.487137,
+        "freq": 0.48035,
+        "ci_lo": 0.468232,
+        "ci_hi": 0.492491
+       },
+       {
+        "lo": 0.489755,
+        "hi": 0.49569,
+        "n": 6514,
+        "mean_p": 0.492588,
+        "freq": 0.472214,
+        "ci_lo": 0.46011,
+        "ci_hi": 0.48435
+       },
+       {
+        "lo": 0.495695,
+        "hi": 0.504265,
+        "n": 6514,
+        "mean_p": 0.499574,
+        "freq": 0.471293,
+        "ci_lo": 0.459191,
+        "ci_hi": 0.483428
+       },
+       {
+        "lo": 0.504266,
+        "hi": 0.522656,
+        "n": 6513,
+        "mean_p": 0.512711,
+        "freq": 0.473361,
+        "ci_lo": 0.461254,
+        "ci_hi": 0.485499
+       },
+       {
+        "lo": 0.522659,
+        "hi": 0.569218,
+        "n": 6513,
+        "mean_p": 0.538376,
+        "freq": 0.475818,
+        "ci_lo": 0.463707,
+        "ci_hi": 0.487957
+       }
+      ]
+     },
+     "rank_ic_median": {
+      "mean": -0.021085,
+      "hac_t": -1.743183,
+      "ci95": [
+       -0.042647,
+       0.001566
+      ],
+      "n_dates": 1330
+     },
+     "direction": {
+      "hit_rate": 0.50456,
+      "ci95": [
+       0.496216,
+       0.513555
+      ],
+      "n": 65136
+     },
+     "regimes": {
+      "high_vol": {
+       "pinball": 0.007583,
+       "coverage_80_raw": 0.823317,
+       "coverage_80_conformal": 0.829447,
+       "interval_score_80_raw": 0.12218,
+       "median_hit": 0.50325,
+       "skill_vs_climatology": 0.0
+      },
+      "low_vol": {
+       "pinball": 0.006676,
+       "coverage_80_raw": 0.874484,
+       "coverage_80_conformal": 0.874851,
+       "interval_score_80_raw": 0.109601,
+       "median_hit": 0.505861,
+       "skill_vs_climatology": 0.0
+      }
+     }
+    },
+    "ewma_vol": {
+     "pinball": {
+      "mean": 0.007099,
+      "skill_vs_climatology": 0.004056,
+      "test": {
+       "mean_loss_diff": 3e-05,
+       "hac_t": 1.46792,
+       "ci95": [
+        -1e-05,
+        6.9e-05
+       ],
+       "significant": false,
+       "n_dates": 1334
+      }
+     },
+     "coverage": {
+      "0.8": {
+       "raw": 0.795112,
+       "conformal": 0.806073,
+       "mean_widening": 0.001276
+      },
+      "0.9": {
+       "raw": 0.89579,
+       "conformal": 0.903743,
+       "mean_widening": 0.001701
+      }
+     },
+     "interval_score": {
+      "0.8": {
+       "raw": 0.115533,
+       "conformal": 0.115672
+      },
+      "0.9": {
+       "raw": 0.146096,
+       "conformal": 0.146465
+      }
+     },
+     "p_up": {
+      "brier": 0.24971,
+      "bss_vs_ex_ante_base_rate": -1.6e-05,
+      "ece": 0.008499,
+      "mce": 0.025553,
+      "reliability": [
+       {
+        "lo": 0.480551,
+        "hi": 0.48174,
+        "n": 6514,
+        "mean_p": 0.481117,
+        "freq": 0.484188,
+        "ci_lo": 0.472065,
+        "ci_hi": 0.49633
+       },
+       {
+        "lo": 0.48174,
+        "hi": 0.48301,
+        "n": 6514,
+        "mean_p": 0.482587,
+        "freq": 0.492324,
+        "ci_lo": 0.480192,
+        "ci_hi": 0.504466
+       },
+       {
+        "lo": 0.48301,
+        "hi": 0.483441,
+        "n": 6514,
+        "mean_p": 0.483215,
+        "freq": 0.489714,
+        "ci_lo": 0.477585,
+        "ci_hi": 0.501856
+       },
+       {
+        "lo": 0.483441,
+        "hi": 0.483608,
+        "n": 6514,
+        "mean_p": 0.483528,
+        "freq": 0.488947,
+        "ci_lo": 0.476818,
+        "ci_hi": 0.501089
+       },
+       {
+        "lo": 0.483608,
+        "hi": 0.483806,
+        "n": 6514,
+        "mean_p": 0.483695,
+        "freq": 0.475438,
+        "ci_lo": 0.463328,
+        "ci_hi": 0.487576
+       },
+       {
+        "lo": 0.483806,
+        "hi": 0.484068,
+        "n": 6514,
+        "mean_p": 0.483932,
+        "freq": 0.494473,
+        "ci_lo": 0.482339,
+        "ci_hi": 0.506614
+       },
+       {
+        "lo": 0.484068,
+        "hi": 0.484387,
+        "n": 6514,
+        "mean_p": 0.484214,
+        "freq": 0.482192,
+        "ci_lo": 0.470072,
+        "ci_hi": 0.494334
+       },
+       {
+        "lo": 0.484387,
+        "hi": 0.484774,
+        "n": 6514,
+        "mean_p": 0.484554,
+        "freq": 0.472674,
+        "ci_lo": 0.46057,
+        "ci_hi": 0.484811
+       },
+       {
+        "lo": 0.484774,
+        "hi": 0.485225,
+        "n": 6513,
+        "mean_p": 0.485042,
+        "freq": 0.483034,
+        "ci_lo": 0.470911,
+        "ci_hi": 0.495176
+       },
+       {
+        "lo": 0.485225,
+        "hi": 0.487808,
+        "n": 6513,
+        "mean_p": 0.486017,
+        "freq": 0.460464,
+        "ci_lo": 0.448386,
+        "ci_hi": 0.472588
+       }
+      ]
+     },
+     "rank_ic_median": {
+      "mean": 0.004796,
+      "hac_t": 0.466973,
+      "ci95": [
+       -0.013477,
+       0.024239
+      ],
+      "n_dates": 1330
+     },
+     "direction": {
+      "hit_rate": 0.51764,
+      "ci95": [
+       0.511181,
+       0.52338
+      ],
+      "n": 65136
+     },
+     "regimes": {
+      "high_vol": {
+       "pinball": 0.007617,
+       "coverage_80_raw": 0.800554,
+       "coverage_80_conformal": 0.81728,
+       "interval_score_80_raw": 0.123713,
+       "median_hit": 0.511967,
+       "skill_vs_climatology": -0.004523
+      },
+      "low_vol": {
+       "pinball": 0.006585,
+       "coverage_80_raw": 0.789704,
+       "coverage_80_conformal": 0.794938,
+       "interval_score_80_raw": 0.107404,
+       "median_hit": 0.523276,
+       "skill_vs_climatology": 0.013737
+      }
+     }
+    },
+    "lgbm_quantile": {
+     "pinball": {
+      "mean": 0.007043,
+      "skill_vs_climatology": 0.011918,
+      "test": {
+       "mean_loss_diff": 8.4e-05,
+       "hac_t": 5.968933,
+       "ci95": [
+        5.6e-05,
+        0.000111
+       ],
+       "significant": true,
+       "n_dates": 1334
+      }
+     },
+     "coverage": {
+      "0.8": {
+       "raw": 0.817434,
+       "conformal": 0.824419,
+       "mean_widening": 0.000791
+      },
+      "0.9": {
+       "raw": 0.909438,
+       "conformal": 0.915441,
+       "mean_widening": 0.001303
+      }
+     },
+     "interval_score": {
+      "0.8": {
+       "raw": 0.113728,
+       "conformal": 0.11385
+      },
+      "0.9": {
+       "raw": 0.142978,
+       "conformal": 0.143202
+      }
+     },
+     "p_up": {
+      "brier": 0.249923,
+      "bss_vs_ex_ante_base_rate": -0.000872,
+      "ece": 0.013504,
+      "mce": 0.031399,
+      "reliability": [
+       {
+        "lo": 0.385471,
+        "hi": 0.460357,
+        "n": 6514,
+        "mean_p": 0.448069,
+        "freq": 0.473442,
+        "ci_lo": 0.461336,
+        "ci_hi": 0.485579
+       },
+       {
+        "lo": 0.460357,
+        "hi": 0.470137,
+        "n": 6514,
+        "mean_p": 0.465735,
+        "freq": 0.47728,
+        "ci_lo": 0.465167,
+        "ci_hi": 0.489419
+       },
+       {
+        "lo": 0.470137,
+        "hi": 0.476551,
+        "n": 6514,
+        "mean_p": 0.473494,
+        "freq": 0.479275,
+        "ci_lo": 0.46716,
+        "ci_hi": 0.491416
+       },
+       {
+        "lo": 0.476553,
+        "hi": 0.481517,
+        "n": 6514,
+        "mean_p": 0.479129,
+        "freq": 0.476666,
+        "ci_lo": 0.464554,
+        "ci_hi": 0.488805
+       },
+       {
+        "lo": 0.481517,
+        "hi": 0.485952,
+        "n": 6514,
+        "mean_p": 0.483759,
+        "freq": 0.486491,
+        "ci_lo": 0.474364,
+        "ci_hi": 0.498633
+       },
+       {
+        "lo": 0.485953,
+        "hi": 0.490409,
+        "n": 6514,
+        "mean_p": 0.48816,
+        "freq": 0.485263,
+        "ci_lo": 0.473138,
+        "ci_hi": 0.497404
+       },
+       {
+        "lo": 0.49041,
+        "hi": 0.495601,
+        "n": 6514,
+        "mean_p": 0.492876,
+        "freq": 0.476359,
+        "ci_lo": 0.464248,
+        "ci_hi": 0.488498
+       },
+       {
+        "lo": 0.495603,
+        "hi": 0.503536,
+        "n": 6514,
+        "mean_p": 0.499209,
+        "freq": 0.469757,
+        "ci_lo": 0.457659,
+        "ci_hi": 0.481892
+       },
+       {
+        "lo": 0.503541,
+        "hi": 0.515157,
+        "n": 6513,
+        "mean_p": 0.508958,
+        "freq": 0.502073,
+        "ci_lo": 0.489932,
+        "ci_hi": 0.514211
+       },
+       {
+        "lo": 0.51516,
+        "hi": 0.598572,
+        "n": 6513,
+        "mean_p": 0.528252,
+        "freq": 0.496852,
+        "ci_lo": 0.484715,
+        "ci_hi": 0.508994
+       }
+      ]
+     },
+     "rank_ic_median": {
+      "mean": 0.003655,
+      "hac_t": 0.461064,
+      "ci95": [
+       -0.010519,
+       0.018491
+      ],
+      "n_dates": 1330
+     },
+     "direction": {
+      "hit_rate": 0.515644,
+      "ci95": [
+       0.508377,
+       0.521714
+      ],
+      "n": 65136
+     },
+     "regimes": {
+      "high_vol": {
+       "pinball": 0.007559,
+       "coverage_80_raw": 0.813707,
+       "coverage_80_conformal": 0.825566,
+       "interval_score_80_raw": 0.12186,
+       "median_hit": 0.511598,
+       "skill_vs_climatology": 0.003071
+      },
+      "low_vol": {
+       "pinball": 0.00653,
+       "coverage_80_raw": 0.821137,
+       "coverage_80_conformal": 0.823279,
+       "interval_score_80_raw": 0.105647,
+       "median_hit": 0.519665,
+       "skill_vs_climatology": 0.021901
+      }
+     }
+    }
+   },
+   "config": {
+    "quantiles": [
+     0.05,
+     0.1,
+     0.25,
+     0.5,
+     0.75,
+     0.9,
+     0.95
+    ],
+    "ewma_lambda": 0.94,
+    "refit_sessions": 63,
+    "purge_sessions": 6,
+    "embargo_sessions": 5,
+    "conformal_block_sessions": 63,
+    "lgbm": {
+     "n_estimators": 100,
+     "learning_rate": 0.05,
+     "num_leaves": 8,
+     "min_child_samples": 200,
+     "subsample": 0.8,
+     "subsample_freq": 1,
+     "colsample_bytree": 0.8,
+     "random_state": 0,
+     "verbose": -1,
+     "deterministic": true,
+     "force_col_wise": true
+    },
+    "features": [
+     "ret_5",
+     "ret_20",
+     "ret_60",
+     "vol_20",
+     "vol_60",
+     "volume_z",
+     "dist_52w_high",
+     "rk_ret_5",
+     "rk_ret_20",
+     "rk_ret_60",
+     "rk_vol_20",
+     "rk_dist_52w"
+    ],
+    "skill_significance": "block-bootstrap 95% CI of the per-date pinball-loss difference excludes 0 and HAC t > 1.96"
+   },
+   "provenance": {
+    "source": "local_csv",
+    "warnings": [
+     "Development dataset: prices are pre-adjusted for corporate actions, so share counts and per-share prices differ from what traded on the exchange.",
+     "Development dataset: the universe is today's Nifty 50 members, which hides companies that fell out of the index (survivorship bias)."
+    ],
+    "rows": 102545,
+    "first": "2018-01-01",
+    "last": "2026-06-23"
+   },
+   "runtime_s": 30.64024
+  },
+  {
+   "h": 20,
+   "target": "raw",
+   "start": "2021-01-01",
+   "end": "2026-05-31",
+   "units": "log return from the next close over h sessions",
+   "n_rows": 64942,
+   "n_dates": 1330,
+   "n_entities": 49,
+   "base_rate_up": 0.570617,
+   "always_majority_hit_rate": 0.570617,
+   "momentum_sign_hit": {
+    "hit_rate": 0.494079,
+    "ci95": [
+     0.470055,
+     0.517331
+    ],
+    "n": 64852
+   },
+   "regime_threshold_market_vol_20d": 0.007748,
+   "models": {
+    "climatology": {
+     "pinball": {
+      "mean": 0.016858,
+      "skill_vs_climatology": 0.0,
+      "test": {
+       "mean_loss_diff": 0.0,
+       "hac_t": null,
+       "ci95": [
+        0.0,
+        0.0
+       ],
+       "significant": false,
+       "n_dates": 1330
+      }
+     },
+     "coverage": {
+      "0.8": {
+       "raw": 0.85216,
+       "conformal": 0.862631,
+       "mean_widening": 0.002819
+      },
+      "0.9": {
+       "raw": 0.936081,
+       "conformal": 0.941055,
+       "mean_widening": 0.002975
+      }
+     },
+     "interval_score": {
+      "0.8": {
+       "raw": 0.268193,
+       "conformal": 0.269351
+      },
+      "0.9": {
+       "raw": 0.334571,
+       "conformal": 0.336432
+      }
+     },
+     "p_up": {
+      "brier": 0.249182,
+      "bss_vs_ex_ante_base_rate": -0.013753,
+      "ece": 0.052638,
+      "mce": 0.12869,
+      "reliability": [
+       {
+        "lo": 0.433333,
+        "hi": 0.512258,
+        "n": 6495,
+        "mean_p": 0.484859,
+        "freq": 0.613549,
+        "ci_lo": 0.601643,
+        "ci_hi": 0.625321
+       },
+       {
+        "lo": 0.512263,
+        "hi": 0.5317,
+        "n": 6495,
+        "mean_p": 0.523303,
+        "freq": 0.625712,
+        "ci_lo": 0.613872,
+        "ci_hi": 0.637404
+       },
+       {
+        "lo": 0.531702,
+        "hi": 0.542936,
+        "n": 6494,
+        "mean_p": 0.53728,
+        "freq": 0.564521,
+        "ci_lo": 0.552427,
+        "ci_hi": 0.576539
+       },
+       {
+        "lo": 0.542942,
+        "hi": 0.55417,
+        "n": 6494,
+        "mean_p": 0.548637,
+        "freq": 0.552972,
+        "ci_lo": 0.540852,
+        "ci_hi": 0.565029
+       },
+       {
+        "lo": 0.554172,
+        "hi": 0.56674,
+        "n": 6494,
+        "mean_p": 0.560595,
+        "freq": 0.577148,
+        "ci_lo": 0.565091,
+        "ci_hi": 0.589114
+       },
+       {
+        "lo": 0.566741,
+        "hi": 0.57842,
+        "n": 6494,
+        "mean_p": 0.572452,
+        "freq": 0.559901,
+        "ci_lo": 0.547796,
+        "ci_hi": 0.571936
+       },
+       {
+        "lo": 0.578426,
+        "hi": 0.590571,
+        "n": 6494,
+        "mean_p": 0.584557,
+        "freq": 0.567909,
+        "ci_lo": 0.555824,
+        "ci_hi": 0.579913
+       },
+       {
+        "lo": 0.590571,
+        "hi": 0.605872,
+        "n": 6494,
+        "mean_p": 0.597478,
+        "freq": 0.544349,
+        "ci_lo": 0.532213,
+        "ci_hi": 0.556432
+       },
+       {
+        "lo": 0.605876,
+        "hi": 0.627324,
+        "n": 6494,
+        "mean_p": 0.616644,
+        "freq": 0.562365,
+        "ci_lo": 0.550266,
+        "ci_hi": 0.574391
+       },
+       {
+        "lo": 0.627325,
+        "hi": 0.71179,
+        "n": 6494,
+        "mean_p": 0.648254,
+        "freq": 0.537727,
+        "ci_lo": 0.525582,
+        "ci_hi": 0.549827
+       }
+      ]
+     },
+     "rank_ic_median": {
+      "mean": -0.0248,
+      "hac_t": -0.880133,
+      "ci95": [
+       -0.072998,
+       0.026195
+      ],
+      "n_dates": 1326
+     },
+     "direction": {
+      "hit_rate": 0.557194,
+      "ci95": [
+       0.516762,
+       0.59961
+      ],
+      "n": 64902
+     },
+     "regimes": {
+      "high_vol": {
+       "pinball": 0.018466,
+       "coverage_80_raw": 0.813629,
+       "coverage_80_conformal": 0.833215,
+       "interval_score_80_raw": 0.288661,
+       "median_hit": 0.528841,
+       "skill_vs_climatology": 0.0
+      },
+      "low_vol": {
+       "pinball": 0.015261,
+       "coverage_80_raw": 0.890455,
+       "coverage_80_conformal": 0.891867,
+       "interval_score_80_raw": 0.24785,
+       "median_hit": 0.585371,
+       "skill_vs_climatology": 0.0
+      }
+     }
+    },
+    "ewma_vol": {
+     "pinball": {
+      "mean": 0.01678,
+      "skill_vs_climatology": 0.00466,
+      "test": {
+       "mean_loss_diff": 7.9e-05,
+       "hac_t": 0.637995,
+       "ci95": [
+        -0.000147,
+        0.000314
+       ],
+       "significant": false,
+       "n_dates": 1330
+      }
+     },
+     "coverage": {
+      "0.8": {
+       "raw": 0.806843,
+       "conformal": 0.821933,
+       "mean_widening": 0.004396
+      },
+      "0.9": {
+       "raw": 0.909211,
+       "conformal": 0.916341,
+       "mean_widening": 0.004853
+      }
+     },
+     "interval_score": {
+      "0.8": {
+       "raw": 0.268486,
+       "conformal": 0.271187
+      },
+      "0.9": {
+       "raw": 0.335928,
+       "conformal": 0.340148
+      }
+     },
+     "p_up": {
+      "brier": 0.245775,
+      "bss_vs_ex_ante_base_rate": 0.000109,
+      "ece": 0.05909,
+      "mce": 0.127111,
+      "reliability": [
+       {
+        "lo": 0.55796,
+        "hi": 0.564993,
+        "n": 6495,
+        "mean_p": 0.561881,
+        "freq": 0.688992,
+        "ci_lo": 0.677625,
+        "ci_hi": 0.700135
+       },
+       {
+        "lo": 0.564993,
+        "hi": 0.568473,
+        "n": 6495,
+        "mean_p": 0.566905,
+        "freq": 0.658353,
+        "ci_lo": 0.646728,
+        "ci_hi": 0.66979
+       },
+       {
+        "lo": 0.568473,
+        "hi": 0.570749,
+        "n": 6494,
+        "mean_p": 0.569669,
+        "freq": 0.493532,
+        "ci_lo": 0.48138,
+        "ci_hi": 0.505692
+       },
+       {
+        "lo": 0.570749,
+        "hi": 0.572406,
+        "n": 6494,
+        "mean_p": 0.571581,
+        "freq": 0.596243,
+        "ci_lo": 0.584256,
+        "ci_hi": 0.608116
+       },
+       {
+        "lo": 0.572406,
+        "hi": 0.574386,
+        "n": 6494,
+        "mean_p": 0.573258,
+        "freq": 0.60964,
+        "ci_lo": 0.597713,
+        "ci_hi": 0.621436
+       },
+       {
+        "lo": 0.574386,
+        "hi": 0.575544,
+        "n": 6494,
+        "mean_p": 0.575036,
+        "freq": 0.493379,
+        "ci_lo": 0.481226,
+        "ci_hi": 0.505539
+       },
+       {
+        "lo": 0.575544,
+        "hi": 0.576811,
+        "n": 6494,
+        "mean_p": 0.576346,
+        "freq": 0.572067,
+        "ci_lo": 0.559994,
+        "ci_hi": 0.584054
+       },
+       {
+        "lo": 0.576811,
+        "hi": 0.579661,
+        "n": 6494,
+        "mean_p": 0.577991,
+        "freq": 0.562673,
+        "ci_lo": 0.550575,
+        "ci_hi": 0.574698
+       },
+       {
+        "lo": 0.579661,
+        "hi": 0.582095,
+        "n": 6494,
+        "mean_p": 0.580509,
+        "freq": 0.572682,
+        "ci_lo": 0.560611,
+        "ci_hi": 0.584668
+       },
+       {
+        "lo": 0.582095,
+        "hi": 0.587123,
+        "n": 6494,
+        "mean_p": 0.584644,
+        "freq": 0.458577,
+        "ci_lo": 0.446486,
+        "ci_hi": 0.470717
+       }
+      ]
+     },
+     "rank_ic_median": {
+      "mean": 0.034155,
+      "hac_t": 1.406752,
+      "ci95": [
+       -0.0108,
+       0.074254
+      ],
+      "n_dates": 1326
+     },
+     "direction": {
+      "hit_rate": 0.570766,
+      "ci95": [
+       0.524894,
+       0.61738
+      ],
+      "n": 64925
+     },
+     "regimes": {
+      "high_vol": {
+       "pinball": 0.018607,
+       "coverage_80_raw": 0.815452,
+       "coverage_80_conformal": 0.837818,
+       "interval_score_80_raw": 0.296125,
+       "median_hit": 0.543292,
+       "skill_vs_climatology": -0.007644
+      },
+      "low_vol": {
+       "pinball": 0.014964,
+       "coverage_80_raw": 0.798287,
+       "coverage_80_conformal": 0.806147,
+       "interval_score_80_raw": 0.241017,
+       "median_hit": 0.598071,
+       "skill_vs_climatology": 0.019457
+      }
+     }
+    },
+    "lgbm_quantile": {
+     "pinball": {
+      "mean": 0.016869,
+      "skill_vs_climatology": -0.000641,
+      "test": {
+       "mean_loss_diff": -9e-06,
+       "hac_t": -0.067189,
+       "ci95": [
+        -0.000267,
+        0.000234
+       ],
+       "significant": false,
+       "n_dates": 1330
+      }
+     },
+     "coverage": {
+      "0.8": {
+       "raw": 0.818084,
+       "conformal": 0.837085,
+       "mean_widening": 0.00537
+      },
+      "0.9": {
+       "raw": 0.912738,
+       "conformal": 0.923054,
+       "mean_widening": 0.006648
+      }
+     },
+     "interval_score": {
+      "0.8": {
+       "raw": 0.267962,
+       "conformal": 0.270624
+      },
+      "0.9": {
+       "raw": 0.335822,
+       "conformal": 0.340568
+      }
+     },
+     "p_up": {
+      "brier": 0.249743,
+      "bss_vs_ex_ante_base_rate": -0.016034,
+      "ece": 0.056064,
+      "mce": 0.147125,
+      "reliability": [
+       {
+        "lo": 0.250707,
+        "hi": 0.492221,
+        "n": 6495,
+        "mean_p": 0.465808,
+        "freq": 0.612933,
+        "ci_lo": 0.601024,
+        "ci_hi": 0.624709
+       },
+       {
+        "lo": 0.492229,
+        "hi": 0.508662,
+        "n": 6495,
+        "mean_p": 0.500596,
+        "freq": 0.582448,
+        "ci_lo": 0.570409,
+        "ci_hi": 0.594389
+       },
+       {
+        "lo": 0.508663,
+        "hi": 0.523298,
+        "n": 6494,
+        "mean_p": 0.516354,
+        "freq": 0.587157,
+        "ci_lo": 0.575135,
+        "ci_hi": 0.599077
+       },
+       {
+        "lo": 0.5233,
+        "hi": 0.535819,
+        "n": 6494,
+        "mean_p": 0.529642,
+        "freq": 0.589467,
+        "ci_lo": 0.577453,
+        "ci_hi": 0.601375
+       },
+       {
+        "lo": 0.53582,
+        "hi": 0.54734,
+        "n": 6494,
+        "mean_p": 0.541758,
+        "freq": 0.567755,
+        "ci_lo": 0.55567,
+        "ci_hi": 0.57976
+       },
+       {
+        "lo": 0.547342,
+        "hi": 0.557851,
+        "n": 6494,
+        "mean_p": 0.552597,
+        "freq": 0.552972,
+        "ci_lo": 0.540852,
+        "ci_hi": 0.565029
+       },
+       {
+        "lo": 0.557851,
+        "hi": 0.569891,
+        "n": 6494,
+        "mean_p": 0.563602,
+        "freq": 0.563443,
+        "ci_lo": 0.551347,
+        "ci_hi": 0.575465
+       },
+       {
+        "lo": 0.569893,
+        "hi": 0.586535,
+        "n": 6494,
+        "mean_p": 0.577595,
+        "freq": 0.547736,
+        "ci_lo": 0.535606,
+        "ci_hi": 0.55981
+       },
+       {
+        "lo": 0.586535,
+        "hi": 0.613925,
+        "n": 6494,
+        "mean_p": 0.598977,
+        "freq": 0.541731,
+        "ci_lo": 0.529591,
+        "ci_hi": 0.553821
+       },
+       {
+        "lo": 0.613926,
+        "hi": 0.811921,
+        "n": 6494,
+        "mean_p": 0.647903,
+        "freq": 0.560517,
+        "ci_lo": 0.548414,
+        "ci_hi": 0.572549
+       }
+      ]
+     },
+     "rank_ic_median": {
+      "mean": -0.013744,
+      "hac_t": -0.794205,
+      "ci95": [
+       -0.046428,
+       0.01754
+      ],
+      "n_dates": 1326
+     },
+     "direction": {
+      "hit_rate": 0.54067,
+      "ci95": [
+       0.502233,
+       0.580097
+      ],
+      "n": 64925
+     },
+     "regimes": {
+      "high_vol": {
+       "pinball": 0.018617,
+       "coverage_80_raw": 0.799419,
+       "coverage_80_conformal": 0.832443,
+       "interval_score_80_raw": 0.294031,
+       "median_hit": 0.532724,
+       "skill_vs_climatology": -0.008168
+      },
+      "low_vol": {
+       "pinball": 0.015132,
+       "coverage_80_raw": 0.836634,
+       "coverage_80_conformal": 0.8417,
+       "interval_score_80_raw": 0.242053,
+       "median_hit": 0.548567,
+       "skill_vs_climatology": 0.00841
+      }
+     }
+    }
+   },
+   "config": {
+    "quantiles": [
+     0.05,
+     0.1,
+     0.25,
+     0.5,
+     0.75,
+     0.9,
+     0.95
+    ],
+    "ewma_lambda": 0.94,
+    "refit_sessions": 63,
+    "purge_sessions": 21,
+    "embargo_sessions": 5,
+    "conformal_block_sessions": 63,
+    "lgbm": {
+     "n_estimators": 100,
+     "learning_rate": 0.05,
+     "num_leaves": 8,
+     "min_child_samples": 200,
+     "subsample": 0.8,
+     "subsample_freq": 1,
+     "colsample_bytree": 0.8,
+     "random_state": 0,
+     "verbose": -1,
+     "deterministic": true,
+     "force_col_wise": true
+    },
+    "features": [
+     "ret_5",
+     "ret_20",
+     "ret_60",
+     "vol_20",
+     "vol_60",
+     "volume_z",
+     "dist_52w_high",
+     "rk_ret_5",
+     "rk_ret_20",
+     "rk_ret_60",
+     "rk_vol_20",
+     "rk_dist_52w"
+    ],
+    "skill_significance": "block-bootstrap 95% CI of the per-date pinball-loss difference excludes 0 and HAC t > 1.96"
+   },
+   "provenance": {
+    "source": "local_csv",
+    "warnings": [
+     "Development dataset: prices are pre-adjusted for corporate actions, so share counts and per-share prices differ from what traded on the exchange.",
+     "Development dataset: the universe is today's Nifty 50 members, which hides companies that fell out of the index (survivorship bias)."
+    ],
+    "rows": 102545,
+    "first": "2018-01-01",
+    "last": "2026-06-23"
+   },
+   "runtime_s": 30.165808
+  },
+  {
+   "h": 20,
+   "target": "rel",
+   "start": "2021-01-01",
+   "end": "2026-05-31",
+   "units": "log return from the next close over h sessions minus the cross-sectional mean",
+   "n_rows": 64942,
+   "n_dates": 1330,
+   "n_entities": 49,
+   "base_rate_up": 0.489514,
+   "always_majority_hit_rate": 0.510486,
+   "momentum_sign_hit": {
+    "hit_rate": 0.48965,
+    "ci95": [
+     0.47657,
+     0.50233
+    ],
+    "n": 64881
+   },
+   "regime_threshold_market_vol_20d": 0.007748,
+   "models": {
+    "climatology": {
+     "pinball": {
+      "mean": 0.014467,
+      "skill_vs_climatology": 0.0,
+      "test": {
+       "mean_loss_diff": 0.0,
+       "hac_t": null,
+       "ci95": [
+        0.0,
+        0.0
+       ],
+       "significant": false,
+       "n_dates": 1330
+      }
+     },
+     "coverage": {
+      "0.8": {
+       "raw": 0.850805,
+       "conformal": 0.859629,
+       "mean_widening": 0.001892
+      },
+      "0.9": {
+       "raw": 0.932925,
+       "conformal": 0.938407,
+       "mean_widening": 0.002513
+      }
+     },
+     "interval_score": {
+      "0.8": {
+       "raw": 0.230575,
+       "conformal": 0.231142
+      },
+      "0.9": {
+       "raw": 0.287126,
+       "conformal": 0.288074
+      }
+     },
+     "p_up": {
+      "brier": 0.253556,
+      "bss_vs_ex_ante_base_rate": -0.014492,
+      "ece": 0.051654,
+      "mce": 0.130054,
+      "reliability": [
+       {
+        "lo": 0.337766,
+        "hi": 0.434959,
+        "n": 6495,
+        "mean_p": 0.409028,
+        "freq": 0.526097,
+        "ci_lo": 0.513942,
+        "ci_hi": 0.538221
+       },
+       {
+        "lo": 0.434964,
+        "hi": 0.453562,
+        "n": 6495,
+        "mean_p": 0.445453,
+        "freq": 0.524403,
+        "ci_lo": 0.512247,
+        "ci_hi": 0.536531
+       },
+       {
+        "lo": 0.453566,
+        "hi": 0.465557,
+        "n": 6494,
+        "mean_p": 0.459541,
+        "freq": 0.479058,
+        "ci_lo": 0.466923,
+        "ci_hi": 0.491217
+       },
+       {
+        "lo": 0.465561,
+        "hi": 0.477104,
+        "n": 6494,
+        "mean_p": 0.471349,
+        "freq": 0.490915,
+        "ci_lo": 0.478765,
+        "ci_hi": 0.503075
+       },
+       {
+        "lo": 0.477105,
+        "hi": 0.487528,
+        "n": 6494,
+        "mean_p": 0.482309,
+        "freq": 0.497382,
+        "ci_lo": 0.485227,
+        "ci_hi": 0.509541
+       },
+       {
+        "lo": 0.48753,
+        "hi": 0.499462,
+        "n": 6494,
+        "mean_p": 0.493307,
+        "freq": 0.439329,
+        "ci_lo": 0.427297,
+        "ci_hi": 0.451432
+       },
+       {
+        "lo": 0.499462,
+        "hi": 0.513347,
+        "n": 6494,
+        "mean_p": 0.506247,
+        "freq": 0.507699,
+        "ci_lo": 0.495539,
+        "ci_hi": 0.519851
+       },
+       {
+        "lo": 0.513347,
+        "hi": 0.52962,
+        "n": 6494,
+        "mean_p": 0.520954,
+        "freq": 0.482907,
+        "ci_lo": 0.470767,
+        "ci_hi": 0.495068
+       },
+       {
+        "lo": 0.529621,
+        "hi": 0.551965,
+        "n": 6494,
+        "mean_p": 0.540659,
+        "freq": 0.497844,
+        "ci_lo": 0.485688,
+        "ci_hi": 0.510003
+       },
+       {
+        "lo": 0.551966,
+        "hi": 0.66482,
+        "n": 6494,
+        "mean_p": 0.579545,
+        "freq": 0.449492,
+        "ci_lo": 0.437427,
+        "ci_hi": 0.461617
+       }
+      ]
+     },
+     "rank_ic_median": {
+      "mean": -0.031689,
+      "hac_t": -1.168364,
+      "ci95": [
+       -0.077842,
+       0.017127
+      ],
+      "n_dates": 1326
+     },
+     "direction": {
+      "hit_rate": 0.498014,
+      "ci95": [
+       0.480006,
+       0.516279
+      ],
+      "n": 64940
+     },
+     "regimes": {
+      "high_vol": {
+       "pinball": 0.015544,
+       "coverage_80_raw": 0.820179,
+       "coverage_80_conformal": 0.836211,
+       "interval_score_80_raw": 0.245398,
+       "median_hit": 0.493929,
+       "skill_vs_climatology": 0.0
+      },
+      "low_vol": {
+       "pinball": 0.013396,
+       "coverage_80_raw": 0.881244,
+       "coverage_80_conformal": 0.882902,
+       "interval_score_80_raw": 0.215842,
+       "median_hit": 0.502072,
+       "skill_vs_climatology": 0.0
+      }
+     }
+    },
+    "ewma_vol": {
+     "pinball": {
+      "mean": 0.014382,
+      "skill_vs_climatology": 0.005848,
+      "test": {
+       "mean_loss_diff": 8.6e-05,
+       "hac_t": 0.911255,
+       "ci95": [
+        -8.7e-05,
+        0.000264
+       ],
+       "significant": false,
+       "n_dates": 1330
+      }
+     },
+     "coverage": {
+      "0.8": {
+       "raw": 0.79959,
+       "conformal": 0.814126,
+       "mean_widening": 0.003488
+      },
+      "0.9": {
+       "raw": 0.900527,
+       "conformal": 0.908565,
+       "mean_widening": 0.004368
+      }
+     },
+     "interval_score": {
+      "0.8": {
+       "raw": 0.231184,
+       "conformal": 0.23279
+      },
+      "0.9": {
+       "raw": 0.287397,
+       "conformal": 0.290349
+      }
+     },
+     "p_up": {
+      "brier": 0.249933,
+      "bss_vs_ex_ante_base_rate": 3e-06,
+      "ece": 0.012293,
+      "mce": 0.026543,
+      "reliability": [
+       {
+        "lo": 0.485241,
+        "hi": 0.486909,
+        "n": 6495,
+        "mean_p": 0.485887,
+        "freq": 0.501925,
+        "ci_lo": 0.489767,
+        "ci_hi": 0.51408
+       },
+       {
+        "lo": 0.486909,
+        "hi": 0.489377,
+        "n": 6495,
+        "mean_p": 0.488363,
+        "freq": 0.488838,
+        "ci_lo": 0.476691,
+        "ci_hi": 0.500997
+       },
+       {
+        "lo": 0.489377,
+        "hi": 0.489786,
+        "n": 6494,
+        "mean_p": 0.489605,
+        "freq": 0.507853,
+        "ci_lo": 0.495693,
+        "ci_hi": 0.520004
+       },
+       {
+        "lo": 0.489786,
+        "hi": 0.49023,
+        "n": 6494,
+        "mean_p": 0.489986,
+        "freq": 0.506775,
+        "ci_lo": 0.494615,
+        "ci_hi": 0.518928
+       },
+       {
+        "lo": 0.49023,
+        "hi": 0.490864,
+        "n": 6494,
+        "mean_p": 0.49063,
+        "freq": 0.484447,
+        "ci_lo": 0.472305,
+        "ci_hi": 0.496608
+       },
+       {
+        "lo": 0.490864,
+        "hi": 0.491087,
+        "n": 6494,
+        "mean_p": 0.490964,
+        "freq": 0.495996,
+        "ci_lo": 0.483842,
+        "ci_hi": 0.508155
+       },
+       {
+        "lo": 0.491087,
+        "hi": 0.491467,
+        "n": 6494,
+        "mean_p": 0.491293,
+        "freq": 0.489375,
+        "ci_lo": 0.477227,
+        "ci_hi": 0.501536
+       },
+       {
+        "lo": 0.491467,
+        "hi": 0.492183,
+        "n": 6494,
+        "mean_p": 0.491815,
+        "freq": 0.474746,
+        "ci_lo": 0.462619,
+        "ci_hi": 0.486903
+       },
+       {
+        "lo": 0.492183,
+        "hi": 0.493119,
+        "n": 6494,
+        "mean_p": 0.492619,
+        "freq": 0.47798,
+        "ci_lo": 0.465847,
+        "ci_hi": 0.490138
+       },
+       {
+        "lo": 0.493119,
+        "hi": 0.49425,
+        "n": 6494,
+        "mean_p": 0.493744,
+        "freq": 0.4672,
+        "ci_lo": 0.455089,
+        "ci_hi": 0.479351
+       }
+      ]
+     },
+     "rank_ic_median": {
+      "mean": -0.0088,
+      "hac_t": -0.425989,
+      "ci95": [
+       -0.044906,
+       0.025369
+      ],
+      "n_dates": 1326
+     },
+     "direction": {
+      "hit_rate": 0.510471,
+      "ci95": [
+       0.498915,
+       0.52032
+      ],
+      "n": 64940
+     },
+     "regimes": {
+      "high_vol": {
+       "pinball": 0.01559,
+       "coverage_80_raw": 0.803744,
+       "coverage_80_conformal": 0.825152,
+       "interval_score_80_raw": 0.250227,
+       "median_hit": 0.501467,
+       "skill_vs_climatology": -0.002996
+      },
+      "low_vol": {
+       "pinball": 0.013181,
+       "coverage_80_raw": 0.795462,
+       "coverage_80_conformal": 0.803168,
+       "interval_score_80_raw": 0.212258,
+       "median_hit": 0.519419,
+       "skill_vs_climatology": 0.016046
+      }
+     }
+    },
+    "lgbm_quantile": {
+     "pinball": {
+      "mean": 0.014296,
+      "skill_vs_climatology": 0.01176,
+      "test": {
+       "mean_loss_diff": 0.000169,
+       "hac_t": 2.330253,
+       "ci95": [
+        3.6e-05,
+        0.000297
+       ],
+       "significant": true,
+       "n_dates": 1330
+      }
+     },
+     "coverage": {
+      "0.8": {
+       "raw": 0.831188,
+       "conformal": 0.840812,
+       "mean_widening": 0.002436
+      },
+      "0.9": {
+       "raw": 0.917711,
+       "conformal": 0.92404,
+       "mean_widening": 0.003301
+      }
+     },
+     "interval_score": {
+      "0.8": {
+       "raw": 0.227489,
+       "conformal": 0.228727
+      },
+      "0.9": {
+       "raw": 0.282338,
+       "conformal": 0.284579
+      }
+     },
+     "p_up": {
+      "brier": 0.250961,
+      "bss_vs_ex_ante_base_rate": -0.004107,
+      "ece": 0.022787,
+      "mce": 0.072276,
+      "reliability": [
+       {
+        "lo": 0.249066,
+        "hi": 0.444987,
+        "n": 6495,
+        "mean_p": 0.424018,
+        "freq": 0.466975,
+        "ci_lo": 0.454864,
+        "ci_hi": 0.479124
+       },
+       {
+        "lo": 0.444988,
+        "hi": 0.461284,
+        "n": 6495,
+        "mean_p": 0.453539,
+        "freq": 0.473749,
+        "ci_lo": 0.461625,
+        "ci_hi": 0.485904
+       },
+       {
+        "lo": 0.461285,
+        "hi": 0.474032,
+        "n": 6494,
+        "mean_p": 0.468107,
+        "freq": 0.500616,
+        "ci_lo": 0.488458,
+        "ci_hi": 0.512773
+       },
+       {
+        "lo": 0.474034,
+        "hi": 0.482833,
+        "n": 6494,
+        "mean_p": 0.47861,
+        "freq": 0.493225,
+        "ci_lo": 0.481072,
+        "ci_hi": 0.505385
+       },
+       {
+        "lo": 0.482834,
+        "hi": 0.489566,
+        "n": 6494,
+        "mean_p": 0.486165,
+        "freq": 0.482753,
+        "ci_lo": 0.470614,
+        "ci_hi": 0.494913
+       },
+       {
+        "lo": 0.489567,
+        "hi": 0.496696,
+        "n": 6494,
+        "mean_p": 0.493012,
+        "freq": 0.492301,
+        "ci_lo": 0.480149,
+        "ci_hi": 0.504461
+       },
+       {
+        "lo": 0.496697,
+        "hi": 0.505741,
+        "n": 6494,
+        "mean_p": 0.501082,
+        "freq": 0.490915,
+        "ci_lo": 0.478765,
+        "ci_hi": 0.503075
+       },
+       {
+        "lo": 0.505742,
+        "hi": 0.515989,
+        "n": 6494,
+        "mean_p": 0.510785,
+        "freq": 0.502002,
+        "ci_lo": 0.489844,
+        "ci_hi": 0.514158
+       },
+       {
+        "lo": 0.515991,
+        "hi": 0.533093,
+        "n": 6494,
+        "mean_p": 0.523154,
+        "freq": 0.500924,
+        "ci_lo": 0.488766,
+        "ci_hi": 0.513081
+       },
+       {
+        "lo": 0.533096,
+        "hi": 0.70815,
+        "n": 6494,
+        "mean_p": 0.563961,
+        "freq": 0.491685,
+        "ci_lo": 0.479534,
+        "ci_hi": 0.503845
+       }
+      ]
+     },
+     "rank_ic_median": {
+      "mean": 0.005499,
+      "hac_t": 0.364218,
+      "ci95": [
+       -0.02077,
+       0.030999
+      ],
+      "n_dates": 1326
+     },
+     "direction": {
+      "hit_rate": 0.508716,
+      "ci95": [
+       0.497498,
+       0.520202
+      ],
+      "n": 64940
+     },
+     "regimes": {
+      "high_vol": {
+       "pinball": 0.015459,
+       "coverage_80_raw": 0.815946,
+       "coverage_80_conformal": 0.831114,
+       "interval_score_80_raw": 0.245026,
+       "median_hit": 0.505515,
+       "skill_vs_climatology": 0.005469
+      },
+      "low_vol": {
+       "pinball": 0.013141,
+       "coverage_80_raw": 0.846336,
+       "coverage_80_conformal": 0.85045,
+       "interval_score_80_raw": 0.210059,
+       "median_hit": 0.511897,
+       "skill_vs_climatology": 0.019014
+      }
+     }
+    }
+   },
+   "config": {
+    "quantiles": [
+     0.05,
+     0.1,
+     0.25,
+     0.5,
+     0.75,
+     0.9,
+     0.95
+    ],
+    "ewma_lambda": 0.94,
+    "refit_sessions": 63,
+    "purge_sessions": 21,
+    "embargo_sessions": 5,
+    "conformal_block_sessions": 63,
+    "lgbm": {
+     "n_estimators": 100,
+     "learning_rate": 0.05,
+     "num_leaves": 8,
+     "min_child_samples": 200,
+     "subsample": 0.8,
+     "subsample_freq": 1,
+     "colsample_bytree": 0.8,
+     "random_state": 0,
+     "verbose": -1,
+     "deterministic": true,
+     "force_col_wise": true
+    },
+    "features": [
+     "ret_5",
+     "ret_20",
+     "ret_60",
+     "vol_20",
+     "vol_60",
+     "volume_z",
+     "dist_52w_high",
+     "rk_ret_5",
+     "rk_ret_20",
+     "rk_ret_60",
+     "rk_vol_20",
+     "rk_dist_52w"
+    ],
+    "skill_significance": "block-bootstrap 95% CI of the per-date pinball-loss difference excludes 0 and HAC t > 1.96"
+   },
+   "provenance": {
+    "source": "local_csv",
+    "warnings": [
+     "Development dataset: prices are pre-adjusted for corporate actions, so share counts and per-share prices differ from what traded on the exchange.",
+     "Development dataset: the universe is today's Nifty 50 members, which hides companies that fell out of the index (survivorship bias)."
+    ],
+    "rows": 102545,
+    "first": "2018-01-01",
+    "last": "2026-06-23"
+   },
+   "runtime_s": 30.018002
+  }
+ ],
+ "examples": [
+  {
+   "symbol": "RELIANCE",
+   "asof": "2026-06-23",
+   "forecast_date": "2026-06-23",
+   "h": 5,
+   "target": "raw",
+   "units": "log return from the next close over h sessions",
+   "model": "lgbm_quantile",
+   "quantiles": {
+    "0.05": -0.051556,
+    "0.1": -0.038291,
+    "0.25": -0.017422,
+    "0.5": 0.002353,
+    "0.75": 0.025733,
+    "0.9": 0.044903,
+    "0.95": 0.061404
+   },
+   "p_up": 0.529742,
+   "expected_return": 0.002353,
+   "interval_80": [
+    -0.038291,
+    0.044903
+   ],
+   "interval_90": [
+    -0.051556,
+    0.061404
+   ],
+   "calibration": {
+    "coverage_80_recent": 0.802397,
+    "n": 3087,
+    "conformal_widening_80": 0.0,
+    "block_sessions": 63
+   },
+   "skill_vs_climatology": {
+    "pinball_skill": 0.018803,
+    "mean_loss_diff": 0.000144,
+    "hac_t": 2.55375,
+    "ci95": [
+     3.2e-05,
+     0.000262
+    ],
+    "significant": true,
+    "n_dates": 244
+   },
+   "direction_evidence": {
+    "rank_ic_median": -0.011789,
+    "hac_t": -0.562118,
+    "significant": false
+   },
+   "data_quality": {
+    "last_price_date": "2026-06-23",
+    "stale_sessions": 0,
+    "history_sessions": 2090,
+    "warnings": [
+     "Development dataset: prices are pre-adjusted for corporate actions, so share counts and per-share prices differ from what traded on the exchange.",
+     "Development dataset: the universe is today's Nifty 50 members, which hides companies that fell out of the index (survivorship bias)."
+    ]
+   },
+   "evidence_sufficient": true,
+   "note": "lgbm_quantile beat climatology out of sample over the last 244 evaluated sessions (pinball skill 1.9%, HAC t 2.6), measured across the whole universe, not this stock alone. The edge is in the spread of outcomes, not the direction: the median's cross-sectional rank IC is not significant, so do not read the median or p_up as a call."
+  },
+  {
+   "symbol": "HDFCBANK",
+   "asof": "2026-06-23",
+   "forecast_date": "2026-06-23",
+   "h": 5,
+   "target": "raw",
+   "units": "log return from the next close over h sessions",
+   "model": "lgbm_quantile",
+   "quantiles": {
+    "0.05": -0.06569,
+    "0.1": -0.050912,
+    "0.25": -0.023781,
+    "0.5": 0.002981,
+    "0.75": 0.025362,
+    "0.9": 0.050528,
+    "0.95": 0.064005
+   },
+   "p_up": 0.527847,
+   "expected_return": 0.002981,
+   "interval_80": [
+    -0.050912,
+    0.050528
+   ],
+   "interval_90": [
+    -0.06569,
+    0.064005
+   ],
+   "calibration": {
+    "coverage_80_recent": 0.802397,
+    "n": 3087,
+    "conformal_widening_80": 0.0,
+    "block_sessions": 63
+   },
+   "skill_vs_climatology": {
+    "pinball_skill": 0.018803,
+    "mean_loss_diff": 0.000144,
+    "hac_t": 2.55375,
+    "ci95": [
+     3.2e-05,
+     0.000262
+    ],
+    "significant": true,
+    "n_dates": 244
+   },
+   "direction_evidence": {
+    "rank_ic_median": -0.011789,
+    "hac_t": -0.562118,
+    "significant": false
+   },
+   "data_quality": {
+    "last_price_date": "2026-06-23",
+    "stale_sessions": 0,
+    "history_sessions": 2090,
+    "warnings": [
+     "Development dataset: prices are pre-adjusted for corporate actions, so share counts and per-share prices differ from what traded on the exchange.",
+     "Development dataset: the universe is today's Nifty 50 members, which hides companies that fell out of the index (survivorship bias)."
+    ]
+   },
+   "evidence_sufficient": true,
+   "note": "lgbm_quantile beat climatology out of sample over the last 244 evaluated sessions (pinball skill 1.9%, HAC t 2.6), measured across the whole universe, not this stock alone. The edge is in the spread of outcomes, not the direction: the median's cross-sectional rank IC is not significant, so do not read the median or p_up as a call."
+  },
+  {
+   "symbol": "INFY",
+   "asof": "2026-06-23",
+   "forecast_date": "2026-06-23",
+   "h": 5,
+   "target": "raw",
+   "units": "log return from the next close over h sessions",
+   "model": "lgbm_quantile",
+   "quantiles": {
+    "0.05": -0.08814,
+    "0.1": -0.061384,
+    "0.25": -0.025914,
+    "0.5": 0.005014,
+    "0.75": 0.032237,
+    "0.9": 0.069316,
+    "0.95": 0.09399
+   },
+   "p_up": 0.540533,
+   "expected_return": 0.005014,
+   "interval_80": [
+    -0.061384,
+    0.069316
+   ],
+   "interval_90": [
+    -0.08814,
+    0.09399
+   ],
+   "calibration": {
+    "coverage_80_recent": 0.802397,
+    "n": 3087,
+    "conformal_widening_80": 0.0,
+    "block_sessions": 63
+   },
+   "skill_vs_climatology": {
+    "pinball_skill": 0.018803,
+    "mean_loss_diff": 0.000144,
+    "hac_t": 2.55375,
+    "ci95": [
+     3.2e-05,
+     0.000262
+    ],
+    "significant": true,
+    "n_dates": 244
+   },
+   "direction_evidence": {
+    "rank_ic_median": -0.011789,
+    "hac_t": -0.562118,
+    "significant": false
+   },
+   "data_quality": {
+    "last_price_date": "2026-06-23",
+    "stale_sessions": 0,
+    "history_sessions": 2090,
+    "warnings": [
+     "Development dataset: prices are pre-adjusted for corporate actions, so share counts and per-share prices differ from what traded on the exchange.",
+     "Development dataset: the universe is today's Nifty 50 members, which hides companies that fell out of the index (survivorship bias)."
+    ]
+   },
+   "evidence_sufficient": true,
+   "note": "lgbm_quantile beat climatology out of sample over the last 244 evaluated sessions (pinball skill 1.9%, HAC t 2.6), measured across the whole universe, not this stock alone. The edge is in the spread of outcomes, not the direction: the median's cross-sectional rank IC is not significant, so do not read the median or p_up as a call."
+  }
+ ],
+ "runtime_s": 158.518737
+}

@@ -19,6 +19,8 @@ nonisolated enum FeatureKey: String, CaseIterable {
     case eventRadar = "event_radar"
     case watchlistV2 = "watchlist_v2"
     case widgetSnapshot = "widget_snapshot"
+    // Lab (docs/platform/api-contract.md): off until legal review of NSE data terms.
+    case researchLab = "research_lab"
 
     /// Value before the first successful fetch: off (fail closed), except the
     /// widget_snapshot kill switch, which is on unless the server says off.
