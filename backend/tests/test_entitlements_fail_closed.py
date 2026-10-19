@@ -1,7 +1,7 @@
 """AUTH-14 / FINSEC-10 / FINSEC-12 / GH-666 / GH-669: premium tiers cannot be
 self-granted and unknown feature keys never ungate a route.
 
-/upgrade has no receipt verification, so it is a 404 unless ALLOW_MOCK_PURCHASES=1;
+The mock /upgrade and /cancel routes are deleted (404);
 has_entitlement() is False for an unknown key and require_entitlement() refuses one.
 """
 import re
@@ -29,25 +29,29 @@ def _new_user() -> tuple[int, dict]:
     return user_id, {"Authorization": f"Bearer {database.create_access_token(user_id)}"}
 
 
-def test_upgrade_is_404_without_mock_purchases(client, monkeypatch):
-    monkeypatch.delenv("ALLOW_MOCK_PURCHASES", raising=False)
+def test_upgrade_route_gone(client):
     _, headers = _new_user()
-    assert client.post(_UPGRADE, json=_BODY, headers=headers).status_code == 404
+    # 404, or 405 where the catch-all OPTIONS route claims the path
+    assert client.post(_UPGRADE, json=_BODY, headers=headers).status_code in (404, 405)
     assert client.get("/api/v1/subscription", headers=headers).json()["tier"] == "free"
 
 
-def test_upgrade_is_404_when_flag_is_off(client, monkeypatch):
-    monkeypatch.setenv("ALLOW_MOCK_PURCHASES", "0")
+def test_cancel_route_gone(client):
     _, headers = _new_user()
-    assert client.post(_UPGRADE, json=_BODY, headers=headers).status_code == 404
+    assert client.post("/api/v1/subscription/cancel", headers=headers).status_code in (404, 405)
 
 
-def test_upgrade_works_with_mock_purchases_enabled(client, monkeypatch):
-    monkeypatch.setenv("ALLOW_MOCK_PURCHASES", "1")
-    _, headers = _new_user()
-    resp = client.post(_UPGRADE, json=_BODY, headers=headers)
-    assert resp.status_code == 200, resp.text
-    assert resp.json()["tier"] == "pro"
+def test_no_mock_purchase_code():
+    backend = _ROUTERS.parent
+    offenders = []
+    for path in backend.rglob("*.py"):
+        rel = path.relative_to(backend).parts
+        if rel[0] in ("tests", "venv", ".venv", "migrations") or "site-packages" in rel:
+            continue
+        text = path.read_text(encoding="utf-8", errors="ignore")
+        if any(word in text for word in ("mock_upgrade", "mock_cancel", "ALLOW_MOCK_PURCHASES")):
+            offenders.append("/".join(rel))
+    assert not offenders, offenders
 
 
 def test_unknown_feature_key_fails_closed():

@@ -1004,20 +1004,13 @@ class UserPreference(Base):
 class UserSubscription(Base):
     """User premium subscription/tier record.
 
-    MOCK — simulated for demo purposes. No real payment processor or
-    StoreKit purchase completion is wired here; services/subscription_service.py's
-    mock_upgrade()/mock_cancel() just flip these columns directly.
+    Paid tiers will only be written from App Store verification
+    (docs/billing/RUNBOOK.md); no route grants one today.
 
-    Cancellation semantics: mock_cancel() sets is_active=False and
-    cancelled_at=now but deliberately leaves `tier` unchanged until
-    `renews_at` — i.e. the user logically keeps access through the end of
-    the billing period they already paid for. Once `renews_at` passes for a
-    cancelled (is_active=False) subscription, the tier should logically be
-    treated as "free" again, but there is NO cron/scheduled job in this repo
-    that flips `tier` back to "free" automatically — callers that care about
-    "is this subscription still actually entitled" should check
-    `is_active` and compare `renews_at` to now rather than trusting `tier`
-    alone once `is_active` is False.
+    `renews_at` is the end of access. A paid row past `renews_at` is lapsed to
+    "free" on the next read (subscription_service._load_subscription), so there
+    is no cron job; `is_active=False` marks a cancelled plan that keeps its tier
+    until `renews_at`.
     """
     __tablename__ = "user_subscriptions"
 

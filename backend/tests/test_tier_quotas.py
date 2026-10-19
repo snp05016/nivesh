@@ -25,6 +25,22 @@ def _new_user() -> tuple[int, dict]:
     return user_id, {"Authorization": f"Bearer {database.create_access_token(user_id)}"}
 
 
+def _seed_pro(user_id: int) -> None:
+    from datetime import datetime, timedelta, timezone
+
+    from database import get_session
+    from models.db_models import UserSubscription  # pyright: ignore[reportMissingImports]
+    from services import subscription_service
+
+    subscription_service.get_or_create_subscription(user_id)
+    with get_session() as session:
+        session.query(UserSubscription).filter(UserSubscription.user_id == user_id).update({
+            "tier": "pro", "billing_cycle": "monthly", "is_active": True,
+            "renews_at": datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(days=30),
+        })
+        session.commit()
+
+
 def _add_watchlist(client, user_id: int, headers: dict, n: int):
     return client.post(
         "/watchlist/add",
@@ -80,10 +96,8 @@ def test_free_alert_cap_is_402(client):
 
 
 def test_pro_user_higher_cap(client):
-    from services import subscription_service
-
     user_id, headers = _new_user()
-    subscription_service.mock_upgrade(user_id, "pro", "monthly")
+    _seed_pro(user_id)
     cap = TIER_LIMITS["watchlist_size"]["free"]
     for n in range(cap + 1):
         resp = _add_watchlist(client, user_id, headers, n)

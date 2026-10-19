@@ -1,5 +1,5 @@
-"""FINSEC-13: paid plans lapse at renews_at (cancelled or not), replaying an
-upgrade never extends access, and first-access row creation survives a race."""
+"""FINSEC-13: paid plans lapse at renews_at (cancelled or not) and first-access
+row creation survives a race. Rows are seeded through the ORM."""
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
@@ -30,9 +30,26 @@ def _naive_utc(delta: timedelta) -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None) + delta
 
 
+def _seed_plan(user_id: int, *, is_active: bool = True, renews_in: timedelta = timedelta(days=30)) -> None:
+    """Give the user a PRO row through the ORM (there is no purchase route; paid tiers come from App Store verification)."""
+    from database import get_session
+    from models.db_models import UserSubscription  # pyright: ignore[reportMissingImports]
+    from services import subscription_service
+
+    subscription_service.get_or_create_subscription(user_id)
+    with get_session() as session:
+        session.query(UserSubscription).filter(UserSubscription.user_id == user_id).update({
+            "tier": "pro",
+            "billing_cycle": "monthly",
+            "is_active": is_active,
+            "renews_at": datetime.now(timezone.utc).replace(tzinfo=None) + renews_in,
+        })
+        session.commit()
+
+
 def test_active_plan_with_past_renews_at_is_free():
     user_id = _new_user_id()
-    subscription_service.mock_upgrade(user_id, "pro", "monthly")
+    _seed_plan(user_id)
     _set_renews_at(user_id, _naive_utc(-timedelta(days=1)))  # is_active stays True
 
     assert entitlement_service.get_effective_tier(user_id) == "free"
@@ -43,41 +60,11 @@ def test_active_plan_with_past_renews_at_is_free():
 
 def test_cancelled_until_period_end_keeps_tier():
     user_id = _new_user_id()
-    subscription_service.mock_upgrade(user_id, "pro", "monthly")
-    cancelled = subscription_service.mock_cancel(user_id)
-    assert cancelled["is_active"] is False
+    _seed_plan(user_id, is_active=False)  # cancelled, paid period still running
     assert entitlement_service.get_effective_tier(user_id) == "pro"
 
     _set_renews_at(user_id, _naive_utc(-timedelta(seconds=1)))
     assert entitlement_service.get_effective_tier(user_id) == "free"
-
-
-def test_repeat_upgrade_does_not_extend():
-    user_id = _new_user_id()
-    first = subscription_service.mock_upgrade(user_id, "pro", "monthly")
-    second = subscription_service.mock_upgrade(user_id, "pro", "monthly")
-    assert second["renews_at"] == first["renews_at"]
-
-
-def test_cancel_then_upgrade_same_tier_does_not_extend():
-    user_id = _new_user_id()
-    first = subscription_service.mock_upgrade(user_id, "pro", "monthly")
-    subscription_service.mock_cancel(user_id)
-    resumed = subscription_service.mock_upgrade(user_id, "pro", "monthly")
-    assert resumed["renews_at"] == first["renews_at"]
-    assert resumed["is_active"] is True and resumed["cancelled_at"] is None
-
-
-def test_upgrade_after_lapse_starts_new_period():
-    user_id = _new_user_id()
-    subscription_service.mock_upgrade(user_id, "pro", "monthly")
-    _set_renews_at(user_id, _naive_utc(-timedelta(days=1)))
-    renewed = subscription_service.mock_upgrade(user_id, "pro", "monthly")
-    renews_at = renewed["renews_at"]
-    if renews_at.tzinfo is None:
-        renews_at = renews_at.replace(tzinfo=timezone.utc)
-    assert renews_at > datetime.now(timezone.utc) + timedelta(days=29)
-    assert renewed["tier"] == "pro"
 
 
 def test_get_or_create_handles_integrity_error(monkeypatch):
@@ -99,12 +86,3 @@ def test_get_or_create_handles_integrity_error(monkeypatch):
     row = subscription_service.get_or_create_subscription(user_id)
     assert row["user_id"] == user_id and row["tier"] == "free"
     assert calls["n"] >= 1  # the patched miss was exercised
-
-
-def test_upgrade_to_free_422(client, monkeypatch):
-    import database
-
-    monkeypatch.setenv("ALLOW_MOCK_PURCHASES", "1")
-    headers = {"Authorization": f"Bearer {database.create_access_token(_new_user_id())}"}
-    resp = client.post("/api/v1/subscription/upgrade", json={"tier": "free", "billing_cycle": "monthly"}, headers=headers)
-    assert resp.status_code == 422

@@ -72,7 +72,6 @@ def test_money_actions_write_one_audit_row_each(client, products, monkeypatch):
     import services.loan_marketplace_service as loan_service
 
     monkeypatch.setattr(loan_service, "get_mock_credit_score", lambda _uid: 850)
-    monkeypatch.setenv("ALLOW_MOCK_PURCHASES", "1")  # /upgrade is a 404 otherwise (AUTH-14)
     offer_id, scheme_id = products
     uid = _new_user()
     request_id = f"audit-{uuid4().hex}"
@@ -104,13 +103,11 @@ def test_money_actions_write_one_audit_row_each(client, products, monkeypatch):
         headers=headers,
     )
     assert fd.status_code == 200, fd.text
-    up = client.post("/api/v1/subscription/upgrade", json={"tier": "pro", "billing_cycle": "monthly"}, headers=headers)
-    assert up.status_code == 200, up.text
 
     rows = _rows(uid)
     counts = Counter(r.action for r in rows)
     for action in ("bank_account_linked", "loan_application_submitted", "loan_disbursement_completed",
-                   "fd_booked", "subscription_upgraded", "device_bound"):
+                   "fd_booked", "device_bound"):
         assert counts[action] == 1, (action, counts)
     assert counts["consent_granted"] == 2
     for row in rows:

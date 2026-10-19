@@ -1,18 +1,14 @@
-"""Subscription API — /api/v1/subscription.
+"""Subscription API — /api/v1/subscription (read-only).
 
-MOCK — simulated for demo purposes, not a real integration. There is no
-real StoreKit purchase-completion handshake and no real payment processor
-wired to these endpoints; /upgrade and /cancel just record the requested
-state via services/subscription_service.py.
+Paid tiers come only from App Store verification (docs/billing/RUNBOOK.md); there is
+no route that grants one.
 """
-import os
-
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends
+from pydantic import BaseModel
 from typing import Dict, List, Optional
 from datetime import datetime
 
-from core.security import rate_limited_user, require_auth
+from core.security import require_auth
 from services import entitlement_service, subscription_service
 
 router = APIRouter(prefix="/api/v1/subscription", tags=["Subscription"])
@@ -40,40 +36,11 @@ class SubscriptionResponse(BaseModel):
     cancelled_at: Optional[datetime] = None
 
 
-class UpgradeRequest(BaseModel):
-    tier: str = Field(..., description="'pro' or 'super_pro'")
-    billing_cycle: str = Field(..., description="'monthly' or 'annual'")
-
-
 @router.get("", response_model=SubscriptionResponse)
 def get_subscription(user_id: int = Depends(require_auth)):
     """Returns the caller's current subscription, lazily creating a
     free-tier row on first access."""
     return SubscriptionResponse(**subscription_service.get_or_create_subscription(user_id))
-
-
-@router.post("/upgrade", response_model=SubscriptionResponse)
-def upgrade_subscription(req: UpgradeRequest, user_id: int = Depends(rate_limited_user("subscription"))):
-    """MOCK upgrade — simulated for demo purposes. No real StoreKit
-    purchase or payment processor call happens server-side, so it is a 404
-    unless ALLOW_MOCK_PURCHASES=1 (dev/demo only; AUTH-14): otherwise any
-    account could grant itself a paid tier."""
-    if os.getenv("ALLOW_MOCK_PURCHASES") != "1":
-        raise HTTPException(status_code=404, detail="Not Found")
-    try:
-        result = subscription_service.mock_upgrade(user_id, tier=req.tier, billing_cycle=req.billing_cycle)
-    except ValueError as e:
-        raise HTTPException(status_code=422, detail=str(e))
-    return SubscriptionResponse(**result)
-
-
-@router.post("/cancel", response_model=SubscriptionResponse)
-def cancel_subscription(user_id: int = Depends(rate_limited_user("subscription"))):
-    """MOCK cancel — simulated for demo purposes. Tier stays until
-    `renews_at`; see services/subscription_service.mock_cancel() for the
-    "no cron reverts this" caveat."""
-    result = subscription_service.mock_cancel(user_id)
-    return SubscriptionResponse(**result)
 
 
 @router.get("/entitlements", response_model=EntitlementsResponse)
