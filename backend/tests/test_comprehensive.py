@@ -448,15 +448,6 @@ class TestUserEndpoints:
         })
         assert response.status_code == 401  # AUTH-09: bearer required
     
-    def test_notifications_test(self):
-        """Test sending test notification."""
-        response = client.post("/notifications/test", json={
-            "user_id": 1,
-            "ticker": "RELIANCE",
-            "exchange": "NSE"
-        })
-        assert response.status_code == 401  # AUTH-09: bearer required
-    
     def test_notifications_morning_summary_push(self):
         """Morning summary push requires the caller's own token (401 without, 403 for another user)."""
         from database import create_access_token

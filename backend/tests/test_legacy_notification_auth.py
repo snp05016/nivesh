@@ -58,20 +58,6 @@ def test_register_device_requires_own_token(client, users):
     assert bad.status_code == 400
 
 
-def test_notifications_test_requires_own_token(client, users, monkeypatch):
-    (a, _), (b, b_headers) = users
-    build = MagicMock(return_value={"ok": True})
-    monkeypatch.setattr(user_router.user_service, "test_notification", build)
-    url = "/notifications/test"
-
-    assert client.post(url, json={"user_id": a, "ticker": "TCS"}).status_code == 401
-    assert client.post(url, json={"user_id": a, "ticker": "TCS"}, headers=b_headers).status_code == 403
-    build.assert_not_called()
-
-    assert client.post(url, json={"user_id": b, "ticker": "TCS"}, headers=b_headers).status_code == 200
-    build.assert_called_once_with(b, "TCS", "NSE")
-
-
 def test_morning_summary_push_requires_own_token(client, users, monkeypatch):
     (a, _), (_b, b_headers) = users
     push = MagicMock()

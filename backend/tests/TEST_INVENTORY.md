@@ -1,7 +1,7 @@
 # Nivesh API — Test Inventory
 
 **Generated:** 2026-06-08  
-**Total Endpoints:** 84  
+**Total Endpoints:** 83  
 **Test File:** `tests/test_api.py`
 
 ---
@@ -86,7 +86,6 @@
 | 76 | DELETE | /watchlist/remove | No | — | — | `{user_id, ticker}` | ✅ Tested |
 | 77 | GET | /watchlist/{user_id} | No | `user_id` | — | — | ✅ Tested |
 | 78 | POST | /notifications/register-device | No | — | — | `{user_id, token, platform}` | ✅ Tested |
-| 79 | POST | /notifications/test | No | — | — | `{user_id}` | ✅ Tested |
 | 80 | POST | /notifications/morning-summary-push | Yes (own user) | — | — | `{user_id}` | ✅ Tested |
 | 81 | GET | /api/v1/experts | No | — | — | — | ✅ Tested |
 | 82 | GET | /api/v1/expert-posts | No | — | `ticker?` | — | ✅ Tested |

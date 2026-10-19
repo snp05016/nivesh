@@ -6,8 +6,8 @@ import logging
 import json
 
 from helpers import (
-    get_session, User, Portfolio, AnalysisHistory, DeviceToken, AdvisorInsight,
-    _to_ns, _yf_price, _yf_fetch_info, _get_asm_gsm_lists
+    get_session, User, Portfolio, DeviceToken, AdvisorInsight,
+    _to_ns, _yf_price, _get_asm_gsm_lists
 )
 from database import MarketErrorLog
 from repositories.analysis_repo import latest_signals_by_ticker
@@ -160,32 +160,6 @@ def _deliver_apns(user_id: int, payload: dict) -> PushResult:
 def _with_delivery(payload: dict, result: PushResult) -> dict:
     return {**payload, "delivered": result == PushResult.SENT, "delivery_status": result.value}
 
-def test_notification(user_id: int, ticker: str, exchange: str) -> dict:
-    ns_ticker = _to_ns(ticker)
-    info = _yf_fetch_info(ns_ticker)
-    price = info.get("currentPrice") or info.get("regularMarketPrice") or 0.0
-
-    signal_str = "UNKNOWN"
-    confidence = None
-    with get_session() as session:
-        row = session.query(AnalysisHistory).filter(
-            AnalysisHistory.ticker == ticker.upper()
-        ).order_by(AnalysisHistory.created_at.desc()).first()
-        if row:
-            signal_str = row.signal
-            confidence = row.confidence_pct
-
-    conf_str = f" | Confidence: {int(confidence)}%" if confidence else ""
-    price_str = f"₹{price:,.2f}" if price else "Price unavailable"
-
-    payload = {
-        "title": f"{ticker.upper()} — {signal_str}",
-        "body": f"{price_str}{conf_str}",
-        "data": {"ticker": ticker.upper(), "exchange": exchange},
-    }
-
-    return _with_delivery(payload, _deliver_apns(user_id, payload))
-
 def push_morning_summary(user_id: int) -> Optional[dict]:
     with get_session() as session:
         user = session.get(User, user_id)
@@ -231,7 +205,7 @@ def push_morning_summary(user_id: int) -> Optional[dict]:
     }
 
     create_notification(user_id, "morning_brief", payload["title"], body)
-    # Flat like /notifications/test: iOS decodes title/body at the root.
+    # Flat: iOS decodes title/body at the root.
     out = _with_delivery(payload, _deliver_apns(user_id, payload))
     return {**out, "success": out["delivered"]}
 

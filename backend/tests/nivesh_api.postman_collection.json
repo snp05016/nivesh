@@ -1859,39 +1859,6 @@
           "_postman_id": "ce44a164-8b12-4995-8a7f-d0ea5d1764a1"
         },
         {
-          "name": "Test Notification",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/notifications/test",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "notifications",
-                "test"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"user_id\": \"{{user_id}}\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": [],
-          "_postman_id": "4f6da1ff-145d-426b-aed0-51bb929b6dc7"
-        },
-        {
           "name": "Morning Summary Push",
           "request": {
             "method": "POST",

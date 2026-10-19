@@ -54,7 +54,6 @@
   "GET /nifty-history",
   "POST /notifications/morning-summary-push",
   "POST /notifications/register-device",
-  "POST /notifications/test",
   "GET /ping",
   "POST /portfolio",
   "POST /portfolio/add",
