@@ -25,9 +25,11 @@ def Session():
 
 
 def _report(signal="BUY", price=100.0) -> str:
-    # Shape of a stored, normalised analysis result: the price key is current_price_inr.
+    # Shape of a stored, normalised analysis result: the price key is current_price_inr,
+    # stamped as a live quote (LLM-04) so report_entry_price accepts it (LLM-14).
     return json.dumps({"ticker": "OUTC", "signal": signal, "confidence_pct": 70,
-                       "current_price_inr": price, "target_prices": {"short_term_3m": 120.0}})
+                       "current_price_inr": price, "current_price_source": "live_quote",
+                       "target_prices": {"short_term_3m": 120.0}})
 
 
 def _row(session, ticker="OUTC", signal="BUY", age_days=40):
