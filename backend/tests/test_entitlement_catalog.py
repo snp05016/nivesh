@@ -50,3 +50,11 @@ def test_entitlements_endpoint_shape(client, auth_headers):
     resp = client.get("/api/v1/subscription/entitlements", headers=auth_headers)
     assert resp.status_code == 200
     assert set(resp.json()["features"]) == set(FEATURE_MIN_TIER)
+
+
+def test_catalog_is_the_three_reviewed_tools():
+    assert {c["key"]: c["title"] for c in entitlement_service.get_feature_catalog()} == {
+        "sector_rotation": "Sector rotation analytics",
+        "technical_picks": "Strategy backtester",
+        "ideas_for_profit": "Options payoff builder",
+    }

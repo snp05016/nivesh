@@ -21,7 +21,23 @@ import pytest
 import config.settings
 
 IOS_MODELS = Path(__file__).resolve().parents[2] / "ios" / "StockApp" / "stockme" / "stockme" / "Models"
-GATED_ROUTE = "/fundamentals/TCS/risk-signals"  # gated on swot_analysis (pro)
+GATED_ROUTE = "/gated"  # mounted on a tiny in-test app: gated on sector_rotation (pro), no market data fetched
+
+
+@pytest.fixture()
+def gated_client():
+    from fastapi import Depends, FastAPI
+    from fastapi.testclient import TestClient
+    from core.entitlement_gate import require_entitlement
+
+    gated = FastAPI()
+
+    @gated.get(GATED_ROUTE)
+    def _gated(user_id: int = Depends(require_entitlement("sector_rotation"))):
+        return {"user_id": user_id}
+
+    with TestClient(gated) as c:
+        yield c
 
 
 def _swift_keys(file_name: str, struct: str) -> set[str]:
@@ -206,7 +222,7 @@ def test_consent_revoke_blocks_booking(client, fd_scheme):
 # Entitlements through a real gated route: free -> pro -> cancelled -> lapsed
 # ---------------------------------------------------------------------------
 
-def test_entitlement_lifecycle_on_gated_route(client):
+def test_entitlement_lifecycle_on_gated_route(client, gated_client):
     from database import get_session
     from models.db_models import UserSubscription  # pyright: ignore[reportMissingImports]  (checker resolves `models` to ml-engine/models)
     from services import subscription_service
@@ -214,26 +230,27 @@ def test_entitlement_lifecycle_on_gated_route(client):
     user_id, headers = _new_user()
 
     ent = client.get("/api/v1/subscription/entitlements", headers=headers).json()
-    assert ent["tier"] == "free" and ent["features"]["swot_analysis"] is False
-    assert client.get(GATED_ROUTE, headers=headers).status_code == 402
+    assert ent["tier"] == "free" and ent["features"]["sector_rotation"] is False
+    assert gated_client.get(GATED_ROUTE, headers=headers).status_code == 402
 
-    # Service call, not POST /upgrade: the mock purchase route is being put behind
-    # an environment switch (#666), and this test is about the gate, not the purchase.
-    subscription_service.mock_upgrade(user_id, "pro", "monthly")
-    assert client.get(GATED_ROUTE, headers=headers).status_code == 200
+    # Seeded through the ORM: there is no purchase route (paid tiers come from App Store verification).
+    def seed(is_active: bool, renews_in: timedelta) -> None:
+        subscription_service.get_or_create_subscription(user_id)
+        with get_session() as session:
+            session.query(UserSubscription).filter(UserSubscription.user_id == user_id).update({
+                "tier": "pro", "billing_cycle": "monthly", "is_active": is_active,
+                "renews_at": datetime.now(timezone.utc).replace(tzinfo=None) + renews_in,
+            })
+            session.commit()
 
-    cancelled = client.post("/api/v1/subscription/cancel", headers=headers)
-    assert cancelled.status_code == 200, cancelled.text
-    assert cancelled.json()["is_active"] is False
-    assert client.get(GATED_ROUTE, headers=headers).status_code == 200  # paid period still running
+    seed(True, timedelta(days=30))
+    assert gated_client.get(GATED_ROUTE, headers=headers).status_code == 200
 
-    with get_session() as session:
-        session.query(UserSubscription).filter(UserSubscription.user_id == user_id).update(
-            {"renews_at": datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=1)}
-        )
-        session.commit()
+    seed(False, timedelta(days=30))  # cancelled, paid period still running
+    assert gated_client.get(GATED_ROUTE, headers=headers).status_code == 200
 
-    lapsed = client.get(GATED_ROUTE, headers=headers)
+    seed(False, -timedelta(days=1))  # period ended
+    lapsed = gated_client.get(GATED_ROUTE, headers=headers)
     assert lapsed.status_code == 402, lapsed.text
     assert lapsed.json()["detail"]["current_tier"] == "free"
 

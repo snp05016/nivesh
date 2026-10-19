@@ -15,8 +15,6 @@ from fastapi.testclient import TestClient
 
 _AUTH_ROUTES = [
     ("get", "/api/v1/subscription"),
-    ("post", "/api/v1/subscription/upgrade"),
-    ("post", "/api/v1/subscription/cancel"),
     ("get", "/api/v1/subscription/entitlements"),
     ("get", "/api/me/subscription"),
     ("get", "/api/me/consent"),
@@ -28,7 +26,7 @@ _AUTH_ROUTES = [
     ("get", "/api/v1/compliance/audit-trail"),
 ]
 
-_GATED_FEATURE = "swot_analysis"
+_GATED_FEATURE = "sector_rotation"
 
 # FINSEC-03: deletion routes re-authenticate with the account password.
 _PASSWORD = "Delete-Me-123"
@@ -75,18 +73,26 @@ def test_entitlements_free_user(client):
     assert body["features"][_GATED_FEATURE] is False
 
 
-def test_upgrade_rejects_invalid_tier(client, monkeypatch):
-    monkeypatch.setenv("ALLOW_MOCK_PURCHASES", "1")  # /upgrade is a 404 otherwise (AUTH-14)
-    resp = client.post(
-        "/api/v1/subscription/upgrade",
-        json={"tier": "free", "billing_cycle": "monthly"},
-        headers=_new_user_headers(),
-    )
-    assert resp.status_code == 422, resp.text
+def _seed_pro(headers: dict) -> None:
+    """Seed a PRO row through the ORM: there is no purchase route (paid tiers come from App Store verification)."""
+    from datetime import datetime, timedelta, timezone
+
+    import database
+    from models.db_models import UserSubscription  # pyright: ignore[reportMissingImports]
+    from services import subscription_service
+
+    user_id = database.verify_access_token(headers["Authorization"].split()[1])
+    assert user_id is not None
+    subscription_service.get_or_create_subscription(user_id)
+    with database.get_session() as session:
+        session.query(UserSubscription).filter(UserSubscription.user_id == user_id).update({
+            "tier": "pro", "billing_cycle": "monthly", "is_active": True,
+            "renews_at": datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(days=30),
+        })
+        session.commit()
 
 
-def test_entitlement_gate_402_then_200_after_upgrade(client, monkeypatch):
-    monkeypatch.setenv("ALLOW_MOCK_PURCHASES", "1")  # /upgrade is a 404 otherwise (AUTH-14)
+def test_entitlement_gate_402_then_200_after_upgrade(client):
     from core.entitlement_gate import require_entitlement
     from services.entitlement_service import FEATURE_MIN_TIER
 
@@ -106,13 +112,7 @@ def test_entitlement_gate_402_then_200_after_upgrade(client, monkeypatch):
         assert denied.json()["detail"]["required_tier"] == required_tier
         assert denied.json()["detail"]["current_tier"] == "free"
 
-        upgrade = client.post(
-            "/api/v1/subscription/upgrade",
-            json={"tier": required_tier, "billing_cycle": "monthly"},
-            headers=headers,
-        )
-        assert upgrade.status_code == 200, upgrade.text
-        assert upgrade.json()["tier"] == required_tier
+        _seed_pro(headers)
 
         assert gated_client.get("/premium", headers=headers).status_code == 200
 

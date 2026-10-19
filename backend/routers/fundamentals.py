@@ -8,8 +8,7 @@ from schemas.stock_fundamentals import (
     ValuationResponse, RiskSignalsResponse,
 )
 import services.fundamentals as fundamentals_service
-from core.entitlement_gate import require_entitlement
-from helpers import _dcache_get, _dcache_set
+from helpers import _dcache_get, _dcache_set, require_auth
 from services.piotroski import compute_piotroski
 
 router = APIRouter(prefix="/fundamentals", tags=["Fundamentals"])
@@ -48,10 +47,9 @@ def get_corporate_actions_endpoint(ticker: str):
 
 @router.get("/{ticker}/valuation", response_model=ValuationMetrics)
 @router_v1.get("/{ticker}/valuation", response_model=ValuationMetrics)
-def get_valuation_endpoint(ticker: str, user_id: int = Depends(require_entitlement("comprehensive_stock_insights"))):
+def get_valuation_endpoint(ticker: str, user_id: int = Depends(require_auth)):
     """
-    Gated behind the "comprehensive_stock_insights" entitlement (pro tier or higher) —
-    see services/entitlement_service.py / core/entitlement_gate.py.
+    Not sold: nothing writes company_valuations or risk_signals yet, so this returns 404 or an empty list.
     """
     val = fundamentals_service.get_valuation(ticker.upper())
     if not val:
@@ -60,10 +58,9 @@ def get_valuation_endpoint(ticker: str, user_id: int = Depends(require_entitleme
 
 @router.get("/{ticker}/risk-signals", response_model=List[RiskSignalDTO])
 @router_v1.get("/{ticker}/risk-signals", response_model=List[RiskSignalDTO])
-def get_risk_signals_endpoint(ticker: str, user_id: int = Depends(require_entitlement("swot_analysis"))):
+def get_risk_signals_endpoint(ticker: str, user_id: int = Depends(require_auth)):
     """
-    Gated behind the "swot_analysis" entitlement (pro tier or higher) —
-    see services/entitlement_service.py / core/entitlement_gate.py.
+    Not sold: nothing writes company_valuations or risk_signals yet, so this returns 404 or an empty list.
     """
     return fundamentals_service.get_risk_signals(ticker.upper())
 
@@ -110,11 +107,13 @@ def get_corporate_actions_v1(ticker: str, exchange: str = "NSE"):
 
 
 @router_v1.get("/valuation", response_model=ValuationResponse)
-def get_valuation_v1(ticker: str, exchange: str = "NSE", user_id: int = Depends(require_entitlement("comprehensive_stock_insights"))):
+def get_valuation_v1(ticker: str, exchange: str = "NSE", user_id: int = Depends(require_auth)):
+    """Not sold: nothing writes company_valuations or risk_signals yet, so this returns 404 or an empty list."""
     t = _bare_ticker(ticker)
     return _or_404(fundamentals_service.get_valuation_v1(t, exchange), "valuation", t)
 
 
 @router_v1.get("/risk-signals", response_model=RiskSignalsResponse)
-def get_risk_signals_v1(ticker: str, exchange: str = "NSE", user_id: int = Depends(require_entitlement("swot_analysis"))):
+def get_risk_signals_v1(ticker: str, exchange: str = "NSE", user_id: int = Depends(require_auth)):
+    """Not sold: nothing writes company_valuations or risk_signals yet, so this returns 404 or an empty list."""
     return fundamentals_service.get_risk_signals_v1(_bare_ticker(ticker), exchange)

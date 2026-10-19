@@ -195,6 +195,8 @@ struct SubscriptionManagementView: View {
 //
 // Shown instead of the mock upgrade/cancel actions in Release builds
 // (ReleaseGate): paid tiers must be sold through App Store in-app purchase.
+// Until then PRO tools stay locked (the server returns 402), so the copy must not
+// say that features are free.
 
 struct BetaPlanNotice: View {
     var body: some View {
@@ -202,7 +204,7 @@ struct BetaPlanNotice: View {
             Image(systemName: "gift.fill")
                 .foregroundStyle(Theme.securityGold)
                 .imageScale(.large)
-            Text("All features are free during the beta. Paid plans will be offered through App Store in-app purchase.")
+            Text("PRO tools are not on sale yet. Paid plans will be offered through App Store in-app purchase.")
                 .font(Theme.engravedSerif(size: 13, relativeTo: .caption))
                 .foregroundStyle(Theme.inkPrimary)
                 .fixedSize(horizontal: false, vertical: true)

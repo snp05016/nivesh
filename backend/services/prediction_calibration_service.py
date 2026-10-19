@@ -14,13 +14,20 @@ from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import func, case, cast, Float
 from database import get_session
-from services.predictions_performance import _safe_hit_rate
 from models.db_models import AnalysisPrediction, StockUniverse
 
 
 # ---------------------------------------------------------------------------
 # Confidence buckets for calibration analysis
 # ---------------------------------------------------------------------------
+
+def _safe_hit_rate(hit_col):
+    # Lazy: predictions_performance imports CONFIDENCE_BUCKETS from this module, so a
+    # top-level import here is a cycle that stops the app from importing at all.
+    from services.predictions_performance import _safe_hit_rate as safe_hit_rate
+
+    return safe_hit_rate(hit_col)
+
 
 CONFIDENCE_BUCKETS: List[Tuple[int, int, str]] = [
     (0, 50, "0-50%"),

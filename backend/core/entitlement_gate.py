@@ -9,7 +9,7 @@ Usage in a router:
         ...
 
 Raises HTTPException(402) — Payment Required — when the caller's effective
-tier (see services/entitlement_service.get_effective_tier) does not meet
+tier (see services/entitlement_service.entitled_tier) does not meet
 the feature's minimum required tier.
 """
 from fastapi import Depends, HTTPException
@@ -31,7 +31,7 @@ def require_entitlement(feature_key: str):
     def _dependency(user_id: int = Depends(require_auth)) -> int:
         if not entitlement_service.has_entitlement(user_id, feature_key):
             required_tier = entitlement_service.FEATURE_MIN_TIER.get(feature_key)
-            current_tier = entitlement_service.get_effective_tier(user_id)
+            current_tier = entitlement_service.entitled_tier(user_id)
             raise HTTPException(
                 status_code=402,
                 detail={

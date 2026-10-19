@@ -1,12 +1,13 @@
 """Entitlement service — server-side per-tier feature gating.
 
 Controller-Service-Repository: routers only call has_entitlement() /
-get_effective_tier() from here; no ORM access happens in routers.
+entitled_tier() from here; no ORM access happens in routers.
 
 The effective tier is the stored `tier` as returned by
 subscription_service.get_or_create_subscription(), which reverts any paid plan
 whose `renews_at` has passed (cancelled or not) to "free" on read — the single
-source of truth for expiry (FINSEC-13).
+source of truth for expiry (FINSEC-13). Gates, quotas and the entitlements
+endpoint read entitled_tier(), which is the stored tier before billing launches.
 """
 from services import subscription_service
 
@@ -18,12 +19,11 @@ TIER_RANK = {"free": 0, "pro": 1, "super_pro": 2}
 # enforced by a require_entitlement("<key>") dependency on a real endpoint
 # (tests/test_entitlement_catalog.py checks this): the paywall is generated
 # from this table, so it never advertises a perk the server does not gate.
+# Only tools may be sold. Stock reports are free (research engine §10.3). Adding a key needs the
+# legal review in docs/billing/RUNBOOK.md §f (paywall copy and the tool outputs) and an update to
+# test_entitlement_policy.
 FEATURE_MIN_TIER = {
-    # No prediction-performance perk: the dashboards are admin-only QA, not a
-    # sold perk (REG-11: unverified hit-rate claims about our own calls, no PaRRVA).
     "sector_rotation": "pro",         # routers/sector_rotation.py market rotation analytics
-    "comprehensive_stock_insights": "pro",  # routers/fundamentals.py valuation endpoints (real DB-backed CompanyValuation)
-    "swot_analysis": "pro",           # routers/fundamentals.py risk-signals endpoints (real DB-backed RiskSignal)
     "technical_picks": "pro",         # routers/strategy.py /backtest — real technical-rule backtest engine (services/strategy_engine.py)
     "ideas_for_profit": "pro",        # routers/options_strategy.py /options/payoff — real multi-leg options P&L/strategy builder
 }
@@ -58,7 +58,7 @@ def enforce_quota(user_id: int, feature: str, current_count: int) -> None:
     """Raises QuotaExceeded when adding one more item would exceed the
     user's effective-tier cap for `feature` (current_count is the count
     before the add)."""
-    tier = get_effective_tier(user_id)
+    tier = entitled_tier(user_id)
     limit = TIER_LIMITS[feature].get(tier, TIER_LIMITS[feature]["free"])
     if limit is not None and current_count >= limit:
         raise QuotaExceeded(feature, limit, tier)
@@ -67,10 +67,8 @@ def enforce_quota(user_id: int, feature: str, current_count: int) -> None:
 # User-facing paywall titles for FEATURE_MIN_TIER keys.
 FEATURE_TITLES = {
     "sector_rotation": "Sector rotation analytics",
-    "comprehensive_stock_insights": "Valuation insights",
-    "swot_analysis": "Risk signals",
     "technical_picks": "Strategy backtester",
-    "ideas_for_profit": "Options strategy builder",
+    "ideas_for_profit": "Options payoff builder",
 }
 
 
@@ -93,6 +91,17 @@ def get_effective_tier(user_id: int) -> str:
     return subscription_service.get_or_create_subscription(user_id).get("tier", "free")
 
 
+def entitled_tier(user_id: int) -> str:
+    # Tier used by gates, quotas and GET /subscription/entitlements.
+    # Pre-launch policy: the stored tier (FIX:AUTH-14 option A). growth-billing-be adds
+    # the App Store branch above this comment. get_effective_tier stays the stored truth.
+    # Beta comp (HUMAN:beta-comp-decision, docs/billing/RUNBOOK.md §f): enable only by a
+    # reviewed PR after legal has reviewed the PRO tool outputs; that PR also updates
+    # BetaPlanNotice and test_prelaunch_uses_stored_tier.
+    # return 'pro'
+    return get_effective_tier(user_id)
+
+
 def has_entitlement(user_id: int, feature_key: str) -> bool:
     """Returns True if the user's effective tier meets or exceeds the
     minimum tier required for feature_key.
@@ -104,7 +113,7 @@ def has_entitlement(user_id: int, feature_key: str) -> bool:
     if required_tier is None:
         return False
 
-    effective_tier = get_effective_tier(user_id)
+    effective_tier = entitled_tier(user_id)
     return TIER_RANK.get(effective_tier, 0) >= TIER_RANK.get(required_tier, 0)
 
 
@@ -112,7 +121,7 @@ def get_all_entitlements(user_id: int) -> dict:
     """Returns {tier, features: {feature_key: bool}, catalog} for the current user —
     consumed by GET /api/v1/subscription/entitlements for the iOS paywall
     to decide what to show/gate client-side."""
-    effective_tier = get_effective_tier(user_id)
+    effective_tier = entitled_tier(user_id)
     tier_rank = TIER_RANK.get(effective_tier, 0)
     features = {
         feature_key: tier_rank >= TIER_RANK.get(min_tier, 0)
