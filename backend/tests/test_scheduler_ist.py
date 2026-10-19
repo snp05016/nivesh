@@ -1,16 +1,32 @@
 """The scheduler runs in IST: explicit ids, tracking, expected fire times, market-hours alerts."""
+import contextlib
 import fcntl
 import inspect
 import io
+import sys
 from datetime import datetime
 from types import SimpleNamespace
 from zoneinfo import ZoneInfo
 
 import pytest
-from apscheduler.triggers.cron import CronTrigger
 
 import services.harvest_worker as hw
 from services import job_runs
+
+
+
+@contextlib.contextmanager
+def _real_apscheduler():
+    """tests/conftest.py replaces apscheduler with a MagicMock; load the real package for a block."""
+    prefixes = lambda k: k == "apscheduler" or k.startswith("apscheduler.")  # noqa: E731
+    saved = {k: sys.modules.pop(k) for k in list(sys.modules) if prefixes(k)}
+    try:
+        yield
+    finally:
+        for k in [k for k in sys.modules if prefixes(k)]:
+            del sys.modules[k]
+        sys.modules.update(saved)
+
 
 IST = ZoneInfo("Asia/Kolkata")
 MONDAY = datetime(2026, 10, 12, 0, 0, tzinfo=IST)
@@ -50,7 +66,10 @@ def _job(sched, job_id):
 
 def _fire(job, after=MONDAY):
     fields = {k: v for k, v in job.kwargs.items() if k in ("day", "day_of_week", "hour", "minute")}
-    return CronTrigger(timezone=IST, **fields).get_next_fire_time(None, after)
+    with _real_apscheduler():
+        from apscheduler.triggers.cron import CronTrigger
+
+        return CronTrigger(timezone=IST, **fields).get_next_fire_time(None, after)
 
 
 def test_timezone_and_unique_ids(sched):

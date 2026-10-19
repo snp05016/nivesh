@@ -32,6 +32,7 @@ _RATE_LIMITS = {
     "money_write": {"window": 3600, "max_requests": 30},
     "subscription": {"window": 3600, "max_requests": 10},
     "compliance": {"window": 3600, "max_requests": 10},
+    "events": {"window": 3600, "max_requests": 120},  # per user (analytics batches)
     "default": {"window": 60, "max_requests": 120}
 }
 

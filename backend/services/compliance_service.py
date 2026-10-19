@@ -187,6 +187,7 @@ def withdraw_consent(
             return revoke_result
         session.commit()
 
+    kyc_consent_service.on_consent_withdrawn(user_id, consent_type)  # after the commit and session close
     return revoke_result
 
 

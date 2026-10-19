@@ -24,6 +24,7 @@ from database import get_session
 from models.db_models import FixedDepositScheme, LoanOffer
 from services.finance_calculators import calculate_apr, calculate_emi
 from services.product_bounds import check_product_bounds
+from services.retention import USER_EVENTS_RETENTION_DAYS
 
 _MOCK_DISCLAIMER = (
     "MOCK/DEMO CONTENT — illustrative placeholder text for a portfolio "
@@ -74,6 +75,11 @@ CONSENT_PURPOSES = {
     "terms": "Accept the Terms of Use before creating an account.",
     "age_18_plus": "Confirm you are 18 or older before creating an account.",
     "disclaimer": "Acknowledge the not-financial-advice disclaimer.",
+    "product_analytics": (
+        "Share app usage events (screens opened and features used; never holdings, stock names "
+        f"or amounts) to improve Nivesh. Kept {USER_EVENTS_RETENTION_DAYS} days. You can turn this off "
+        "at any time; turning it off deletes the events already recorded."
+    ),
 }
 
 # REG-12: grievance officer contact (DPDP Rules / IT Rules 2021). Read from the

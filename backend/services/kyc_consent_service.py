@@ -32,6 +32,7 @@ logic, e.g. services/loan_marketplace_service.py):
     that actually flips a loan application to "approved" must call both
     checks before approving.
 """
+import logging
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -41,6 +42,8 @@ from database import get_session
 from models.db_models import DeviceBinding, DeviceBindingAttempt, KYCConsent
 from services.audit_service import audit
 from services.disclosure_service import CONSENT_PURPOSES, CURRENT_POLICY_VERSION, notice_hash
+
+logger = logging.getLogger(__name__)
 
 CREDIT_CHECK_CONSENT = "credit_check"
 # Opt-in (default off) consent to send a user's portfolio data to the LLM
@@ -93,7 +96,37 @@ def _revoke_active(session, user_id: int, consent_type: str, now: datetime) -> i
     )
 
 
+def on_consent_withdrawn(user_id: int, consent_type: str) -> None:
+    """Erase data collected under a withdrawn consent. Call it only after the withdrawing
+    transaction has committed and its session has closed (an open SQLite write transaction
+    would block the erase's own session). Never raises: the daily retention step
+    (services/retention) is the backstop for a failed erase."""
+    if consent_type != "product_analytics":
+        return
+    try:
+        from services import events_service  # local: events_service imports this module
+
+        events_service.erase_user_events(user_id)
+    except Exception:
+        logger.exception("erasing user_events after consent withdrawal failed (user %s)", user_id)
+
+
 def record_consent(
+    user_id: int,
+    consent_type: str,
+    granted: bool,
+    ip_address: Optional[str] = None,
+    policy_version: Optional[str] = None,
+    app_version: Optional[str] = None,
+) -> dict:
+    """record_consent_row, then (on a withdrawal) erase the data collected under it."""
+    result = _record_consent(user_id, consent_type, granted, ip_address, policy_version, app_version)
+    if not granted:
+        on_consent_withdrawn(user_id, consent_type)
+    return result
+
+
+def _record_consent(
     user_id: int,
     consent_type: str,
     granted: bool,
@@ -192,7 +225,9 @@ def revoke_consent(user_id: int, consent_type: str, session=None, ip_address: Op
         with get_session() as own_session:
             result = _revoke(own_session, user_id, consent_type, ip_address)
             own_session.commit()
-            return result
+        # Also on "nothing to revoke": the erase is idempotent and clears leftovers of a failed one.
+        on_consent_withdrawn(user_id, consent_type)
+        return result
     return _revoke(session, user_id, consent_type, ip_address)
 
 

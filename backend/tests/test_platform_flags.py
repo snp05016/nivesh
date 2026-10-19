@@ -98,7 +98,7 @@ def test_public_endpoint_body_and_headers():
     app.include_router(flags_router.router)
     r = TestClient(app).get("/api/v1/flags")
     assert r.status_code == 200
-    assert r.json() == {"flags": {"analytics": False}}
+    assert r.json() == {"flags": {"analytics": False, "analytics_consented": False}, "analytics_retention_days": 180}
     assert "no-store" in r.headers["cache-control"] and "private" in r.headers["cache-control"]
     assert r.headers["vary"] == "Authorization"
 

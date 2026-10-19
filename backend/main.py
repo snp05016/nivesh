@@ -152,6 +152,7 @@ from routers import youtube_summary as youtube_summary_router
 from routers import client_telemetry
 from routers import features as features_router
 from routers import flags as flags_router
+from routers import events as events_router
 from routers import money as money_router
 
 app.include_router(health_router)  # every health probe (REL-18)
@@ -201,6 +202,7 @@ app.include_router(search.router)
 app.include_router(client_telemetry.router)
 app.include_router(features_router.router)  # GET /api/v1/features (server-side flags)
 app.include_router(flags_router.router)  # GET /api/v1/flags (DB-overridable platform flags)
+app.include_router(events_router.router)  # POST /api/v1/events (consent-gated analytics)
 app.include_router(money_router.router)  # money cluster feature routers (/api/v1/me/...)
 # ARCH-17: money-control routers live under /api/v1/<name>. The old /api/<name>
 # paths stay as deprecated aliases, hidden from OpenAPI, for the shipped iOS app;
