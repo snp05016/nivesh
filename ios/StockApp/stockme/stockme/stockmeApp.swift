@@ -189,6 +189,7 @@ struct stockmeApp: App {
                 if newUserId != nil {
                     Task { await notificationManager.requestAuthorization() }
                 }
+                Task { await FeatureFlags.shared.refresh(force: true) }
             }
             // Item 5 + 28: Scene phase tracking for timeout-based lock.
             // Only .background (not .inactive) counts as "left the app" —

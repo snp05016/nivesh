@@ -37,7 +37,7 @@ final class FeatureFlagsTests: XCTestCase {
 
     func testMissingAndNeverFetchedKeysAreOff() async {
         let empty = FeatureFlags(defaults: freshDefaults(), fetch: { throw Offline() })
-        for key in FeatureKey.allCases { XCTAssertFalse(empty.isOn(key)) }
+        for key in FeatureKey.allCases { XCTAssertEqual(empty.isOn(key), key.defaultValue, key.rawValue) }
 
         let store = FeatureFlags(defaults: freshDefaults(), fetch: { ["money_holding_detail": true] })
         await store.refresh()
@@ -84,6 +84,44 @@ final class FeatureFlagsTests: XCTestCase {
         clock.addTimeInterval(601)
         await store.refresh()
         XCTAssertEqual(calls, 3)
+    }
+
+    // MARK: Habit cluster (spec_habit 0.2)
+
+    func testHabitContractDecodes() {
+        let body = #"{"flags":{"notif_prefs_v2":true,"today_brief":false,"event_radar":false,"watchlist_v2":true,"widget_snapshot":false},"version":1,"ttl_seconds":300}"#
+        XCTAssertEqual(FeatureFlags.decode(json(body)), [
+            "notif_prefs_v2": true, "today_brief": false, "event_radar": false,
+            "watchlist_v2": true, "widget_snapshot": false,
+        ])
+    }
+
+    func testDefaultsAreOffExceptWidgetSnapshot() {
+        for key in FeatureKey.allCases {
+            XCTAssertEqual(key.defaultValue, key == .widgetSnapshot, key.rawValue)
+        }
+    }
+
+    func testCachedIsOnReadsStoredFlags() async {
+        let defaults = UserDefaults(suiteName: "test.flags.\(UUID())")!
+        XCTAssertTrue(FeatureFlags.cachedIsOn(.widgetSnapshot, defaults: defaults))  // nothing stored
+        XCTAssertFalse(FeatureFlags.cachedIsOn(.todayBrief, defaults: defaults))
+
+        let store = FeatureFlags(defaults: defaults, fetch: { ["widget_snapshot": false, "today_brief": true] })
+        await store.refresh()
+        XCTAssertFalse(FeatureFlags.cachedIsOn(.widgetSnapshot, defaults: defaults))
+        XCTAssertTrue(FeatureFlags.cachedIsOn(.todayBrief, defaults: defaults))
+    }
+
+    func testUnknownKeysIgnoredAndMissingKeysUseDefaults() async {
+        let defaults = freshDefaults()
+        let store = FeatureFlags(defaults: defaults, fetch: { ["some_future_flag": true, "event_radar": true] })
+        await store.refresh()
+        XCTAssertTrue(store.isOn(.eventRadar))
+        XCTAssertTrue(store.isOn(.widgetSnapshot))  // missing -> default on
+        XCTAssertFalse(store.isOn(.watchlistV2))    // missing -> default off
+        XCTAssertTrue(FeatureFlags.cachedIsOn(.widgetSnapshot, defaults: defaults))
+        XCTAssertFalse(FeatureFlags.cachedIsOn(.notifPrefsV2, defaults: defaults))
     }
 
     func testFailedRefreshIsRetriedNextTime() async {
