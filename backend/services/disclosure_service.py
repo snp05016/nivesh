@@ -43,7 +43,7 @@ _AI_PROCESSORS_TEXT = (
     "Portfolio-based AI features (morning brief, red-flag summary, macro "
     "impact, daily action, trade-journal patterns, the PDF portfolio review and "
     "Copilot answers about your holdings) run only if you turn on the 'AI "
-    "processing' consent in Settings > Account Security > KYC Consents. It is "
+    "processing' consent in Settings > Account Security > Consents. It is "
     "off by default and you can withdraw it there at any time; without it these "
     "features show non-AI text. With it, the app sends what each feature needs "
     "(stock tickers and company names, day and overall P&L percentages, AI "
@@ -59,9 +59,11 @@ _AI_PROCESSORS_TEXT = (
 
 # FINSEC-09: version of the privacy policy + terms of use the app shows at
 # registration. Bump it whenever either text changes; iOS PolicyVersion.current
-# (Models/KYCModels.swift) must match. The bodies below are still interim
-# wording: the owner/legal must supply the final text.
-CURRENT_POLICY_VERSION = "2026-10-11.1"
+# (Models/KYCModels.swift) must match (trust-demo-kyc-ios copies it in the next
+# client release; until then shipped builds send an older value, which
+# auth_service.ACCEPTED_POLICY_VERSIONS still accepts). The bodies below are
+# still interim wording: the owner/legal must supply the final text.
+CURRENT_POLICY_VERSION = "2026-10-19"
 
 # FINSEC-09: purpose text stored with every consent row, so each record says
 # what the user agreed to. record_consent rejects any type not listed here.
@@ -75,6 +77,27 @@ CONSENT_PURPOSES = {
     "age_18_plus": "Confirm you are 18 or older before creating an account.",
     "disclaimer": "Acknowledge the not-financial-advice disclaimer.",
 }
+
+# I04: consents a user can grant and withdraw in the app, in display order.
+# Acknowledgements (privacy_notice, terms, disclaimer and the age_18_plus
+# attestation) are recorded at sign-up and are not toggles. Retired demo
+# purposes (credit_check, sim_binding, data_sharing) are never listed.
+# product_analytics appears only once platform-events-api adds it to
+# CONSENT_PURPOSES.
+USER_CONSENTS: dict[str, str] = {
+    "ai_processing": "AI processing",
+    "product_analytics": "Usage analytics",
+}
+
+
+def withdrawable_purposes() -> list[dict]:
+    """GET /api/kyc/consent-purposes: the user-toggleable consents, each with
+    the purpose text stored on its consent rows."""
+    return [
+        {"consent_type": k, "title": t, "purpose": CONSENT_PURPOSES[k]}
+        for k, t in USER_CONSENTS.items()
+        if k in CONSENT_PURPOSES
+    ]
 
 # REG-12: grievance officer contact (DPDP Rules / IT Rules 2021). Read from the
 # server .env, which main.py loads before importing services.
@@ -106,9 +129,8 @@ STATIC_DISCLOSURES = {
                 "the password itself). What you enter: portfolio holdings and "
                 "transactions, watchlists, price alerts, finance-tracker "
                 "entries, forum posts and votes, and Copilot or other AI-feature "
-                "questions. Device and technical data: a device identifier for "
-                "device binding, the Apple push-notification token if you allow "
-                "notifications, your IP address in consent records and "
+                "questions. Technical data: the Apple push-notification token "
+                "if you allow notifications, your IP address in consent records and "
                 "rate-limit checks, and the app version. Each consent record "
                 "stores the policy version, its purpose and the time. We do not "
                 "collect government ID, bank or card details, or biometric data.",
@@ -118,8 +140,8 @@ STATIC_DISCLOSURES = {
                 "To run your account and sign-in; to show your portfolio, "
                 "watchlist, alerts and analysis; to answer AI-feature requests; "
                 "to send the notifications you turned on; to run the forum and "
-                "moderate it; and to keep the service secure (rate limits, "
-                "fraud checks, audit logs). We do not sell your data, show "
+                "moderate it; and to keep the service secure (rate limits "
+                "and audit logs). We do not sell your data, show "
                 "ads or build advertising profiles.",
             ),
             _section("AI processors", _AI_PROCESSORS_TEXT),
@@ -148,9 +170,8 @@ STATIC_DISCLOSURES = {
             _section(
                 "Your rights",
                 "You can see and correct your data in the app. You can "
-                "withdraw the credit-check, device-binding, data-sharing and "
-                "AI-processing consents in Settings > Account Security > KYC "
-                "Consents; withdrawing is as easy as giving consent, and "
+                "withdraw the AI-processing consent in Settings > Account "
+                "Security > Consents; withdrawing is as easy as giving consent, and "
                 "features that need that consent stop using your data. You can "
                 "delete your account in Settings > Account > Delete Account. To "
                 "ask for deletion by email, to get a summary of your data, or to nominate "
@@ -178,9 +199,8 @@ STATIC_DISCLOSURES = {
                 "invest; you alone are responsible for your investment decisions.",
             ),
             _section(
-                "No trading or lending",
-                "The app does not place orders, hold funds or lend money. The "
-                "loan and FD marketplaces list illustrative demo offers only.",
+                "No trading",
+                "The app does not place orders or hold funds.",
             ),
             _section(
                 "Your account",

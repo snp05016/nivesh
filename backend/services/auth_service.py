@@ -7,6 +7,13 @@ from services.audit_service import audit
 from services.disclosure_service import CURRENT_POLICY_VERSION
 from services.kyc_consent_service import record_consent
 
+# I04: notice versions accepted at sign-up. Shipped builds still send the
+# version their PolicyVersion.current carries; each consent row records the
+# version the client sent (notice_hash is None for any non-current one).
+# Drop the old values once IOS_MIN_BUILD is at or above the build that carries
+# the new PolicyVersion.current.
+ACCEPTED_POLICY_VERSIONS = (CURRENT_POLICY_VERSION, "2026-10-11.1", "2026-10-01")
+
 
 def _auth_payload(user) -> dict:
     # Login and register must share one shape: iOS decodes both into LoggedInUser,
@@ -104,9 +111,9 @@ def update_display_name(user_id, display_name):
 
 
 def register_user(username, password, display_name, accepted_policy_version=None, age_confirmed=False, ip_address=None, app_version=None):
-    # REG-12: no account without consent to the current notice and an 18+
-    # attestation. ValueError surfaces as HTTP 400 with this text as `detail`.
-    if accepted_policy_version != CURRENT_POLICY_VERSION:
+    # REG-12: no account without consent to an accepted notice version and an
+    # 18+ attestation. ValueError surfaces as HTTP 400 with this text as `detail`.
+    if accepted_policy_version not in ACCEPTED_POLICY_VERSIONS:
         raise ValueError("Please update the app and accept the current Privacy Policy and Terms of Use.")
     if age_confirmed is not True:
         raise ValueError("You must be 18 or older to create an account.")

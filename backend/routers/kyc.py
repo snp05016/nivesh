@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 
 from core.demo_mode import require_demo_mode
 from core.security import rate_limited_user, require_auth
+from services import disclosure_service
 from services.kyc_consent_service import (
     bind_device,
     get_active_consents,
@@ -82,6 +83,13 @@ def delete_consent(consent_type: str, user_id: int = Depends(rate_limited_user("
 @router.get("/consents")
 def list_consents(user_id: int = Depends(require_auth)):
     return get_active_consents(user_id)
+
+
+# I04: data source of the consent screen. No feature flag: DPDP requires
+# withdrawing to stay as easy as granting.
+@router.get("/consent-purposes")
+def list_consent_purposes(_user_id: int = Depends(require_auth)):
+    return {"purposes": disclosure_service.withdrawable_purposes()}
 
 
 # ---------------------------------------------------------------------------
