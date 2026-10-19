@@ -356,48 +356,18 @@ def portfolio_note_endpoint(req: PortfolioNoteRequest, token_user: int = Depends
 
 
 from database import PortfolioTransaction
-from typing import Literal as _Literal
-from pydantic import Field as _Field, field_validator as _field_validator
 
-class MultiAssetTransactionRequest(_BaseModel):
-    user_id: int
-    # Allowed values mirror the CHECK constraints on multi_asset_transactions.
-    asset_type: _Literal["STOCK", "MF", "GOLD", "FD"]
-    symbol: str = _Field(..., min_length=1, max_length=50)
-    transaction_type: _Literal["BUY", "SELL", "DEPOSIT", "WITHDRAWAL", "MATURITY"]
-    quantity: float = _Field(..., gt=0, allow_inf_nan=False)
-    price: float = _Field(..., ge=0, allow_inf_nan=False)
-    fees: float = _Field(0.0, ge=0, allow_inf_nan=False)
-    notes: _Optional[str] = _Field(None, max_length=500)
 
-    @_field_validator("asset_type", "transaction_type", mode="before")
-    @classmethod
-    def _upper(cls, v):
-        # Keep accepting lowercase input from existing clients.
-        return v.strip().upper() if isinstance(v, str) else v
+@router.post("/portfolio/multi-asset/transaction", status_code=410)
+def multi_asset_transaction_entry(_token_user: int = Depends(require_auth)):
+    """Retired (money C4): portfolio_transactions is the only ledger, so stock and
+    fund trades go through POST /portfolio/add. The body is ignored and nothing is
+    read or written (require_auth only verifies the token)."""
+    raise HTTPException(
+        status_code=410,
+        detail={"code": "ENDPOINT_RETIRED", "message": "Use POST /portfolio/add."},
+    )
 
-@router.post("/portfolio/multi-asset/transaction")
-def multi_asset_transaction_entry(req: MultiAssetTransactionRequest, token_user: int = Depends(require_auth)):
-    assert_same_user(req.user_id, token_user)
-        
-    try:
-        with get_session() as session:
-            tx = PortfolioTransaction(
-                user_id=req.user_id,
-                asset_type=req.asset_type.upper(),
-                symbol=req.symbol.upper(),
-                transaction_type=req.transaction_type.upper(),
-                quantity=req.quantity,
-                price=req.price,
-                fees=req.fees,
-                notes=req.notes
-            )
-            session.add(tx)
-            session.commit()
-            return {"success": True, "transaction_id": tx.id}
-    except Exception as e:
-        logging.error(f"Error saving multi-asset transaction: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
 
 @router.get("/portfolio/multi-asset/transactions/{user_id}")
 def multi_asset_transactions_history(user_id: int, asset_type: _Optional[str] = None, _caller: int = Depends(require_user_match)):

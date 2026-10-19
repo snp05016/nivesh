@@ -67,6 +67,8 @@ class Portfolio(Base):
     is_virtual    = Column(Boolean, default=False, nullable=False, server_default="0")
     created_at    = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     group_id      = Column(Integer, ForeignKey("portfolio_groups.id"), nullable=True)
+    # 'EQ' listed equity | 'MF' mutual fund (ticker is the ISIN); the latest ledger row's.
+    asset_class   = Column(String(8), nullable=False, default="EQ", server_default="EQ")
 
     user = relationship("User", back_populates="portfolio")
 
@@ -78,6 +80,7 @@ class Portfolio(Base):
         UniqueConstraint("user_id", "ticker", "group_name", name="uq_portfolio_user_ticker_group"),
         CheckConstraint("group_name = 'watchlist' OR shares > 0", name="ck_portfolio_shares_positive"),
         CheckConstraint("group_name = 'watchlist' OR buy_price > 0", name="ck_portfolio_buy_price_positive"),
+        CheckConstraint("asset_class IN ('EQ','MF')", name="ck_portfolio_asset_class"),
     )
 
 
@@ -121,9 +124,17 @@ class Transaction(Base):
     created_at       = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     # DB-09: client Idempotency-Key; a retried POST returns the first row.
     client_request_id = Column(String(64), nullable=True)
+    asset_class      = Column(String(8), nullable=False, default="EQ", server_default="EQ")
+    # Rows written by a statement import (CAS); NULL for manual and internal rows.
+    import_batch_id  = Column(
+        Integer,
+        ForeignKey("import_batches.id", name="fk_portfolio_transactions_import_batch", ondelete="SET NULL"),
+        nullable=True,
+    )
 
     __table_args__ = (
         Index("ix_portfolio_transactions_user_id", "user_id"),
+        Index("ix_portfolio_transactions_import_batch", "import_batch_id"),
         Index("ix_portfolio_transactions_ticker", "ticker"),
         Index("ix_portfolio_transactions_group_id", "group_id"),
         Index("ix_portfolio_transactions_date", "date"),
@@ -134,6 +145,51 @@ class Transaction(Base):
         CheckConstraint(
             "transaction_type IN ('BUY','SELL','SPLIT','BONUS','DIVIDEND','ADJUST')",
             name="ck_portfolio_transactions_type",
+        ),
+        CheckConstraint("asset_class IN ('EQ','MF')", name="ck_portfolio_transactions_asset_class"),
+    )
+
+
+class ImportBatch(Base):
+    """One statement upload (CAS): parsing -> previewed -> committed, or failed/cancelled.
+
+    A file can be committed once per user (partial unique index); previews of the
+    same file may repeat. Ledger rows it wrote carry import_batch_id.
+    """
+    __tablename__ = "import_batches"
+
+    id                     = Column(Integer, primary_key=True, autoincrement=True)
+    user_id                = Column(Integer, ForeignKey("users.id"), nullable=False)
+    source                 = Column(String(16), nullable=False, default="cams_kfintech", server_default="cams_kfintech")
+    status                 = Column(String(12), nullable=False)
+    file_sha256            = Column(String(64), nullable=True)
+    cas_type               = Column(String(10), nullable=True)
+    statement_from         = Column(Date, nullable=True)
+    statement_to           = Column(Date, nullable=True)
+    preview_json           = Column(JSON, nullable=True)
+    error_code             = Column(String(40), nullable=True)
+    schemes_total          = Column(Integer, nullable=False, default=0, server_default="0")
+    schemes_imported       = Column(Integer, nullable=False, default=0, server_default="0")
+    inserted_rows          = Column(Integer, nullable=False, default=0, server_default="0")
+    skipped_rows           = Column(Integer, nullable=False, default=0, server_default="0")
+    consent_notice_version = Column(String(16), nullable=True)
+    consented_at           = Column(DateTime, nullable=True)
+    created_at             = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    committed_at           = Column(DateTime, nullable=True)
+
+    __table_args__ = (
+        Index("ix_import_batches_user_created", "user_id", "created_at"),
+        Index(
+            "uq_import_batches_user_file_committed",
+            "user_id",
+            "file_sha256",
+            unique=True,
+            postgresql_where=text("status = 'committed'"),
+            sqlite_where=text("status = 'committed'"),
+        ),
+        CheckConstraint(
+            "status IN ('parsing','previewed','committed','failed','cancelled')",
+            name="ck_import_batches_status",
         ),
     )
 
@@ -309,6 +365,8 @@ class TradeJournal(Base):
     updated_at     = Column(DateTime, nullable=True)      # added — run migrate_trade_journal.py
     is_virtual     = Column(Boolean, default=False, nullable=False, server_default="0")
     created_at     = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    # Final market comparison per horizon, written once: {"21": {...}, "63": {...}}.
+    market_score   = Column(JSON, nullable=True)
 
     user = relationship("User", back_populates="trade_journal")
 

@@ -236,6 +236,10 @@ ERASURE_POLICY: dict[str, str] = {
     "portfolio.user_id": "delete",
     "portfolio_groups.user_id": "delete",
     "portfolio_transactions.user_id": "delete",
+    # Statement imports. erase_user walks sorted_tables in reverse, so
+    # portfolio_transactions (which references import_batches) is erased first;
+    # its FK is ON DELETE SET NULL in any case.
+    "import_batches.user_id": "delete",
     "multi_asset_transactions.user_id": "delete",
     "analysis_history.user_id": "nullify",
     "analysis_jobs.user_id": "nullify",

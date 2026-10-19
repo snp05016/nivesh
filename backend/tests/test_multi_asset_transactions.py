@@ -1,4 +1,5 @@
-"""GH-646: the multi-asset transaction endpoint and table reject invalid financial rows."""
+"""GH-646: the multi_asset_transactions table rejects invalid financial rows; its POST
+is retired (money C4, 410) and the history GET still serves existing rows."""
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.exc import IntegrityError
@@ -27,31 +28,32 @@ def _payload(user_id, **overrides):
 
 @pytest.mark.parametrize(
     "overrides",
-    [
-        {"asset_type": "CRYPTO"},
-        {"transaction_type": "GIFT"},
-        {"quantity": 0},
-        {"quantity": -1},
-        {"price": -5},
-        {"fees": -1},
-        {"symbol": ""},
-        {"notes": "x" * 501},
-    ],
+    [{}, {"asset_type": "mf", "transaction_type": "buy", "symbol": "INF109K01VQ1"}, {"quantity": -1}],
 )
-def test_rejects_invalid_payload(client, auth_headers, test_user_id, overrides):
+def test_post_is_retired_and_writes_nothing(client, auth_headers, test_user_id, overrides):
+    """Money C4: portfolio_transactions is the only ledger; the POST answers 410."""
+    import database
+
+    with database.get_session() as session:
+        before = session.query(PortfolioTransaction).count()
     response = client.post(_URL, json=_payload(test_user_id, **overrides), headers=auth_headers)
-    assert response.status_code == 422
+    assert response.status_code == 410
+    assert response.json()["detail"] == {"code": "ENDPOINT_RETIRED", "message": "Use POST /portfolio/add."}
+    with database.get_session() as session:
+        assert session.query(PortfolioTransaction).count() == before
 
 
-def test_accepts_valid_lowercase_payload(client, auth_headers, test_user_id):
-    response = client.post(
-        _URL,
-        json=_payload(test_user_id, asset_type="mf", transaction_type="buy", symbol="INF109K01VQ1"),
-        headers=auth_headers,
-    )
-    assert response.status_code == 200
-    tx_id = response.json()["transaction_id"]
-    assert isinstance(tx_id, int)
+def test_history_still_lists_existing_rows(client, auth_headers, test_user_id):
+    import database
+
+    with database.get_session() as session:
+        tx = PortfolioTransaction(
+            user_id=test_user_id, asset_type="MF", symbol="INF109K01VQ1",
+            transaction_type="BUY", quantity=10, price=25.0, fees=0.0,
+        )
+        session.add(tx)
+        session.commit()
+        tx_id = tx.id
 
     history = client.get(
         f"/portfolio/multi-asset/transactions/{test_user_id}", headers=auth_headers
