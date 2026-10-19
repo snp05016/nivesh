@@ -155,6 +155,7 @@ from routers import youtube_summary as youtube_summary_router
 from routers import client_telemetry
 from routers import features as features_router
 from routers import money as money_router
+from routers import research_lab
 
 app.include_router(health_router)  # every health probe (REL-18)
 app.include_router(auth.router)
@@ -194,6 +195,7 @@ app.include_router(fundamentals.router)
 app.include_router(fundamentals.router_v1)
 app.include_router(backtests.router, prefix="/api/v1/backtests")
 app.include_router(research.router)  # Research Engine stock reports (/api/v1/research)
+app.include_router(research_lab.router)  # Research Lab (/api/v1/research-lab, flag research_lab)
 app.include_router(ml_signal.router)  # FAKE-04: the mock stock_financials router is gone
 app.include_router(preferences.router)
 app.include_router(subscription.router)

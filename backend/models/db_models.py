@@ -2005,3 +2005,56 @@ class StockEvent(Base):
         CheckConstraint("event_type IN ('board_meeting','kmp_exit','pledge')", name="ck_stock_events_type"),
         CheckConstraint("severity IN ('high','medium','low')", name="ck_stock_events_severity"),
     )
+
+
+# ---------------------------------------------------------------------------
+# Research Lab (docs/platform/api-contract.md). The ml-engine is stateless; these
+# rows are the only Lab state. All three are erased with the user (ERASURE_POLICY).
+# ---------------------------------------------------------------------------
+
+class LabSession(Base):
+    """A Time Machine session: the config plus its append-only action log.
+
+    clock/equity/finished are a cache of the last accepted replay for the list view;
+    the replay of (config, actions) on the ml-engine is the source of truth.
+    """
+    __tablename__ = "lab_sessions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    title: Mapped[str] = mapped_column(String(120), nullable=False)
+    scenario_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    config: Mapped[Any] = mapped_column(JSON, nullable=False, default=dict)
+    actions: Mapped[Any] = mapped_column(JSON, nullable=False, default=list)  # each may carry client_action_id
+    clock: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    equity: Mapped[Optional[Decimal]] = mapped_column(Numeric(14, 4), nullable=True)
+    finished: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_utcnow)
+
+    __table_args__ = (Index("ix_lab_sessions_user_id", "user_id"),)
+
+
+class LabExperiment(Base):
+    """One hypothesis run in the user's trials ledger (its count feeds trials_so_far)."""
+    __tablename__ = "lab_experiments"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    question: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    spec: Mapped[Any] = mapped_column(JSON, nullable=False, default=dict)
+    fingerprint: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    verdict: Mapped[str] = mapped_column(String(32), nullable=False)
+    report: Mapped[Any] = mapped_column(JSON, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_utcnow)
+
+    __table_args__ = (Index("ix_lab_experiments_user_id", "user_id"),)
+
+
+class LabLearnerProgress(Base):
+    """Lab School progress: the opaque learner state the ml-engine grader returns."""
+    __tablename__ = "lab_learner_progress"
+
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    state: Mapped[Any] = mapped_column(JSON, nullable=False, default=dict)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_utcnow)

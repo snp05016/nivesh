@@ -45,6 +45,9 @@ FLAGS: dict[str, tuple[str, bool]] = {
     "home_bell_inbox": ("FEATURE_HOME_BELL_INBOX", True),
     "hindi_glossary": ("FEATURE_HINDI_GLOSSARY", False),
     "hindi_brief": ("FEATURE_HINDI_BRIEF", False),
+    # Research Lab (docs/platform/api-contract.md): off until legal review of the NSE
+    # Data Usage Policy section 7.4 on simulation use.
+    "research_lab": ("FEATURE_RESEARCH_LAB", False),
 }
 
 # Flags that also accept "shadow": the backend does the work (e.g. ingest) but
@@ -63,6 +66,7 @@ IOS_FLAGS: dict[str, str] = {
     "hindi_glossary": "hindi_glossary",
     "hindi_brief": "hindi_brief",
     "cas_import": "money_cas_import",
+    "research_lab": "research_lab",
 }
 _RESEARCH_GATED = frozenset({"stock_key_facts", "stock_peers", "compare"})
 _APP_STORE_PREFIX = "https://apps.apple.com/"

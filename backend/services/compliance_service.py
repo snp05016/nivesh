@@ -271,6 +271,9 @@ ERASURE_POLICY: dict[str, str] = {
     "audit_log_entries.user_id": "retain",
     "data_deletion_requests.user_id": "retain",
     "fixed_deposit_bookings.user_id": "delete",
+    "lab_sessions.user_id": "delete",
+    "lab_experiments.user_id": "delete",
+    "lab_learner_progress.user_id": "delete",
 }
 
 

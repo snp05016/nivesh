@@ -24,6 +24,7 @@ IOS_DEFAULTS = {
     "hindi_glossary": False,
     "hindi_brief": False,
     "cas_import": False,
+    "research_lab": False,
 }
 RESEARCH_GATED = ("stock_key_facts", "stock_peers", "compare")
 STORE_URL = "https://apps.apple.com/in/app/id1234567890"

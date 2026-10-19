@@ -35,6 +35,7 @@ DEFAULTS = {
     "home_bell_inbox": True,
     "hindi_glossary": False,
     "hindi_brief": False,
+    "research_lab": False,
 }
 
 
