@@ -53,14 +53,22 @@ router = APIRouter(tags=["Portfolio"])
 # 1. GET /portfolio/{user_id}
 # ---------------------------------------------------------------------------
 @router.get("/portfolio/{user_id}")
-def portfolio_endpoint(user_id: int, _caller: int = Depends(require_user_match), is_virtual: bool = False):
+def portfolio_endpoint(
+    user_id: int, request: Request, _caller: int = Depends(require_user_match), is_virtual: bool = False,
+):
+    # Fund rows (ISIN tickers) go only to builds that declare they understand them; shipped
+    # builds would show an ISIN as a stock (money-mf-valuation).
+    mf_ok = "asset_class" in [t.strip() for t in request.headers.get("X-Client-Features", "").split(",")]
     try:
         with get_session() as session:
             user = session.get(User, user_id)
             if not user:
                 raise HTTPException(status_code=404, detail=f"User {user_id} not found")
 
-            holdings = session.query(Portfolio).filter(
+            holding_query = session.query(Portfolio)
+            if mf_ok:
+                holding_query = holding_query.execution_options(include_mf=True)
+            holdings = holding_query.filter(
                 Portfolio.user_id == user_id,
                 Portfolio.group_name != "watchlist",
                 Portfolio.is_virtual == is_virtual,
@@ -69,7 +77,8 @@ def portfolio_endpoint(user_id: int, _caller: int = Depends(require_user_match),
                 return {"user": user.display_name, "holdings": [], "total_invested": 0, "total_current": 0, "total_pnl": 0}
 
             tickers = [h.ticker for h in holdings]
-            latest = latest_signals_by_ticker(session, tickers, user_id=user_id)
+            fund_tickers = [h.ticker for h in holdings if h.asset_class == "MF"]
+            latest = latest_signals_by_ticker(session, [t for t in tickers if t not in fund_tickers], user_id=user_id)
             last_analyses = {t: rows[0]["created_at"] for t, rows in latest.items()}
             last_signals = {t: rows[0]["signal"] or "HOLD" for t, rows in latest.items()}
 
@@ -83,9 +92,15 @@ def portfolio_endpoint(user_id: int, _caller: int = Depends(require_user_match),
             except Exception:
                 return (None, None, "unavailable", None)
 
-        with ThreadPoolExecutor(max_workers=min(len(holdings), 10)) as pool:
-            price_results = list(pool.map(_safe_price, tickers))
-        prices = dict(zip(tickers, price_results))
+        stock_tickers = [t for t in tickers if t not in fund_tickers]
+        with ThreadPoolExecutor(max_workers=max(1, min(len(stock_tickers), 10))) as pool:
+            price_results = list(pool.map(_safe_price, stock_tickers))
+        prices = dict(zip(stock_tickers, price_results))
+        if fund_tickers:
+            from services import money_pricing
+
+            for isin, quote in money_pricing.price_quotes([(t, "MF") for t in fund_tickers]).items():
+                prices[isin] = (quote.price, quote.prev_close, quote.status, quote.as_of)
 
         rows = []
         unpriced: list[str] = []
@@ -110,6 +125,7 @@ def portfolio_endpoint(user_id: int, _caller: int = Depends(require_user_match),
                 "ticker": h.ticker,
                 "company_name": h.company_name,
                 "group": h.group_name,
+                "asset_class": h.asset_class or "EQ",
                 # The read model stores full precision; round only for display.
                 "shares": round(shares, 6),
                 "buy_price": round(buy_price, 2),

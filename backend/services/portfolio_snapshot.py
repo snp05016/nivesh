@@ -21,6 +21,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from database import get_session, Portfolio, PortfolioValuationHistory, User, AnalysisHistory, NetWorthLedger, latest_per_ticker
 from schemas.db_json_schemas import PortfolioPositionSchema, PortfolioSnapshotSchema, safe_validate_portfolio_json
 from services.llm_utils import contains_devanagari
+from services import money_pricing
 from services.yfinance_client import _yf_price, _to_ns
 from services.kyc_consent_service import AI_PROCESSING_CONSENT, has_active_consent
 from services.advisory_guard import NON_ADVISORY_RULES
@@ -181,8 +182,10 @@ async def snapshot_all_users() -> dict:
                         company_name=str(h.company_name or ""),
                         shares=float(h.shares),  # type: ignore[arg-type]
                         buy_price=float(h.buy_price),  # type: ignore[arg-type]
+                        asset_class=str(h.asset_class or "EQ"),
                     )
-                    for h in db.query(Portfolio).filter(
+                    # Funds are valued at NAV; this module may read them (money-mf-isolation).
+                    for h in db.query(Portfolio).execution_options(include_mf=True).filter(
                         Portfolio.user_id == user_id,
                         Portfolio.group_name == "holdings"
                     ).all()
@@ -195,8 +198,15 @@ async def snapshot_all_users() -> dict:
 
     # Phase 2: price each ticker once, with no session open.
     prices = {}
-    for ticker in sorted({h.ticker for _, _, _, holdings in pending for h in holdings}):
+    all_holdings = [h for _, _, _, holdings in pending for h in holdings]
+    for ticker in sorted({h.ticker for h in all_holdings if h.asset_class != "MF"}):
         prices[ticker] = await asyncio.to_thread(get_current_price, ticker)
+    fund_isins = sorted({h.ticker for h in all_holdings if h.asset_class == "MF"})
+    if fund_isins:
+        quotes = await asyncio.to_thread(money_pricing.price_quotes, [(i, "MF") for i in fund_isins])
+        for isin, quote in quotes.items():
+            # A NAV more than 7 days old is unpriced, like a failed stock quote.
+            prices[isin] = quote.price if quote.status in ("nav", "stale") else None
 
     # Phase 3: one short write session per user.
     for user_id, valuation_done, ledger_done, holdings in pending:
