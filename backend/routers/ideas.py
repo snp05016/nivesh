@@ -5,7 +5,7 @@ Split out of routers/market.py (ARCH-14); paths, handler names and tags are unch
 from helpers import get_session, AdvisorBiography, TextAdvisoryInsight, log_ideas_error
 from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException
-from services.sebi_registry import REGISTERED_CHANNELS
+from services.sebi_registry import REGISTERED_CHANNELS, registry_is_fresh
 
 router = APIRouter(tags=["Market Data"])
 
@@ -21,9 +21,11 @@ def ideas_advisors_endpoint():
     """
     Returns the YouTube channels in services/sebi_registry.py with their SEBI
 registration numbers. Built from that registry only, never from the database,
-so no unverified registration claim can be served.
+so no unverified registration claim can be served. The list is empty while the
+registry is not fresh (re-verified within 90 days), so stale badges fail closed.
 Response: { "advisors": [...], "count": N, "fetched_at": "..." }
     """
+    channels = REGISTERED_CHANNELS if registry_is_fresh() else []
     advisors = [
         {
             "id": i + 1,
@@ -37,7 +39,7 @@ Response: { "advisors": [...], "count": N, "fetched_at": "..." }
             ),
             "created_at": None,
         }
-        for i, c in enumerate(REGISTERED_CHANNELS)
+        for i, c in enumerate(channels)
     ]
     return {
         "advisors": advisors,

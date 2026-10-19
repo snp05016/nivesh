@@ -5,11 +5,24 @@ Every INH (research analyst) / INA (investment adviser) number the backend serve
 comes from REGISTERED_CHANNELS. No other backend module may contain one; the test
 tests/test_sebi_registry_claims.py enforces it. Never add an entry without a number
 confirmed on SEBI's recognised-intermediaries list (siportal.sebi.gov.in).
+
+REGISTRY_VERIFIED_ON is a human attestation: SEBI publishes no machine-readable
+export of RA/IA registrations, so someone re-checks every number by hand and records
+the date. Badges fail closed: when the date is unset, in the future or more than
+REGISTRY_MAX_AGE_DAYS (90) old, registration_for_channel returns None and
+/api/v1/ideas/advisors is empty, so badges disappear on their own. The daily
+sebi_registry_check job alerts from REGISTRY_REMIND_AFTER_DAYS (75) onwards.
+Harvesting keeps using REGISTERED_CHANNELS regardless.
 """
+from datetime import date
+
+from core.timeutil import ist_today
 
 # Date (YYYY-MM-DD) someone last re-checked every number below on SEBI's
 # recognised-intermediaries list. None: not re-checked since the 2026-10 audit.
 REGISTRY_VERIFIED_ON: str | None = None
+REGISTRY_MAX_AGE_DAYS = 90
+REGISTRY_REMIND_AFTER_DAYS = 75
 
 # Owner's note: every entry verified against SEBI public RA/IA registry, June 2026.
 # sebi_reg is mandatory. Only SEBI-registered advisors with 100k+ YouTube subscribers.
@@ -108,11 +121,54 @@ def registration_for_channel(channel_id: str | None = None, name: str | None = N
     """SEBI registration number of a registered channel, else None.
 
     A channel_id, when given, decides alone: it never falls back to the name, so an
-    unregistered channel cannot borrow a registered entity's name.
+    unregistered channel cannot borrow a registered entity's name. Returns None for
+    every channel while the registry is not fresh (registry_is_fresh).
     """
+    if not registry_is_fresh():
+        return None
     if channel_id:
         matches = [c for c in REGISTERED_CHANNELS if c.get("channel_id") == channel_id]
     else:
         key = (name or "").strip().casefold()
         matches = [c for c in REGISTERED_CHANNELS if key and c["name"].casefold() == key]
     return matches[0]["sebi_reg"] if matches else None
+
+
+def registry_age_days(today: date | None = None) -> int | None:
+    """Days since REGISTRY_VERIFIED_ON (negative if in the future); None if unset or unparseable."""
+    try:
+        verified = date.fromisoformat(REGISTRY_VERIFIED_ON or "")
+    except (TypeError, ValueError):
+        return None
+    return ((today or ist_today()) - verified).days
+
+
+def registry_is_fresh(today: date | None = None) -> bool:
+    """True when the registry was re-checked 0..REGISTRY_MAX_AGE_DAYS days ago (a future date is invalid)."""
+    age = registry_age_days(today)
+    return age is not None and 0 <= age <= REGISTRY_MAX_AGE_DAYS
+
+
+def registration_type(sebi_reg: str) -> str:
+    """'Research Analyst' for an INH number, 'Investment Adviser' for INA, else 'Unknown'."""
+    prefix = (sebi_reg or "").strip().upper()[:3]
+    return {"INH": "Research Analyst", "INA": "Investment Adviser"}.get(prefix, "Unknown")
+
+
+def check_registry_freshness() -> dict:
+    """Daily sebi_registry_check job: raise (so job_runs alerts) once a re-check is due.
+
+    Raises from REGISTRY_REMIND_AFTER_DAYS onwards, and when the date is unset or in
+    the future (badges are already off then); otherwise returns {'age_days': n}.
+    """
+    age = registry_age_days()
+    if age is None or age < 0 or age >= REGISTRY_REMIND_AFTER_DAYS:
+        if age is None or age < 0:
+            when = "never (date unset, invalid or in the future)"
+        else:
+            when = f"{age} days ago"
+        raise RuntimeError(
+            f"SEBI registry last verified {when}; re-check every INH/INA number on SEBI's "
+            "recognised intermediaries list and update REGISTRY_VERIFIED_ON"
+        )
+    return {"age_days": age}
