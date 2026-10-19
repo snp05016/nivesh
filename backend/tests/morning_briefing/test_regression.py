@@ -10,6 +10,8 @@ import inspect
 import re
 from pathlib import Path
 
+import pytest
+
 
 BACKEND_ROOT = Path(__file__).parent.parent.parent
 
@@ -152,17 +154,17 @@ def test_regression_B6_session_closed_before_io():
 # ---------------------------------------------------------------------------
 
 def test_regression_B7_button_has_action():
-    """The 'READ FULL BRIEF' button in HomeScreen.swift must set
+    """The 'READ FULL BRIEF' button on Home (Views/Home/HomeSectionViews.swift) must set
     morningBriefShownDate to dismiss the brief after reading.
 
     Fix: the button's action closure assigns morningBriefShownDate.
     """
-    # Search for HomeScreen.swift — skip redirect/hint files (< 500 bytes)
+    # The morning-brief card lives in HomeSectionViews.swift (split out of HomeScreen.swift)
     ios_root = BACKEND_ROOT.parent / "ios"
-    candidates = list(ios_root.rglob("HomeScreen.swift"))
+    candidates = list(ios_root.rglob("HomeSectionViews.swift"))
     candidates = [c for c in candidates if c.stat().st_size > 500]  # skip redirect stubs
     if not candidates:
-        pytest.skip("HomeScreen.swift not found in ios directory tree")
+        pytest.skip("HomeSectionViews.swift not found in ios directory tree")
 
     homescreen_path = candidates[0]
     source = homescreen_path.read_text()
@@ -192,13 +194,13 @@ def test_regression_B7_button_has_action():
 
 
 def test_regression_B7_button_file_found():
-    """Verify the real HomeScreen.swift (not a redirect) is found."""
+    """Verify the real HomeSectionViews.swift (not a redirect) is found."""
     ios_root = BACKEND_ROOT.parent / "ios"
-    candidates = list(ios_root.rglob("HomeScreen.swift"))
+    candidates = list(ios_root.rglob("HomeSectionViews.swift"))
     candidates = [c for c in candidates if c.stat().st_size > 500]
-    assert len(candidates) >= 1, "No real HomeScreen.swift found (only redirect stubs?)"
+    assert len(candidates) >= 1, "No real HomeSectionViews.swift found (only redirect stubs?)"
     source = candidates[0].read_text()
-    assert "READ FULL BRIEF" in source, f"Real HomeScreen.swift at {candidates[0]} lacks button text"
+    assert "READ FULL BRIEF" in source, f"Real HomeSectionViews.swift at {candidates[0]} lacks button text"
 
 
 # ---------------------------------------------------------------------------
