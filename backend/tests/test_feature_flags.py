@@ -26,6 +26,15 @@ DEFAULTS = {
     "event_radar": False,
     "watchlist_v2": False,
     "widget_snapshot": True,
+    # iOS cluster (served with their effective rules; see test_app_config.py)
+    "stock_action_bar": True,
+    "stock_key_facts": False,
+    "stock_peers": False,
+    "compare": False,
+    "onboarding_v2": True,
+    "home_bell_inbox": True,
+    "hindi_glossary": False,
+    "hindi_brief": False,
 }
 
 
