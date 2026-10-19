@@ -74,7 +74,14 @@ extension NetworkManager {
         guard let url = URL(string: "\(baseURL)\(path)") else { throw NetworkError.invalidURL }
         var req = authRequest(url)
         req.timeoutInterval = 120
-        let (bytes, _) = try await URLSession.shared.bytes(for: req)
+        let (bytes, response) = try await URLSession.shared.bytes(for: req)
+        // An error body is JSON, not SSE: fail here instead of streaming nothing.
+        AuthAwareSession.check(req, response)
+        guard let http = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
+        guard (200...299).contains(http.statusCode) else {
+            bytes.task.cancel()
+            throw NetworkError.fromHTTP(status: http.statusCode, data: Data(), endpoint: path)
+        }
         return bytes
     }
 }

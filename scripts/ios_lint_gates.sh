@@ -33,6 +33,10 @@ gate template-stub 'Write your test here' '' ios/StockApp/stockme/stockmeTests
 gate auth-singleton 'AuthManager\.shared'
 gate user-id-fallback 'userId \?\? 1([^0-9.]|$)'
 
+# Requests go through NetworkManager's session (Bearer, correlation id, 401 sign-out,
+# status check); URLSession.shared skips all of that (IOSCORE-27).
+gate raw-urlsession 'URLSession\.shared' '^[^:]*/NetworkManager[^/:]*\.swift:'
+
 # Back-to-back selection haptics (same line or adjacent lines) left by a non-idempotent codemod (IOSUI-31).
 haptic_dups=$(find "$SRC" -name '*.swift' -exec perl -0777 -ne \
   'print "$ARGV\n" if /HapticManager\.selection\(\);?[ \t]*(\n[ \t]*)?HapticManager\.selection\(\)/' {} +)

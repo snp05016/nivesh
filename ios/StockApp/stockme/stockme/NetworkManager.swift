@@ -634,7 +634,7 @@ class NetworkManager: ObservableObject {
 
     func getMarketIndices() async throws -> MarketIndicesResponse {
         guard let url = URL(string: "\(baseURL)/market-indices") else { throw NetworkError.invalidURL }
-        var request = URLRequest(url: url)
+        var request = authRequest(url)
         request.timeoutInterval = 20
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
@@ -756,7 +756,7 @@ class NetworkManager: ObservableObject {
 
     func getSectorPerformance() async throws -> [SectorPerformance] {
         guard let url = URL(string: "\(baseURL)/sector-performance") else { throw NetworkError.invalidURL }
-        var request = URLRequest(url: url)
+        var request = authRequest(url)
         request.timeoutInterval = 15
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
@@ -821,7 +821,7 @@ class NetworkManager: ObservableObject {
 
     func getNiftyHistory(days: Int = 365) async -> [NiftyPricePoint] {
         guard let url = URL(string: "\(baseURL)/nifty-history?days=\(days)") else { return [] }
-        var request = URLRequest(url: url)
+        var request = authRequest(url)
         request.timeoutInterval = 15
         guard let (data, resp) = try? await session.data(for: request),
               let http = resp as? HTTPURLResponse, http.statusCode == 200 else { return [] }
@@ -833,7 +833,7 @@ class NetworkManager: ObservableObject {
 
     func getQuarterlyFinancialsResponse(ticker: String, exchange: String = "NSE") async -> QuarterlyFinancialsResponse? {
         guard let url = URL(string: "\(baseURL)/quarterly-financials?ticker=\(ticker.urlQueryValue)&exchange=\(exchange)") else { return nil }
-        var request = URLRequest(url: url)
+        var request = authRequest(url)
         request.timeoutInterval = 15
         guard let (data, resp) = try? await session.data(for: request),
               let http = resp as? HTTPURLResponse, http.statusCode == 200 else { return nil }
@@ -863,7 +863,7 @@ class NetworkManager: ObservableObject {
 
     func getMacroStrip() async -> MacroStrip? {
         guard let url = URL(string: "\(baseURL)/macro-strip") else { return nil }
-        var request = URLRequest(url: url)
+        var request = authRequest(url)
         request.timeoutInterval = 8
         guard let (data, resp) = try? await session.data(for: request),
               let http = resp as? HTTPURLResponse, http.statusCode == 200 else { return nil }
@@ -874,7 +874,7 @@ class NetworkManager: ObservableObject {
 
     func getAnalystRatings(ticker: String, exchange: String = "NSE") async -> AnalystRatingsResponse? {
         guard let url = URL(string: "\(baseURL)/analyst-ratings?ticker=\(ticker.urlQueryValue)&exchange=\(exchange)") else { return nil }
-        var request = URLRequest(url: url)
+        var request = authRequest(url)
         request.timeoutInterval = 12
         guard let (data, resp) = try? await session.data(for: request),
               let http = resp as? HTTPURLResponse, http.statusCode == 200 else { return nil }
@@ -896,7 +896,7 @@ class NetworkManager: ObservableObject {
 
     func checkHealth() async throws -> Bool {
         guard let url = URL(string: "\(baseURL)/health") else { throw NetworkError.invalidURL }
-        var request = URLRequest(url: url)
+        var request = authRequest(url)
         request.timeoutInterval = 5
         let (_, response) = try await session.data(for: request)
         return (response as? HTTPURLResponse)?.statusCode == 200
@@ -906,7 +906,7 @@ class NetworkManager: ObservableObject {
 
     func quickInfo(ticker: String, exchange: String = "NSE") async -> QuickInfo? {
         guard let url = URL(string: "\(baseURL)/quick-info?ticker=\(ticker.urlQueryValue)&exchange=\(exchange)") else { return nil }
-        var request = URLRequest(url: url)
+        var request = authRequest(url)
         request.timeoutInterval = 10
         guard let (data, resp) = try? await session.data(for: request),
               let http = resp as? HTTPURLResponse, http.statusCode == 200 else { return nil }
@@ -920,7 +920,7 @@ class NetworkManager: ObservableObject {
             print("[fetchStockHistory] Invalid URL for ticker=\(ticker) exchange=\(exchange)")
             return nil
         }
-        var request = URLRequest(url: url)
+        var request = authRequest(url)
         request.timeoutInterval = 15
         do {
             let (data, resp) = try await session.data(for: request)
@@ -958,7 +958,7 @@ class NetworkManager: ObservableObject {
             print("[fetchStockProfile] Invalid URL: \(baseURL)\(endpoint)")
             throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Invalid URL")
         }
-        var request = URLRequest(url: url)
+        var request = authRequest(url)
         request.timeoutInterval = 20
         let data: Data, response: URLResponse
         do {
@@ -1174,7 +1174,7 @@ class NetworkManager: ObservableObject {
     }
 
     func sendTestNotification(ticker: String, exchange: String) async throws -> NotificationPayload {
-        guard let userId = currentUserId else { throw NetworkError.invalidURL }
+        guard let userId = currentUserId else { throw NetworkError.unauthorized }
         struct Req: Encodable { let user_id: Int; let ticker: String; let exchange: String }
         guard let url = URL(string: "\(baseURL)/notifications/test") else { throw NetworkError.invalidURL }
         var request = authRequest(url)
@@ -1182,12 +1182,12 @@ class NetworkManager: ObservableObject {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONEncoder().encode(Req(user_id: userId, ticker: ticker, exchange: exchange))
         let (data, response) = try await session.data(for: request)
-        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { throw NetworkError.invalidResponse }
+        try NetworkError.ensureOK(data: data, response: response)
         return try JSONDecoder().decode(NotificationPayload.self, from: data)
     }
 
     func sendMorningSummaryNotification() async throws -> NotificationPayload {
-        guard let userId = currentUserId else { throw NetworkError.invalidURL }
+        guard let userId = currentUserId else { throw NetworkError.unauthorized }
         struct Req: Encodable { let user_id: Int }
         guard let url = URL(string: "\(baseURL)/notifications/morning-summary-push") else { throw NetworkError.invalidURL }
         var request = authRequest(url)
@@ -1195,7 +1195,7 @@ class NetworkManager: ObservableObject {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONEncoder().encode(Req(user_id: userId))
         let (data, response) = try await session.data(for: request)
-        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { throw NetworkError.invalidResponse }
+        try NetworkError.ensureOK(data: data, response: response)
         return try JSONDecoder().decode(NotificationPayload.self, from: data)
     }
 
@@ -1225,7 +1225,7 @@ class NetworkManager: ObservableObject {
 
     func fetchScreener(preset: String) async throws -> [ScreenerResult] {
         guard let url = URL(string: "\(baseURL)/screener?preset=\(preset)") else { throw NetworkError.invalidURL }
-        var req = URLRequest(url: url)
+        var req = authRequest(url)
         req.timeoutInterval = 20
         let (data, response) = try await session.data(for: req)
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { throw NetworkError.invalidResponse }
@@ -1313,6 +1313,8 @@ class NetworkManager: ObservableObject {
         do {
             (data, response) = try await session.data(for: req)
         } catch {
+            // A cancelled load (view went away, task replaced) is not a failure: rethrow untracked.
+            if error is CancellationError || (error as? URLError)?.code == .cancelled { throw error }
             let body = (error as NSError).localizedDescription
             let err = NetworkError.fetchFailed(endpoint: endpoint, status: -1, body: "Network error: \(body)")
             GlobalErrorDiagnoser.shared.trackNetworkError(err, endpoint: endpoint)
@@ -1492,7 +1494,7 @@ class NetworkManager: ObservableObject {
         guard let url = URL(string: "\(baseURL)\(endpoint)") else {
             throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Invalid URL")
         }
-        var request = URLRequest(url: url)
+        var request = authRequest(url)
         request.timeoutInterval = 20
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else {
@@ -1512,7 +1514,7 @@ class NetworkManager: ObservableObject {
         guard let url = URL(string: "\(baseURL)\(endpoint)") else {
             throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Invalid URL")
         }
-        var request = URLRequest(url: url)
+        var request = authRequest(url)
         request.timeoutInterval = 20
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else {
@@ -1532,7 +1534,7 @@ class NetworkManager: ObservableObject {
         guard let url = URL(string: "\(baseURL)\(endpoint)") else {
             throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Invalid URL")
         }
-        var request = URLRequest(url: url)
+        var request = authRequest(url)
         request.timeoutInterval = 15
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else {
@@ -1554,7 +1556,7 @@ class NetworkManager: ObservableObject {
         guard let url = URL(string: "\(baseURL)\(endpoint)") else {
             throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Invalid URL")
         }
-        var request = URLRequest(url: url)
+        var request = authRequest(url)
         request.timeoutInterval = 20
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else {
@@ -1589,7 +1591,7 @@ extension NetworkManager {
         guard let url = URL(string: "\(baseURL)\(endpoint)") else {
             throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Invalid URL")
         }
-        var request = URLRequest(url: url)
+        var request = authRequest(url)
         request.timeoutInterval = 20
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else {
@@ -1769,7 +1771,7 @@ extension NetworkManager {
         guard let url = URL(string: "\(baseURL)\(endpoint)") else {
             throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Invalid URL")
         }
-        var request = URLRequest(url: url)
+        var request = authRequest(url)
         request.timeoutInterval = 20
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else {
@@ -1791,7 +1793,7 @@ extension NetworkManager {
         guard let url = URL(string: "\(baseURL)\(endpoint)") else {
             throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Invalid URL")
         }
-        var request = URLRequest(url: url)
+        var request = authRequest(url)
         request.timeoutInterval = 20
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else {
@@ -1809,68 +1811,27 @@ extension NetworkManager {
 // MARK: - Harvester API (Market Intelligence — merged into port 8000)
 
 extension NetworkManager {
-    /// Harvester endpoints are now served by the main backend on port 8000.
-    var harvesterBaseURL: String { baseURL }
-
     func fetchHarvesterFeed(ticker: String? = nil, limit: Int = 20) async throws -> HarvesterFeedResponse {
-        var urlStr = "\(harvesterBaseURL)/harvester/feed?limit=\(limit)"
+        var path = "/harvester/feed?limit=\(limit)"
         if let t = ticker, !t.isEmpty {
-            urlStr += "&ticker=\(t.urlQueryValue)"
+            path += "&ticker=\(t.urlQueryValue)"
         }
-        guard let url = URL(string: urlStr) else { throw NetworkError.invalidURL }
-        var request = URLRequest(url: url)
-        request.timeoutInterval = 15
-        if let token = authToken {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
-        let (data, _) = try await session.data(for: request)
-        return try JSONDecoder().decode(HarvesterFeedResponse.self, from: data)
+        return try await _fetchDecode(HarvesterFeedResponse.self, endpoint: path)
     }
 
     func fetchGovernanceCards(ticker: String) async throws -> [HarvestedCard] {
         let enc = ticker.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? ticker
-        guard let url = URL(string: "\(harvesterBaseURL)/harvester/governance/\(enc)") else {
-            throw NetworkError.invalidURL
-        }
-        var request = URLRequest(url: url)
-        request.timeoutInterval = 15
-        if let token = authToken {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
-        let (data, _) = try await session.data(for: request)
-        return try JSONDecoder().decode([HarvestedCard].self, from: data)
+        return try await _fetchDecode([HarvestedCard].self, endpoint: "/harvester/governance/\(enc)")
     }
 
     func fetchHarvesterSources() async throws -> [HarvesterSourceStatus] {
-        guard let url = URL(string: "\(harvesterBaseURL)/harvester/sources") else {
-            throw NetworkError.invalidURL
-        }
         // /harvester/sources requires auth like its sibling harvester routes (AUTH-26).
-        let (data, resp) = try await session.data(for: authRequest(url))
-        guard let http = resp as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
-            throw NetworkError.invalidResponse
-        }
-        return try JSONDecoder().decode([HarvesterSourceStatus].self, from: data)
+        try await _fetchDecode([HarvesterSourceStatus].self, endpoint: "/harvester/sources")
     }
 
     func brainstorm(topic: String, riskTolerance: String) async throws -> BrainstormResponse {
-        guard let url = URL(string: "\(baseURL)/brainstorm") else {
-            throw NetworkError.invalidURL
-        }
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        if let token = authToken {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
-        let body = ["topic": topic, "risk_tolerance": riskTolerance]
-        request.httpBody = try JSONEncoder().encode(body)
-        
-        let (data, resp) = try await session.data(for: request)
-        if let httpResp = resp as? HTTPURLResponse, httpResp.statusCode != 200 {
-            throw NetworkError.invalidResponse
-        }
-        return try JSONDecoder().decode(BrainstormResponse.self, from: data)
+        try await _sendDecode(BrainstormResponse.self, "/brainstorm", method: "POST",
+                              json: ["topic": topic, "risk_tolerance": riskTolerance])
     }
 
     // MARK: - YouTube Summary
@@ -1881,11 +1842,14 @@ extension NetworkManager {
             var req = authRequest(url)
             req.httpMethod = "GET"
             let (data, resp) = try await dataWithRetry(for: req)
-            if let http = resp as? HTTPURLResponse, http.statusCode == 200 {
+            // Only a cache miss (404) may fall through to the paid generate call;
+            // 401, 5xx and the rest surface as typed errors.
+            if (resp as? HTTPURLResponse)?.statusCode != 404 {
+                try NetworkError.ensureOK(data: data, response: resp)
                 return try JSONDecoder().decode(YouTubeVideoSummaryResponse.self, from: data)
             }
         }
-        // Generate summary (cache miss or error)
+        // Generate summary (cache miss)
         guard let url = URL(string: "\(baseURL)/api/v1/youtube/summary") else {
             throw NetworkError.invalidURL
         }
@@ -1895,9 +1859,7 @@ extension NetworkManager {
         let body = ["url": "https://www.youtube.com/watch?v=\(videoId)", "force_refresh": false] as [String: Any]
         req.httpBody = try JSONSerialization.data(withJSONObject: body)
         let (data, resp) = try await dataWithRetry(for: req)
-        guard let http = resp as? HTTPURLResponse, http.statusCode == 200 else {
-            throw NetworkError.invalidResponse
-        }
+        try NetworkError.ensureOK(data: data, response: resp)
         return try JSONDecoder().decode(YouTubeVideoSummaryResponse.self, from: data)
     }
 
@@ -1913,9 +1875,7 @@ extension NetworkManager {
         guard let url = URL(string: "\(baseURL)\(endpoint)") else { throw NetworkError.invalidURL }
         var req = authRequest(url)
         req.httpMethod = "PUT"
-        let (_, response) = try await session.data(for: req)
-        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
-            throw NetworkError.invalidResponse
-        }
+        let (data, response) = try await session.data(for: req)
+        try NetworkError.ensureOK(data: data, response: response)
     }
 }

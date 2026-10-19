@@ -28,7 +28,6 @@ ALLOWLIST = {
     "AppSoundManager.swift",
     "PremiumUpsellBanner.swift",
     "StockTapActionSheetModifier.swift",
-    "ValuationCalendarService.swift",
     "UniversalSearchViewModel.swift",
     "UniversalSearchView.swift",
     "StockCorporateActionsView.swift",
