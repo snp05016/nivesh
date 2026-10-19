@@ -201,14 +201,14 @@ enum FeatureHelp {
     
     static let anomalies = (
         title: "Market Anomalies Guide",
-        subtitle: "A real-time surveillance system that scans the market for unusual activity — volume spikes, price breakouts, and order book irregularities.",
+        subtitle: "An hourly scan of the market for unusual activity — volume spikes, price breakouts, and order book irregularities.",
         sections: [
             HelpSection(icon: "exclamationmark.triangle.fill", title: "Anomaly Types",
                 detail: "Monitors critical deviations: Volume Spikes (trading volume exceeding 3× the 20-day average), Price Breakouts (closing beyond 2 standard deviations on Bollinger Bands), Order Book irregularities (unusual bid-ask spreads or depth imbalances), and Gap Up/Downs (opening price deviating >3% from prior close)."),
             HelpSection(icon: "chart.line.flaktrends.xyaxis", title: "Severity Levels",
                 detail: "Anomalies are bucketed: HIGH signals a statistically rare, >3 sigma event requiring immediate attention. MEDIUM signals unusual but explainable variance. LOW represents mild deviation from moving averages. You can filter by severity to separate noise from actionable alpha."),
             HelpSection(icon: "clock.arrow.2.circlepath", title: "Auto-Scanning & Cron",
-                detail: "The backend anomaly scanner runs as an asynchronous cron job every hour, continuously tracking the top NSE stocks to flag statistical irregularities in real-time. When you open the view, you are served pre-computed findings immediately without triggering heavy real-time scans."),
+                detail: "The backend anomaly scanner runs once an hour and checks the top NSE stocks to flag statistical irregularities. When you open the view, you are served the latest pre-computed findings immediately without triggering a fresh scan."),
             HelpSection(icon: "arrowshape.turn.up.right.fill", title: "Action Steps",
                 detail: "Institutional volume spikes often precede major news or earnings beats. Bollinger breakouts indicate potential trend reversals. These technical flags should be strictly corroborated with the AI Analyst Committee's fundamental reporting before executing trades. Anomalies provide alerts, not guarantees."),
         ]

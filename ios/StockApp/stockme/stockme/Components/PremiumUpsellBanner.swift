@@ -99,7 +99,7 @@ struct PremiumUpsellBanner: View {
 }
 
 #Preview {
-    PremiumUpsellBanner(message: "Unlock unlimited AI Deep Scan analyses")
+    PremiumUpsellBanner(message: "Unlock more with Nivesh Pro")
         .padding()
         .background(Theme.canvasDeep)
 }

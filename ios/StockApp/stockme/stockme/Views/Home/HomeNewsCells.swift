@@ -10,7 +10,6 @@ struct CompactNewsCell: View {
 
     private var sourceLabel: String {
         switch article.source {
-        case "moneycontrol": return "MC"
         case "economic_times": return "ET"
         case "nse": return "NSE"
         case "business_standard": return "BS"
@@ -282,9 +281,8 @@ struct NewsDetailSheet: View {
 
     private var sourceLabel: String {
         switch article.source {
-        case "moneycontrol": return "MoneyControl"
         case "economic_times": return "Economic Times"
-        case "nse": return "NSE Official"
+        case "nse": return "NSE"
         case "business_standard": return "Business Standard"
         case "livemint": return "Livemint"
         case "reuters": return "Reuters"

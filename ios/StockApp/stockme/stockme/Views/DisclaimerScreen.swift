@@ -10,51 +10,45 @@ struct DisclaimerScreen: View {
             PaperTexture()
 
             VStack(spacing: Theme.Spacing.none) {
-                Spacer()
-
-                VStack(spacing: Theme.Spacing.large) {
-                    // Warning Stamp
-                    BanknoteSignalBadge(text: "IMPORTANT", color: Theme.securityGold, rotation: -4)
-                        .scaleEffect(1.2)
-
-                    VStack(spacing: Theme.Spacing.small) {
-                        Text("महत्वपूर्ण सूचना")
-                            .font(.caption2.weight(.bold))
-                            .foregroundStyle(Theme.inkSecondary)
-                        Text("DISCLAIMER")
+                // Scrolls only when Dynamic Type makes the card taller than the screen.
+                ScrollView {
+                    VStack(spacing: Theme.Spacing.large) {
+                        Text("Before you start")
                             .font(Theme.engravedSerif(size: 22, weight: .bold, relativeTo: .title2))
                             .foregroundStyle(Theme.inkPrimary)
+                            .accessibilityAddTraits(.isHeader)
+                            .staggerAppear(delay: 0.1)
+
+                        VStack(alignment: .leading, spacing: Theme.Spacing.card) {
+                            DisclaimerBulletin(
+                                icon: "info.circle.fill",
+                                text: "Nivesh is not registered with SEBI as an investment adviser or research analyst. Nothing in the app is a recommendation to buy, sell or hold any security.",
+                                delay: 0.2
+                            )
+                            DisclaimerBulletin(
+                                icon: "chart.xyaxis.line",
+                                text: "Stock reports describe the past using public market data. Figures can be delayed or incomplete, and past patterns can change.",
+                                delay: 0.3
+                            )
+                            DisclaimerBulletin(
+                                icon: "person.fill.questionmark",
+                                text: "Investments in the securities market are subject to market risks. Consider speaking to a SEBI-registered investment adviser before you invest.",
+                                delay: 0.4
+                            )
+                        }
+                        .padding(.horizontal, Theme.Spacing.medium)
                     }
+                    .padding(Theme.Spacing.xLarge)
+                    .banknoteCard()
+                    .padding(.horizontal, Theme.Spacing.screen)
+                    .padding(.vertical, Theme.Spacing.large)
                     .staggerAppear(delay: 0.1)
-
-                    VStack(spacing: Theme.Spacing.card) {
-                        DisclaimerBulletin(
-                            icon: "info.circle.fill",
-                            text: "This application is for educational purposes only and does not constitute financial advice.",
-                            delay: 0.2
-                        )
-                        DisclaimerBulletin(
-                            icon: "person.fill.questionmark",
-                            text: "Please consult a SEBI-registered advisor before executing any market transactions.",
-                            delay: 0.3
-                        )
-                        DisclaimerBulletin(
-                            icon: "chart.xyaxis.line",
-                            text: "AI predictions are speculative and not indicative of future performance.",
-                            delay: 0.4
-                        )
-                    }
-                    .padding(.horizontal, Theme.Spacing.medium)
                 }
-                .padding(Theme.Spacing.xLarge)
-                .banknoteCard()
-                .padding(.horizontal, Theme.Spacing.screen)
-                .staggerAppear(delay: 0.1)
-
-                Spacer()
+                .scrollBounceBehavior(.basedOnSize)
+                .defaultScrollAnchor(.center)
 
                 VStack(spacing: Theme.Spacing.card) {
-                    Button(action: { HapticManager.selection(); onAccept() }) { Text("I ACKNOWLEDGE & CONTINUE")
+                    Button(action: { HapticManager.selection(); onAccept() }) { Text("I understand")
                             .font(Theme.labelStyle)
                             .foregroundStyle(Theme.canvas)
                             .frame(maxWidth: .infinity)
@@ -105,12 +99,14 @@ private struct DisclaimerBulletin: View {
                 .foregroundStyle(Theme.inkSecondary.opacity(0.4))
                 .frame(width: 20)
                 .padding(.top, Theme.Spacing.xSmall)
-            Text(text.uppercased())
-                .font(.caption2.weight(.bold))
+                .accessibilityHidden(true)
+            Text(text)
+                .font(.subheadline)
                 .foregroundStyle(Theme.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)
                 .lineSpacing(2)
         }
+        .accessibilityElement(children: .combine)
         .staggerAppear(delay: delay)
     }
 }

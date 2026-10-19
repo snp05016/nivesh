@@ -576,7 +576,7 @@ struct HomeYouTubeSection: View {
                         .font(.title2.weight(.light))
                         .foregroundStyle(Theme.securityGold.opacity(0.7))
                     VStack(alignment: .leading, spacing: Theme.Spacing.small) {
-                        Text("Curating SEBI-Registered Channels")
+                        Text("Loading channel updates")
                             .font(Theme.officialStampFont(size: 11))
                             .foregroundStyle(Theme.inkPrimary)
                         Text("Only 50k+ view videos from Pranjal Kamra, SOIC Finance, Capitalmind, and other trusted advisors. Refreshes nightly.")

@@ -18,6 +18,10 @@ final class YoYAggregateLabelTests: XCTestCase {
         XCTAssertEqual(EarningsProgressView.aggregateSourceLabel(for: health(source: "yfinance_sample", n: 12)), "LARGE-CAP SAMPLE · n=12")
     }
 
+    func testFirecrawlIsWebSourcesNotMoneycontrol() {
+        XCTAssertEqual(EarningsProgressView.aggregateSourceLabel(for: health(source: "firecrawl")), "WEB SOURCES")
+    }
+
     func testNeverClaimsNseAggregate() {
         for source in ["firecrawl", "yfinance_sample", "fallback", "unknown"] {
             XCTAssertNotEqual(EarningsProgressView.aggregateSourceLabel(for: health(source: source)), "NSE AGGREGATE")
