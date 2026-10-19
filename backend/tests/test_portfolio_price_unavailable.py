@@ -2,8 +2,9 @@
 SILENT-01: a failed price lookup must never surface as a ₹0 price / -100% loss.
 
 Unpriced holdings are valued at cost with price_status='unavailable' on
-GET /portfolio/{id}; the benchmark returns 503 instead of NIFTY=1.0/cost-basis
-numbers; the nightly snapshot never persists a cost-basis valuation (a short
+GET /portfolio/{id}; the benchmark leaves unpriced holdings out of its flows and
+value, and returns 503 only when no holding is priced (no Nifty data is a 200
+without a Nifty figure, never NIFTY=1.0); the nightly snapshot never persists a cost-basis valuation (a short
 gap, then a row over the priced holdings only).
 
 Run from backend/:
@@ -33,6 +34,7 @@ def _make_user_with_holdings(holdings):
             session.add(Portfolio(
                 user_id=user_id, ticker=ticker, company_name=f"{ticker} Ltd",
                 shares=shares, buy_price=buy_price, group_name="holdings",
+                purchase_date=(date.today() - timedelta(days=30)).isoformat(),
             ))
         session.commit()
     return user_id, {"Authorization": f"Bearer {database.create_access_token(user_id)}"}
@@ -108,12 +110,38 @@ def test_yf_price_with_status_falls_back_to_last_good(monkeypatch):
     assert yfc._yf_price_with_status("STALETEST.NS") == (None, None, "unavailable", None)
 
 
-def test_benchmark_without_nifty_data_returns_503(client, monkeypatch):
-    import routers.portfolio_analytics as portfolio_router
+def _quotes(prices):
+    import services.money_pricing as money_pricing
+
+    return lambda rows: {
+        t: money_pricing.PriceQuote(prices[t], None, "live", None) if prices.get(t)
+        else money_pricing.UNAVAILABLE
+        for t, _ in rows
+    }
+
+
+def test_benchmark_without_nifty_data_has_no_nifty_figure(client, monkeypatch):
+    import services.money_pricing as money_pricing
+    import services.money_returns as money_returns
 
     uid, headers = _make_user_with_holdings([("TCS", 2, 3000.0)])
-    empty = SimpleNamespace(history=lambda **_kw: pd.DataFrame())
-    monkeypatch.setattr(portfolio_router.yf, "Ticker", lambda _sym: empty)
+    monkeypatch.setattr(money_pricing, "price_quotes", _quotes({"TCS": 3030.0}))
+    monkeypatch.setattr(money_returns, "fetch_nifty_closes", lambda _start: None)
+
+    r = client.get("/portfolio/benchmark", params={"user_id": uid}, headers=headers)
+
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["nifty_available"] is False
+    assert body["nifty_cagr_pct"] is None and body["alpha_pct"] is None
+    assert body["portfolio_cagr_pct"] == 1.0
+
+
+def test_benchmark_with_no_priced_holding_returns_503(client, monkeypatch):
+    import services.money_pricing as money_pricing
+
+    uid, headers = _make_user_with_holdings([("TCS", 2, 3000.0)])
+    monkeypatch.setattr(money_pricing, "price_quotes", _quotes({}))
 
     r = client.get("/portfolio/benchmark", params={"user_id": uid}, headers=headers)
 
@@ -121,24 +149,22 @@ def test_benchmark_without_nifty_data_returns_503(client, monkeypatch):
 
 
 def test_benchmark_excludes_unpriced_holdings(client, monkeypatch):
-    import routers.portfolio_analytics as portfolio_router
+    import services.money_pricing as money_pricing
+    import services.money_returns as money_returns
 
     uid, headers = _make_user_with_holdings([("TCS", 2, 3000.0), ("INFY", 4, 1500.0)])
-    idx = pd.to_datetime([date.today() - timedelta(days=1), date.today()])
-    nifty = SimpleNamespace(history=lambda **_kw: pd.DataFrame({"Close": [20000.0, 20100.0]}, index=idx))
-    monkeypatch.setattr(portfolio_router.yf, "Ticker", lambda _sym: nifty)
-    monkeypatch.setattr(portfolio_router, "_to_ns", lambda t: t)
-    monkeypatch.setattr(
-        portfolio_router, "get_quotes",
-        lambda syms: {s: (3030.0, 3000.0) if s == "TCS" else (None, None) for s in syms},
-    )
+    start = date.today() - timedelta(days=30)
+    monkeypatch.setattr(money_pricing, "price_quotes", _quotes({"TCS": 3030.0}))
+    monkeypatch.setattr(money_returns, "fetch_nifty_closes", lambda _s: [(start, 20000.0), (date.today(), 20100.0)])
 
     r = client.get("/portfolio/benchmark", params={"user_id": uid}, headers=headers)
 
     assert r.status_code == 200, r.text
     body = r.json()
     assert body["unpriced_tickers"] == ["INFY"]
+    assert {"ticker": "INFY", "reason": "price_unavailable"} in body["excluded_tickers"]
     assert body["current_portfolio_value"] == 6060.0  # INFY excluded, not valued at cost
+    assert body["coverage_pct"] == 50.2  # 6060 of 6060 + 6000 (INFY at cost)
 
 
 def _add_snapshot(user_id, snapshot_date):

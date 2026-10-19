@@ -1,9 +1,6 @@
 """DB-19: watchlist rows (same Portfolio table) must never count as holdings."""
 from datetime import datetime, timedelta, timezone
-from types import SimpleNamespace
 from uuid import uuid4
-
-import pandas as pd
 
 
 def _make_user_with_holding_and_watchlist():
@@ -21,7 +18,7 @@ def _make_user_with_holding_and_watchlist():
         user_id = int(user.id)  # type: ignore[arg-type]
         session.add(Portfolio(
             user_id=user_id, ticker="HOLDX", company_name="Hold Ltd", shares=2, buy_price=100.0,
-            group_name="holdings", created_at=holding_at,
+            group_name="holdings", created_at=holding_at, purchase_date=holding_at.date().isoformat(),
         ))
         session.add(Portfolio(
             user_id=user_id, ticker="WATCHX", company_name="Watch Ltd", shares=0, buy_price=0.0,
@@ -46,26 +43,26 @@ def test_portfolio_default_group_is_holdings():
 
 
 def test_benchmark_uses_holding_inception(client, monkeypatch):
-    import routers.portfolio_analytics as portfolio_router
+    import services.money_pricing as money_pricing
+    import services.money_returns as money_returns
 
     uid, holding_at, headers = _make_user_with_holding_and_watchlist()
-    idx = pd.to_datetime([holding_at.date(), datetime.now().date()])
-    nifty = SimpleNamespace(history=lambda **_kw: pd.DataFrame({"Close": [20000.0, 20100.0]}, index=idx))
-    monkeypatch.setattr(portfolio_router.yf, "Ticker", lambda _sym: nifty)
-    monkeypatch.setattr(portfolio_router, "_to_ns", lambda t: t)
+    nifty = [(holding_at.date(), 20000.0), (datetime.now(timezone.utc).date(), 20100.0)]
+    monkeypatch.setattr(money_returns, "fetch_nifty_closes", lambda _start: nifty)
     priced = []
     monkeypatch.setattr(
-        portfolio_router, "get_quotes",
-        lambda syms: {s: (priced.append(s), (110.0, 100.0))[1] for s in syms},
+        money_pricing, "price_quotes",
+        lambda rows: {t: (priced.append(t), money_pricing.PriceQuote(110.0, 100.0, "live", None))[1] for t, _ in rows},
     )
 
     r = client.get("/portfolio/benchmark", params={"user_id": uid}, headers=headers)
 
     assert r.status_code == 200, r.text
     body = r.json()
+    # Dated from the purchase date the user entered (money I30 rule 2), never the watchlist row.
     assert body["earliest_holding_date"] == holding_at.date().isoformat()
     assert body["return_basis"] == "absolute"  # a week is never annualized (MATH-04)
-    assert body["period_days"] == 7
+    assert body["period_days"] == (money_returns.ist_today() - holding_at.date()).days
     assert body["current_portfolio_value"] == 220.0
     assert priced == ["HOLDX"]
 
