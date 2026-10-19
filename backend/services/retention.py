@@ -7,9 +7,11 @@ import logging
 import os
 from datetime import datetime, timedelta, timezone
 
+from sqlalchemy import delete, select
+
 from core import dashboard_state
 from database import get_session
-from models.db_models import AnalysisJob, NewsArticle, PriceTarget
+from models.db_models import AnalysisJob, KYCConsent, NewsArticle, PriceTarget, UserEvent
 from services import job_runs
 
 logger = logging.getLogger(__name__)
@@ -19,6 +21,24 @@ JOB_PAYLOAD_DAYS = 30
 TRIGGERED_ALERT_DAYS = 90
 JOB_RUNS_DAYS = 90
 TOKEN_LOG_MAX_BYTES = 20 * 1024 * 1024
+
+
+def _retention_days_from_env() -> int:
+    raw = os.getenv("USER_EVENTS_RETENTION_DAYS", "").strip()
+    if not raw:
+        return 180
+    try:
+        days = int(raw)
+        if days >= 1:
+            return days
+    except ValueError:
+        pass
+    logger.warning("USER_EVENTS_RETENTION_DAYS=%r is not a positive integer; using 180", raw)
+    return 180
+
+
+# DPDP Rule 8(3) decision pending; see docs/compliance/DPDP_RUNBOOK.md
+USER_EVENTS_RETENTION_DAYS = _retention_days_from_env()
 _TERMINAL = ("SUCCEEDED", "FAILED", "CANCELLED", "TIMEOUT")
 
 
@@ -76,6 +96,24 @@ def run_retention() -> dict:
             s.commit()
     except Exception:
         logger.exception("[retention] triggered alert prune failed")
+
+    try:
+        with get_session() as s:
+            old = s.execute(
+                delete(UserEvent).where(UserEvent.created_at < now - timedelta(days=USER_EVENTS_RETENTION_DAYS))
+            ).rowcount or 0
+            # Backstop for consent withdrawal (DPDP s.6(4)-(6)): events of anyone without an
+            # active product_analytics grant. DB-10 revokes every active grant on withdrawal.
+            active = select(KYCConsent.user_id).where(
+                KYCConsent.consent_type == "product_analytics",
+                KYCConsent.granted.is_(True),
+                KYCConsent.revoked_at.is_(None),
+            )
+            unconsented = s.execute(delete(UserEvent).where(~UserEvent.user_id.in_(active))).rowcount or 0
+            s.commit()
+            counts["user_events_deleted"] = old + unconsented
+    except Exception:
+        logger.exception("[retention] user_events prune failed")
 
     try:
         counts["job_runs_deleted"] = job_runs.purge_older_than(JOB_RUNS_DAYS)

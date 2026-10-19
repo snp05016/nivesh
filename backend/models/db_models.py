@@ -1940,3 +1940,23 @@ class FeatureFlag(Base):
     # Acting admin's users.id. No FK on purpose, so it needs no erasure-policy entry.
     updated_by: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_utcnow)
+
+
+class UserEvent(Base):
+    """One consented first-party usage event (services/events_service.py allowlist)."""
+    __tablename__ = "user_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
+    # ponytail: allowlist lives in services/events_service.py; a CHECK would force a migration per new event
+    event_name: Mapped[str] = mapped_column(String(40), nullable=False)
+    props: Mapped[Optional[dict]] = mapped_column(JSON(none_as_null=True), nullable=True)
+    app_version: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    platform: Mapped[str] = mapped_column(String(10), nullable=False, default="ios")
+    # The client's event time, clamped by the service.
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_utcnow)
+
+    __table_args__ = (
+        Index("ix_user_events_name_created", "event_name", "created_at"),
+        Index("ix_user_events_user_created", "user_id", "created_at"),
+    )
