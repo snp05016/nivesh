@@ -286,37 +286,95 @@ struct HomeIndicesSection: View {
                         .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.small).stroke(Theme.bearRed, lineWidth: 0.5))
                 }
             }
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: Theme.Spacing.standard) {
-                    ForEach(viewModel.indices) { index in
-                        let valueStr: String = {
-                            if index.ticker == "USDINR=X" {
-                                return IndianFormatter.price(index.value)
-                            } else {
-                                return IndianFormatter.points(index.value)
+            if viewModel.indicesFetchFailed && viewModel.indices.isEmpty {
+                HomeIndicesFailedCard(viewModel: viewModel)
+            } else {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: Theme.Spacing.standard) {
+                        ForEach(viewModel.indices) { index in
+                            let valueStr: String = {
+                                if index.ticker == "USDINR=X" {
+                                    return IndianFormatter.price(index.value)
+                                } else {
+                                    return IndianFormatter.points(index.value)
+                                }
+                            }()
+                            let changeStr = (index.changePct >= 0 ? "+" : "") + String(format: "%.2f%%", index.changePct)
+                            IndexChip(
+                                name: index.name,
+                                value: valueStr,
+                                change: changeStr,
+                                isPositive: index.changePct >= 0
+                            )
+                            .shimmerPlaceholder(isLoading: viewModel.indicesLoading)
+                        }
+                        if viewModel.indices.isEmpty && viewModel.indicesLoading {
+                            ForEach(0..<4, id: \.self) { _ in
+                                IndexChip(name: "——", value: "——", change: "——", isPositive: true)
+                                    .shimmerPlaceholder(isLoading: true)
                             }
-                        }()
-                        let changeStr = (index.changePct >= 0 ? "+" : "") + String(format: "%.2f%%", index.changePct)
-                        IndexChip(
-                            name: index.name,
-                            value: valueStr,
-                            change: changeStr,
-                            isPositive: index.changePct >= 0
-                        )
-                        .shimmerPlaceholder(isLoading: viewModel.indicesLoading)
-                    }
-                    if viewModel.indices.isEmpty && viewModel.indicesLoading {
-                        ForEach(0..<4, id: \.self) { _ in
-                            IndexChip(name: "——", value: "——", change: "——", isPositive: true)
-                                .shimmerPlaceholder(isLoading: true)
                         }
                     }
+                    .padding(.horizontal, Theme.screenPadding)
                 }
-                .padding(.horizontal, Theme.screenPadding)
+                .scrollIndicators(.hidden)
+                if !viewModel.indices.isEmpty, let asOf = viewModel.sectionUpdatedAt[.indices] {
+                    AsOfStamp(date: asOf)
+                        .padding(.horizontal, Theme.screenPadding)
+                }
             }
-            .scrollIndicators(.hidden)
         }
         .id(HomeSectionID.indices.rawValue)
+    }
+}
+
+/// C9: indices failed with nothing to show; offline-aware, with a retry.
+struct HomeIndicesFailedCard: View {
+    @ObservedObject var viewModel: HomeViewModel
+    @ObservedObject private var connectivity = ConnectivityMonitor.shared
+
+    var body: some View {
+        StateCard(
+            title: HomeSectionID.indices.title,
+            phase: LoadPhase.resolve(isLoading: viewModel.indicesLoading, hasLoaded: false, isEmpty: true,
+                                     error: "Couldn't load market indices.", isOnline: connectivity.isOnline),
+            onRetry: { viewModel.retry(.indices, userId: nil) }
+        ) { EmptyView() }
+        .homeStateCardChrome()
+    }
+}
+
+/// C9: the state of a Home section whose data is absent: skeleton while loading,
+/// "No ... data right now." after a successful empty answer, the stored error with
+/// a retry after a failure, or the offline message.
+struct HomeSectionStateCard: View {
+    @EnvironmentObject var authManager: AuthManager
+    @ObservedObject var viewModel: HomeViewModel
+    @ObservedObject private var connectivity = ConnectivityMonitor.shared
+    let id: HomeSectionID
+    let isLoading: Bool
+
+    var body: some View {
+        StateCard(
+            title: id.title,
+            phase: LoadPhase.resolve(isLoading: isLoading, hasLoaded: viewModel.sectionUpdatedAt[id] != nil,
+                                     isEmpty: true, error: viewModel.sectionErrors[id],
+                                     isOnline: connectivity.isOnline),
+            emptyMessage: "No \(id.title) data right now.",
+            onRetry: { viewModel.retry(id, userId: authManager.currentUser?.userId) }
+        ) { EmptyView() }
+        .homeStateCardChrome()
+    }
+}
+
+private extension View {
+    /// The card look the old Home loading card had.
+    func homeStateCardChrome() -> some View {
+        padding(Theme.Spacing.card)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Theme.canvasDeep)
+            .cornerRadius(Theme.CornerRadius.medium)
+            .padding(.horizontal, Theme.screenPadding)
     }
 }
 
@@ -396,7 +454,7 @@ struct HomeSectorsSection: View {
                 }
                 .padding(.horizontal, Theme.screenPadding)
             } else {
-                DashboardLoadingCard(label: "Sector Pulse", isLoading: viewModel.isLoading)
+                HomeSectionStateCard(viewModel: viewModel, id: .sectors, isLoading: viewModel.isLoading)
             }
         }
         .id(HomeSectionID.sectors.rawValue)
@@ -513,7 +571,7 @@ struct HomeMorningSection: View {
         } else {
             VStack(spacing: Theme.Spacing.card) {
                 SectionHeader(title: "Morning Brief", hindiTitle: "Morning Summary")
-                DashboardLoadingCard(label: "latest brief", isLoading: viewModel.isLoading)
+                HomeSectionStateCard(viewModel: viewModel, id: .morning, isLoading: viewModel.isLoading)
             }
             .id(HomeSectionID.morning.rawValue)
         }
@@ -722,7 +780,7 @@ struct HomeEarningsSection: View {
                     }
                 }
             } else {
-                DashboardLoadingCard(label: "Upcoming Results", isLoading: viewModel.isLoading)
+                HomeSectionStateCard(viewModel: viewModel, id: .earnings, isLoading: viewModel.isLoading)
             }
         }
         .id(HomeSectionID.earnings.rawValue)
@@ -745,7 +803,7 @@ struct HomeMarketPulseSection: View {
                 }
             } else {
                 SectionHeader(title: "Market Pulse", hindiTitle: "बाजार की नब्ज")
-                DashboardLoadingCard(label: "dashboard data", isLoading: viewModel.dashboardLoading)
+                HomeSectionStateCard(viewModel: viewModel, id: .marketPulse, isLoading: viewModel.dashboardLoading)
             }
         }
         .id(HomeSectionID.marketPulse.rawValue)
@@ -765,7 +823,7 @@ struct HomeMomentumSection: View {
                 MomentumDashCard(momentum: momentum)
             } else {
                 SectionHeader(title: "Momentum Scan", hindiTitle: "गति विश्लेषण")
-                DashboardLoadingCard(label: "signal data", isLoading: viewModel.dashboardLoading)
+                HomeSectionStateCard(viewModel: viewModel, id: .momentum, isLoading: viewModel.dashboardLoading)
             }
         }
         .id(HomeSectionID.momentum.rawValue)
@@ -785,7 +843,7 @@ struct HomeMacroAltSection: View {
                 MacroDashCard(macro: macro)
             } else {
                 SectionHeader(title: "Macro & Alternatives", hindiTitle: "वृहद अर्थव्यवस्था")
-                DashboardLoadingCard(label: "Macro Data", isLoading: viewModel.dashboardLoading)
+                HomeSectionStateCard(viewModel: viewModel, id: .macroAlt, isLoading: viewModel.dashboardLoading)
             }
         }
         .id(HomeSectionID.macroAlt.rawValue)
@@ -805,7 +863,7 @@ struct HomeInstitutionalSection: View {
                 InstitutionalDashCard(flow: inst)
             } else {
                 SectionHeader(title: "Institutional Allocation", hindiTitle: "संस्थागत प्रवाह")
-                DashboardLoadingCard(label: "flow data", isLoading: viewModel.dashboardLoading)
+                HomeSectionStateCard(viewModel: viewModel, id: .institutional, isLoading: viewModel.dashboardLoading)
             }
         }
         .id(HomeSectionID.institutional.rawValue)

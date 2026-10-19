@@ -6,47 +6,25 @@ struct NotificationInboxView: View {
     @State private var notifications: [NotificationDTO] = []
     @State private var isLoading = true
     @State private var errorMessage: String?
+    /// C9: a successful load has arrived, so an empty list really means "nothing yet".
+    @State private var hasLoaded = false
+    @ObservedObject private var connectivity = ConnectivityMonitor.shared
+
+    private var phase: LoadPhase {
+        .resolve(isLoading: isLoading, hasLoaded: hasLoaded, isEmpty: notifications.isEmpty,
+                 error: errorMessage, isOnline: connectivity.isOnline)
+    }
 
     var body: some View {
         ZStack {
             Theme.canvas.ignoresSafeArea()
 
-            if isLoading {
-                VStack(spacing: Theme.Spacing.large) {
-                    ProgressView()
-                        .tint(Theme.securityGold)
-                        .scaleEffect(1.2)
-                    Text("Loading notifications...")
-                        .font(Theme.officialStampFont(size: 10, relativeTo: .caption))
-                        .foregroundStyle(Theme.inkSecondary)
-                }
-            } else if let error = errorMessage {
-                VStack(spacing: Theme.Spacing.standard) {
-                    Image(systemName: "bell.slash")
-                        .font(.largeTitle)
-                        .foregroundStyle(Theme.inkTertiary)
-                    Text(error)
-                        .font(Theme.engravedSerif(size: 14, relativeTo: .body))
-                        .foregroundStyle(Theme.inkSecondary)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if notifications.isEmpty {
-                VStack(spacing: Theme.Spacing.standard) {
-                    Image(systemName: "bell")
-                        .font(Theme.engravedSerif(size: 40, relativeTo: .largeTitle))
-                        .foregroundStyle(Theme.inkTertiary.opacity(0.5))
-                    Text("NO NOTIFICATIONS")
-                        .font(Theme.officialStampFont(size: 11, relativeTo: .body))
-                        .tracking(2)
-                        .foregroundStyle(Theme.inkTertiary)
-                    Text("You're all caught up. We'll notify you when something important happens.")
-                        .font(Theme.engravedSerif(size: 14, relativeTo: .body))
-                        .foregroundStyle(Theme.inkSecondary)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, Theme.Spacing.xLarge)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
+            StateCard(
+                title: "notifications",
+                phase: phase,
+                emptyMessage: "No notifications yet. Price-alert triggers and account messages appear here.",
+                onRetry: { Task { await loadNotifications() } }
+            ) {
                 ScrollView {
                     LazyVStack(spacing: Theme.Spacing.card) {
                         ForEach(notifications) { notif in
@@ -57,6 +35,7 @@ struct NotificationInboxView: View {
                     .padding(.vertical, Theme.Spacing.card)
                 }
             }
+            .padding(.horizontal, phase == .loaded ? 0 : Theme.screenPadding)
         }
         .navigationTitle("NOTIFICATIONS")
         .navigationBarTitleDisplayMode(.inline)
@@ -68,8 +47,9 @@ struct NotificationInboxView: View {
         errorMessage = nil
         do {
             notifications = try await NetworkManager.shared.fetchNotifications()
+            hasLoaded = true
         } catch {
-            errorMessage = "Could not load notifications"
+            errorMessage = "Couldn't load notifications."
         }
         isLoading = false
     }
@@ -148,9 +128,14 @@ struct NotificationCard: View {
 
     private func markRead() {
         guard !isRead else { return }
+        isRead = true   // optimistic; rolled back below if the server refuses
         Task {
-            try? await NetworkManager.shared.markNotificationRead(id: notification.id)
-            isRead = true
+            do {
+                try await NetworkManager.shared.markNotificationRead(id: notification.id)
+            } catch {
+                isRead = false
+                GlobalErrorDiagnoser.shared.trackNetworkError(error, endpoint: "/api/v1/notifications/{id}/read")
+            }
         }
     }
 }
