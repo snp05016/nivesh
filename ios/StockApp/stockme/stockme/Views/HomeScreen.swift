@@ -804,8 +804,8 @@ struct HomeScreen: View {
             viewModel.startIndicesTimer()
             await viewModel.fetchIndices()
         }
-        // Single user-data entry point. Keyed on userId so it also covers the late-auth case
-        // (token restores from keychain AFTER the view appears); guards keep revisits cheap.
+        // Single user-data entry point. Keyed on userId so it re-runs when the signed-in
+        // account changes (login, logout, switch); guards keep revisits cheap.
         .task(id: authManager.currentUser?.userId) {
             guard let uid = authManager.currentUser?.userId else { return }
             if viewModel.stockCount == 0 && !viewModel.isLoading {

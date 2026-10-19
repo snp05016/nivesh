@@ -12,7 +12,16 @@ class AuthManager: ObservableObject {
     private let disclaimerRecordedKey = "nivesh_disclaimerRecordedVersion"
     /// Written by NotificationManager when APNs hands over the device token.
     private static let apnsTokenKey = "apns_device_token"
-    /// FINSEC-06: posted by logout() so per-user stores (saved reports) wipe themselves.
+    /// IOSCORE-14: per-account UserDefaults the next user on this device must not
+    /// inherit. Some are legacy keys no current screen writes but old installs hold.
+    /// apns_device_token is device-scoped and stays (re-bound on the next login).
+    static let userScopedKeys = [
+        "nivesh_profileEmail", "nivesh_profilePhone", "nivesh_twoFactorEnabled",
+        "preIPO_bookmarks", "expert_bookmarks", "watchlistTags", "NLScreenerHistory",
+        "customScreenerPresets", "glossaryRecentlyViewed", "nivesh_sectorBlacklist",
+        "morningBriefShownDate", "consensusLastFetchDate", "analysisLastTab",
+    ]
+    /// FINSEC-06: posted by logout() so per-user stores (saved reports, analysis engine) wipe themselves.
     static let didLogout = Notification.Name("niveshUserDidLogout")
 
     init() {
@@ -92,6 +101,18 @@ class AuthManager: ObservableObject {
         isLoggingIn = false
     }
 
+    /// GH-692: saves the display name server-side, then updates the session copy.
+    /// Throws (and changes nothing locally) when the request fails.
+    func updateDisplayName(_ name: String) async throws {
+        guard let userId = currentUser?.userId else { throw NetworkError.unauthorized }
+        let saved = try await NetworkManager.shared.updateProfile(displayName: name)
+        // Re-read after the await: the user may have logged out or switched accounts.
+        guard let user = currentUser, user.userId == userId else { return }
+        let updated = LoggedInUser(userId: user.userId, username: user.username, displayName: saved, token: user.token)
+        currentUser = updated
+        persist(updated)
+    }
+
     /// DB-26: a device token belongs to whoever is signed in on this phone, so
     /// re-register it for the new account (the backend re-binds it).
     private func rebindDeviceToken() {
@@ -140,11 +161,19 @@ class AuthManager: ObservableObject {
     }
 
     func logout() {
-        // DB-26: stop this account's alerts reaching the device. Bearer is captured
-        // now because authToken is cleared below, before the request runs.
-        if let bearer = NetworkManager.shared.authToken,
-           let token = UserDefaults.standard.string(forKey: Self.apnsTokenKey) {
-            Task { await NetworkManager.shared.unregisterDeviceToken(token: token, bearer: bearer) }
+        // IOSCORE-14: cancel this account's in-flight requests, then (DB-26) stop its
+        // alerts reaching the device. Bearer is captured now because authToken is
+        // cleared below; the unregister starts after the cancel so it survives it.
+        // URLSession.shared carries no app traffic; the session is captured now so a
+        // later swap (tests) is never cancelled by this logout.
+        let bearer = NetworkManager.shared.authToken
+        let deviceToken = UserDefaults.standard.string(forKey: Self.apnsTokenKey)
+        let urlSession = NetworkManager.shared.session.base
+        Task {
+            for task in await urlSession.allTasks { task.cancel() }
+            if let bearer, let deviceToken {
+                await NetworkManager.shared.unregisterDeviceToken(token: deviceToken, bearer: bearer)
+            }
         }
         // GH-695: NetworkManager's default config caches to URLCache.shared (Cache.db);
         // wipe holdings/watchlist responses so they don't outlive the session.
@@ -153,11 +182,7 @@ class AuthManager: ObservableObject {
         NetworkManager.shared.authToken = nil
         KeychainStore.delete(Self.storageKey)
         UserDefaults.standard.removeObject(forKey: Self.storageKey)
-        UserDefaults.standard.removeObject(forKey: "nivesh_cached_portfolio_v1")
-        UserDefaults.standard.removeObject(forKey: "nivesh_last_refresh_v1")
-        // UX-18: legacy device-only profile fields (no longer collected); purge the PII.
-        UserDefaults.standard.removeObject(forKey: "nivesh_profileEmail")
-        UserDefaults.standard.removeObject(forKey: "nivesh_profilePhone")
+        Self.userScopedKeys.forEach { UserDefaults.standard.removeObject(forKey: $0) }
         WidgetSnapshotStore.clear()
         NotificationCenter.default.post(name: Self.didLogout, object: nil)
     }

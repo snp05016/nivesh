@@ -30,7 +30,24 @@ final class AnalysisEngineManager: ObservableObject {
         AuthManager.loadPersistedUser()?.userId
     }
 
-    private init() {}
+    private init() {
+        // IOSCORE-14: the next account must not see this one's job, progress or result.
+        NotificationCenter.default.addObserver(forName: AuthManager.didLogout, object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in self?.reset() }
+        }
+    }
+
+    /// Stops the watcher and clears every published field (logout).
+    func reset() {
+        stopWatching()
+        isRunning = false
+        activeJobId = nil; ticker = nil; scanType = nil
+        status = nil; stage = nil; error = nil; result = nil
+        progressPct = 0
+        checkpoints = []
+        screenOwnedJobId = nil
+        lastTerminalNotified = nil
+    }
 
     static let terminalStatuses: Set<String> = ["SUCCEEDED", "FAILED", "TIMEOUT", "CANCELLED"]
 

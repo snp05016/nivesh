@@ -3,6 +3,7 @@
 
 import SwiftUI
 import Combine
+import OSLog
 
 // MARK: - Stock Identity
 
@@ -94,32 +95,75 @@ class LocalReportManager: ObservableObject {
     /// Every mutation is written to disk (FINSEC-06), so "Void all records" and
     /// swipe-to-delete in ReportManagerView no longer come back on next launch.
     @Published var savedReports: [StockAnalysis] = [] {
-        didSet { persist() }
+        didSet { if !isLoading { persist() } }
     }
 
-    private let fileURL: URL = {
-        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        return docs.appendingPathComponent("saved_reports.json")
-    }()
+    /// Set while loadReports assigns, so a launch never rewrites the file.
+    private var isLoading = false
 
-    init() {
+    static var defaultFileURL: URL {
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("saved_reports.json")
+    }
+
+    private let fileURL: URL
+
+    /// Original bytes of a file that held reports this build cannot decode.
+    var backupURL: URL {
+        fileURL.deletingPathExtension().appendingPathExtension("undecodable.json")
+    }
+
+    /// `fileURL` is injectable so tests can use a temp file.
+    init(fileURL: URL = LocalReportManager.defaultFileURL) {
+        self.fileURL = fileURL
         loadReports()
         // FINSEC-06: saved reports belong to the signed-in user; wipe them on logout.
         NotificationCenter.default.addObserver(forName: AuthManager.didLogout, object: nil, queue: .main) { [weak self] _ in
-            Task { @MainActor in self?.savedReports = [] }
+            Task { @MainActor in
+                guard let self else { return }
+                self.savedReports = []
+                try? FileManager.default.removeItem(at: self.backupURL)
+            }
         }
     }
 
+    /// IOSCORE-13: atomic, so an interrupted write cannot leave a truncated file.
     private func persist() {
-        if let encoded = try? JSONEncoder().encode(savedReports) {
-            try? encoded.write(to: fileURL)
+        do {
+            let encoded = try JSONEncoder().encode(savedReports)
+            try encoded.write(to: fileURL, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+        } catch {
+            os_log(.error, "[Nivesh/Reports] Saving reports failed: %{public}@", error.localizedDescription)
         }
     }
 
+    /// IOSCORE-13: decoded element by element, so one report that no longer
+    /// decodes (e.g. after a StockAnalysis schema change) does not hide the rest.
+    /// Loading never writes the file. If any element fails to decode, the
+    /// original bytes are first copied to `backupURL` (never overwriting an
+    /// existing backup), so a later save cannot destroy reports a hotfix or
+    /// downgrade could still read.
     func loadReports() {
         guard let data = try? Data(contentsOf: fileURL) else { return }
-        if let decoded = try? JSONDecoder().decode([StockAnalysis].self, from: data) {
-            self.savedReports = decoded.sorted { $0.analysisDate > $1.analysisDate }
+        let decoded = (try? JSONDecoder().decode([LossyReport].self, from: data))?.compactMap(\.value) ?? []
+        let rawCount = ((try? JSONSerialization.jsonObject(with: data)) as? [Any])?.count
+        if rawCount != decoded.count, !data.isEmpty,
+           !FileManager.default.fileExists(atPath: backupURL.path) {
+            do {
+                try data.write(to: backupURL, options: [.withoutOverwriting, .completeFileProtectionUntilFirstUserAuthentication])
+            } catch {
+                os_log(.error, "[Nivesh/Reports] Backup of undecodable reports not written: %{public}@", error.localizedDescription)
+            }
+        }
+        isLoading = true
+        defer { isLoading = false }
+        savedReports = decoded.sorted { $0.analysisDate > $1.analysisDate }
+    }
+
+    private struct LossyReport: Decodable {
+        let value: StockAnalysis?
+        init(from decoder: Decoder) throws {
+            value = try? StockAnalysis(from: decoder)
         }
     }
 

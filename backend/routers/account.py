@@ -1,9 +1,9 @@
 """My Account API — /api/v1/me/* (legacy alias /api/me/*, see main.py).
 
-Thin, read-only-ish aggregation router: composes existing
-services/subscription_service.py, services/kyc_consent_service.py, and
-services/compliance_service.py so the iOS app can hit a single "my account"
-surface. No new business logic lives here — this router is controller-only,
+Thin aggregation router: composes existing services/subscription_service.py,
+services/kyc_consent_service.py, services/compliance_service.py and
+services/auth_service.py (display-name update) so the iOS app can hit a single
+"my account" surface. No new business logic lives here — this router is controller-only,
 same as kyc.py/compliance.py/forum.py.
 
 MOCK/demo caveats are inherited from the underlying services: subscription
@@ -11,14 +11,37 @@ state is not backed by a real payment processor (see subscription_service.py
 / routers/subscription.py). Account deletion records a request that
 compliance_service erases after a grace period (see compliance_service.py).
 """
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import BaseModel, Field, field_validator
 
 from core.security import rate_limited_user, require_auth
 from routers.compliance import DeletionRequestBody, require_password
 from routers.subscription import SubscriptionResponse
-from services import compliance_service, kyc_consent_service, subscription_service
+from services import auth_service, compliance_service, kyc_consent_service, subscription_service
 
 router = APIRouter(tags=["My Account"])
+
+
+class ProfileUpdateRequest(BaseModel):
+    # Same cap as RegisterRequest.display_name and the users.display_name column.
+    display_name: str = Field(..., max_length=100)
+
+    @field_validator("display_name")
+    @classmethod
+    def _not_blank(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Display name cannot be empty.")
+        return v
+
+
+@router.patch("/profile")
+def update_my_profile(body: ProfileUpdateRequest, user_id: int = Depends(require_auth)):
+    """Change the current user's display name (GH-692)."""
+    result = auth_service.update_display_name(user_id, body.display_name)
+    if result is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    return result
 
 
 @router.get("/subscription", response_model=SubscriptionResponse)

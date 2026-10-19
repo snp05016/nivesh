@@ -92,6 +92,17 @@ def change_password(user_id, current_password, new_password):
         _revoke_sessions(session, user_id, {"password_hash": _hash_password(new_password)})
 
 
+def update_display_name(user_id, display_name):
+    """Set the user's display name (GH-692). None when the user no longer exists."""
+    with get_session() as session:
+        user = session.query(User).filter(User.id == user_id).first()
+        if not user:
+            return None
+        user.display_name = display_name
+        session.commit()
+        return {"user_id": user.id, "username": user.username, "display_name": user.display_name}
+
+
 def register_user(username, password, display_name, accepted_policy_version=None, age_confirmed=False, ip_address=None, app_version=None):
     # REG-12: no account without consent to the current notice and an 18+
     # attestation. ValueError surfaces as HTTP 400 with this text as `detail`.
