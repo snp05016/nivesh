@@ -35,6 +35,7 @@ struct PortfolioScreen: View {
     @State private var exportedFileURL: URL? = nil
     @State private var showShareSheet = false
     @State private var signalWarnings: [String: SignalWarning] = [:]
+    @State private var moneyReloadKey = 0
     @State private var riskAnalysis: RiskAnalysis? = nil
     @State private var redFlags: RedFlagsResponse? = nil
 
@@ -131,6 +132,16 @@ struct PortfolioScreen: View {
                                     hideValues: hidePortfolioValues
                                 )
                                 .padding(.horizontal, Theme.screenPadding)
+                            }
+
+                            // Money rows (flag-gated, spec_money 2.6): portfolio return card, later imports/X-ray/tax.
+                            if let user = authManager.currentUser {
+                                PortfolioMoneySection(userId: user.userId, reloadKey: moneyReloadKey)
+                                    .padding(.horizontal, Theme.screenPadding)
+                                    // Every holdings reload (first load, trade saved or deleted, pull to refresh) ends here.
+                                    .onChange(of: viewModel.isLoading) { _, loading in
+                                        if !loading { moneyReloadKey += 1 }
+                                    }
                             }
 
                             // Screen B — full-bleed immersive valuation chart + underline selector
@@ -305,7 +316,12 @@ struct PortfolioScreen: View {
             }
         }
         .navigationDestination(for: HoldingNavValue.self) { val in
-            AnalysisScreen(ticker: val.ticker, userNote: val.userNote, purchaseDateStr: val.purchaseDateStr, portfolioHolding: val.holding)
+            // C11: the free "My position" page; flag off keeps today's analysis screen.
+            if FeatureFlags.shared.isOn(.moneyHoldingDetail) {
+                HoldingDetailView(ticker: val.ticker, seed: val.holding, portfolio: viewModel)
+            } else {
+                AnalysisScreen(ticker: val.ticker, userNote: val.userNote, purchaseDateStr: val.purchaseDateStr, portfolioHolding: val.holding)
+            }
         }
         .navigationDestination(for: String.self) { ticker in
             AnalysisScreen(ticker: ticker)

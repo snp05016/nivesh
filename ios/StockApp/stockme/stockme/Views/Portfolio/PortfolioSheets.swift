@@ -66,6 +66,10 @@ struct TaggingSheet: View {
 struct AddHoldingSheet: View {
     let viewModel: PortfolioScreenViewModel
     let authManager: AuthManager
+    /// Stock to start with (HoldingDetailView's "Add transaction"); the user can still clear it.
+    var prefilledEntry: StockEntry? = nil
+    /// Called after the trade is recorded, before the sheet closes.
+    var onSaved: () -> Void = {}
     @Environment(\.dismiss) private var dismiss
 
     @State private var searchText = ""
@@ -285,6 +289,7 @@ struct AddHoldingSheet: View {
                                         targetPrice: DecimalText.parse(targetPriceText).flatMap { $0 > 0 ? $0 : nil },
                                         transactionType: transactionType
                                     )
+                                    onSaved()
                                     dismiss()
                                 } catch {
                                     errorText = error.localizedDescription
@@ -315,6 +320,12 @@ struct AddHoldingSheet: View {
             }
             .navigationTitle("Record Trade")
             .navigationBarTitleDisplayMode(.inline)
+            .onAppear {
+                if selectedEntry == nil, let entry = prefilledEntry {
+                    selectedEntry = entry
+                    searchText = entry.ticker
+                }
+            }
             .task(id: searchText) {
                 backendHits = []
                 let q = searchText.trimmingCharacters(in: .whitespaces)
