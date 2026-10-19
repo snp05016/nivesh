@@ -1,6 +1,7 @@
 import asyncio
 import time
 from datetime import datetime, timezone
+from decimal import Decimal
 from typing import Optional, List, Dict, Any
 import logging
 import json
@@ -19,6 +20,7 @@ from services.preferences import push_allowed
 from services.alerts_service import PushResult, send_apns
 from services.sebi_registry import registration_for_channel
 from services import entitlement_service
+from services.market_calendar import IST
 
 _watchlist_price_cache: dict = {}
 _WATCHLIST_CACHE_TTL = 120
@@ -47,6 +49,13 @@ def add_to_watchlist(user_id: int, ticker: str, company_name: str) -> dict:
         count = session.query(Portfolio).filter_by(user_id=user_id, group_name="watchlist").count()
     # Outside the session: get_effective_tier may create the subscription row.
     entitlement_service.enforce_quota(user_id, "watchlist_size", count)
+    # I32: best-effort quote at add time (PERF-07 cached); NULL when unavailable.
+    try:
+        price, _ = _yf_price(_to_ns(ticker))
+    except Exception as e:
+        logging.info(f"[Watchlist] price at add unavailable for {ticker}: {e}")
+        price = None
+    added_price = Decimal(str(round(price, 4))) if price and price > 0 else None
     with get_session() as session:
         new_item = Portfolio(
             user_id=user_id,
@@ -55,11 +64,22 @@ def add_to_watchlist(user_id: int, ticker: str, company_name: str) -> dict:
             shares=0,
             buy_price=0,
             group_name="watchlist",
+            added_price=added_price,
         )
         session.add(new_item)
         session.commit()
     _watchlist_price_cache.pop(user_id, None)
-    return {"success": True, "ticker": ticker}
+    return {"success": True, "ticker": ticker,
+            "added_price": float(added_price) if added_price else None}
+
+
+def _ist_date_iso(dt: Optional[datetime]) -> Optional[str]:
+    """IST calendar date of a stored timestamp; naive values are UTC (SQLite drops tz)."""
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(IST).date().isoformat()
 
 def remove_from_watchlist(user_id: int, ticker: str) -> dict:
     ticker = ticker.upper()
@@ -87,10 +107,10 @@ def get_watchlist(user_id: int) -> Optional[dict]:
         items = session.query(Portfolio).filter_by(
             user_id=user_id, group_name="watchlist"
         ).all()
-        items_data = [(h.ticker, h.company_name) for h in items]
+        items_data: List[tuple] = [(h.ticker, h.company_name, h.added_price, h.created_at) for h in items]
 
     # One concurrent, cached quote fetch for the whole list (PERF-07).
-    ns_by_ticker = {t: _to_ns(t) for t, _ in items_data}
+    ns_by_ticker = {t: _to_ns(t) for t, *_ in items_data}
     quotes = get_quotes(list(ns_by_ticker.values()))
 
     try:
@@ -99,7 +119,7 @@ def get_watchlist(user_id: int) -> Optional[dict]:
         logging.warning(f"Caught exception: {e}")
         asm_gsm_data = {"ASM": set(), "GSM": set()}
 
-    tickers = [t for t, _ in items_data]
+    tickers = [t for t, *_ in items_data]
     latest: dict = {}
     try:
         with get_session() as session:
@@ -108,11 +128,17 @@ def get_watchlist(user_id: int) -> Optional[dict]:
         logging.error(f"Error occurred: {e}", exc_info=True)
 
     result = []
-    for ticker, company_name in items_data:
+    for ticker, company_name, added_raw, created_at in items_data:
         current_price, prev_close = quotes.get(ns_by_ticker[ticker], (None, None))
         day_change_pct = 0.0
         if current_price and prev_close and prev_close > 0:
             day_change_pct = round((current_price - prev_close) / prev_close * 100, 2)
+
+        # I32: never computed from a 0/None sentinel (SILENT-01).
+        added = float(added_raw) if added_raw is not None else None
+        since_added_pct = None
+        if added and added > 0 and current_price and current_price > 0:
+            since_added_pct = round((current_price - added) / added * 100, 2)
 
         sig = (latest.get(ticker) or [{}])[0]
         last_signal = sig.get("signal")
@@ -141,6 +167,9 @@ def get_watchlist(user_id: int) -> Optional[dict]:
             "last_signal": last_signal,
             "last_signal_date": last_signal_date,
             "asm_gsm_status": asm_gsm_status,
+            "added_price": added,
+            "added_at": _ist_date_iso(created_at),
+            "since_added_pct": since_added_pct,
         })
 
     # SILENT-11: a missing price is a transient failure; don't pin it for the TTL.
