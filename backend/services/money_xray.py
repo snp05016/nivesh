@@ -9,9 +9,10 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any, Optional
 
+from core.feature_flags import is_enabled
 from database import get_session
 from models.db_models import Portfolio
-from services import money_mf_meta, money_pricing
+from services import money_commission, money_mf_meta, money_pricing
 
 TOP_HOLDINGS = 10
 
@@ -61,6 +62,17 @@ def _load_holdings(user_id: int) -> list[dict[str, Any]]:
             for r in rows
             if float(r.shares or 0.0) > 0
         ]
+
+
+def _commission_drag(funds: list[dict[str, Any]]) -> Optional[dict[str, Any]]:
+    """Filled only while money_commission_drag is on; otherwise null."""
+    if not is_enabled("money_commission_drag"):
+        return None
+    return money_commission.commission_drag([
+        {"isin": p["ticker"], "name": p["name"], "value_inr": p["value"],
+         "is_direct": p["scheme"].is_direct if p["scheme"] else None}
+        for p in funds
+    ])
 
 
 def build_xray(user_id: int) -> dict[str, Any]:
@@ -141,5 +153,5 @@ def build_xray(user_id: int) -> dict[str, Any]:
         "top_holdings": top,
         "concentration": concentration,
         "facts": facts,
-        "commission_drag": None,
+        "commission_drag": _commission_drag(funds),
     }
