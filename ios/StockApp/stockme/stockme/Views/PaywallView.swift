@@ -33,7 +33,10 @@ struct PaywallView: View {
                         .foregroundStyle(Theme.inkSecondary)
                 }
             }
-            .task { await vm.loadPaywall() }
+            .task {
+                EventLogger.shared.log(.paywallView)
+                await vm.loadPaywall()
+            }
             .refreshable { await vm.loadPaywall() }
             .banknoteDialog(
                 "Confirm Upgrade",

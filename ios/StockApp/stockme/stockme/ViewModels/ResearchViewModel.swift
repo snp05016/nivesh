@@ -40,7 +40,15 @@ final class ResearchViewModel: ObservableObject {
             if case .notCovered(let computeAvailable) = result {
                 guard computeAvailable else { state = .disabled; return }
                 state = .computing
-                apply(try await NetworkManager.shared.computeResearchReport(symbol: symbol))
+                let computed: ResearchFetchResult
+                do {
+                    computed = try await NetworkManager.shared.computeResearchReport(symbol: symbol)
+                } catch {
+                    if !Self.isCancellation(error) { Self.logCompute(Self.computeOutcome(for: error)) }
+                    throw error
+                }
+                Self.logCompute(Self.computeOutcome(for: computed))
+                apply(computed)
             } else {
                 apply(result)
             }
@@ -75,6 +83,27 @@ final class ResearchViewModel: ObservableObject {
         case .disabled:
             state = .disabled
         }
+    }
+
+    /// `report_compute` event value for a finished POST .../compute: ok, quota (429), unavailable (503) or error.
+    static func computeOutcome(for result: ResearchFetchResult) -> String {
+        switch result {
+        case .report: return "ok"
+        case .notCovered, .disabled: return "unavailable"
+        case .unknownSymbol, .signedOut: return "error"
+        }
+    }
+
+    static func computeOutcome(for error: Error) -> String {
+        if let network = error as? NetworkError, case .fetchFailed(_, let status, _) = network {
+            if status == 429 { return "quota" }
+            if status == 503 { return "unavailable" }
+        }
+        return "error"
+    }
+
+    private static func logCompute(_ outcome: String) {
+        EventLogger.shared.log(.reportCompute, ["result": outcome])
     }
 
     /// `researchCall` rethrows URLError(.cancelled) unmapped; Swift tasks throw CancellationError.

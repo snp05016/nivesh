@@ -88,7 +88,7 @@ struct TutorialOverlayView: View {
                 body: "Tap any stock to run a full AI analysis. It takes 30–90 seconds and analyses fundamentals, news, promoter activity, global macro, and Indian market sentiment together.",
                 spotlightRect: CGRect(x: geo.size.width * 0.20, y: geo.size.height * 0.37, width: geo.size.width * 0.60, height: geo.size.width * 0.60)),
             TutorialStep(number: 8,  title: "Price Alerts",
-                body: "Set a target price for any stock. The app tells you immediately when a stock crosses your target — every time you open the app.",
+                body: "Set a price alert for any stock. While the market is open we check your alert prices every 5 minutes and notify you when one is crossed.",
                 spotlightRect: tabRect(index: 1, geo: geo)),
             TutorialStep(number: 9,  title: "Your Trade Journal",
                 body: "Log every buy and sell with your reason. Over time you'll see your own patterns — which reasons led to profits, which didn't.",

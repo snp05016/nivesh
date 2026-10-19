@@ -50,6 +50,22 @@ struct ResearchReportView: View {
         }
         .navigationTitle("Stock report")
         .task { await model.loadIfNeeded() }
+        .onChange(of: reportViewState, initial: true) { _, shown in
+            if let shown { EventLogger.shared.log(.reportView, ["state": shown]) }
+        }
+    }
+
+    /// `report_view` event value for what is on screen now; nil while loading, computing or signed out.
+    /// Logged once each time the shown state changes.
+    private var reportViewState: String? {
+        switch model.state {
+        case .loaded(let report, _):
+            guard let state = report.staleness?.state else { return "fresh" }
+            return state == .unknown ? nil : state.rawValue
+        case .unknownSymbol: return "not_covered"
+        case .disabled, .error: return "unavailable"
+        case .loading, .computing, .signedOut: return nil
+        }
     }
 }
 

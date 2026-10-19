@@ -509,6 +509,7 @@ struct AddAlertSheet: View {
                             Task {
                                 do {
                                     _ = try await NetworkManager.shared.addAlert(userId: user.userId, ticker: selectedTicker, targetPrice: price, direction: direction, companyName: selectedCompany)
+                                    EventLogger.shared.log(.alertCreate, ["direction": direction == "above" ? "above" : "below"])
                                     onAdded()
                                     dismiss()
                                 } catch {

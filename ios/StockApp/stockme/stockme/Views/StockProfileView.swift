@@ -606,7 +606,10 @@ struct StockProfileView: View {
             }
             .toolbarBackground(Theme.canvas, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
-        .task { await vm.fetchStockProfile() }
+        .task {
+            EventLogger.shared.log(.stockView)
+            await vm.fetchStockProfile()
+        }
     }
 }
 

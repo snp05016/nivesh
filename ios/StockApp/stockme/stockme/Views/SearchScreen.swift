@@ -518,6 +518,7 @@ struct SearchScreen: View {
                     if backendResults.isEmpty {
                         // No backend matches: keep local results
                         isSearching = false
+                        EventLogger.shared.log(.search, ["results": EventLogger.searchBucket(localHit.count)])
                         return
                     }
                     // Merge: backend is authoritative; add any extra not in backend
@@ -529,6 +530,8 @@ struct SearchScreen: View {
                     searchResults = capped
                     searchResultsTotalCount = totalCount
                     isSearching = false
+                    // Once per completed query (the 350 ms debounce above), bucketed: never the text.
+                    EventLogger.shared.log(.search, ["results": EventLogger.searchBucket(totalCount)])
                 }
             }
             .navigationDestination(for: String.self) { ticker in
