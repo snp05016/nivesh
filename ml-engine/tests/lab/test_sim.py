@@ -1,3 +1,4 @@
+import json
 from datetime import date
 
 import pytest
@@ -160,3 +161,16 @@ def test_charges_pick_effective_row():
     assert old["exchange_txn"] == 3.22 and new["exchange_txn"] == 2.97
     assert old["stt"] == 100.0 and old["stamp_duty"] == 15.0
     assert charges("SELL", 1_00_000, date(2024, 10, 1))["stamp_duty"] == 0.0
+
+
+def test_real_schedule_covers_every_day():
+    from datetime import timedelta
+
+    import lab.costs as costs
+
+    real = json.loads(costs.SCHEDULE_PATH.read_text())
+    d = date(2010, 1, 1)
+    while d <= date.today():
+        charges("BUY", 1_00_000, d, schedule=real)
+        d += timedelta(days=1)
+    assert charges("SELL", 1_00_000, date(2020, 12, 31), schedule=real)["total"] > 0

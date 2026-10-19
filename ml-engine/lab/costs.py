@@ -33,7 +33,8 @@ def load_schedule(path: str = str(SCHEDULE_PATH)) -> dict:
 
 def _row(rows: list[dict], d: date) -> dict:
     iso = d.isoformat()
-    hits = [r for r in rows if r["effective_from"] <= iso and (r.get("effective_to") in (None, "") or iso < r["effective_to"])]
+    # effective_to is inclusive (the last day a rate applied); on an overlap the later row wins.
+    hits = [r for r in rows if r["effective_from"] <= iso and (r.get("effective_to") in (None, "") or iso <= r["effective_to"])]
     if not hits:
         raise LookupError(f"no charge row effective on {iso}")
     return max(hits, key=lambda r: r["effective_from"])

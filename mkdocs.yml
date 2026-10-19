@@ -1,27 +1,83 @@
-site_name: Nivesh Documentation
-site_description: Documentation for the Nivesh iOS App and FastAPI Backend
+site_name: Nivesh
+site_description: >-
+  Nivesh documentation: the iOS app, the FastAPI backend, the ml-engine and the
+  Research Lab (Time Machine, Trade Autopsy, Hypothesis Lab, Feature Language, Trader School).
+copyright: Nivesh. Educational software, not investment advice.
+
+# Only the curated site is built. Internal notes elsewhere in docs/ (plans, prompts,
+# audits, agent hand-offs) stay in the repo but are not published. The rules also apply
+# to theme files, hence the re-included /assets/ (Material's CSS/JS) and the favicon.
+exclude_docs: |
+  /*
+  !/assets/
+  !/favicon.svg
+  !/index.md
+  !/codebase/
+  !/backend_api/
+  !/platform/
+  !/stylesheets/
+  !/javascripts/
+
 theme:
   name: material
+  custom_dir: docs/overrides
+  language: en
+  icon:
+    logo: material/chart-timeline-variant-shimmer
+    repo: fontawesome/brands/github
+    admonition:
+      note: material/pencil-circle
+      warning: material/alert-decagram
+      danger: material/shield-alert
+  favicon: favicon.svg
+  font:
+    text: Inter
+    code: JetBrains Mono
+  palette:
+    - media: "(prefers-color-scheme)"
+      toggle:
+        icon: material/brightness-auto
+        name: Switch to light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-night
+        name: Switch to system preference
   features:
+    - announce.dismiss
     - navigation.tabs
+    - navigation.tabs.sticky
     - navigation.sections
-    - navigation.expand
+    - navigation.indexes
+    - navigation.top
+    - navigation.footer
+    - navigation.tracking
+    - toc.follow
     - search.suggest
     - search.highlight
+    - search.share
     - content.code.copy
-  palette:
-    - scheme: default
-      primary: indigo
-      accent: indigo
-      toggle:
-        icon: material/brightness-7
-        name: Switch to dark mode
-    - scheme: slate
-      primary: indigo
-      accent: indigo
-      toggle:
-        icon: material/brightness-4
-        name: Switch to light mode
+    - content.code.annotate
+    - content.tabs.link
+    - content.tooltips
+
+extra_css:
+  - https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css
+  - stylesheets/extra.css
+
+extra_javascript:
+  - javascripts/katex.js
+  - https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js
+  - https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js
 
 plugins:
   - search
@@ -29,39 +85,98 @@ plugins:
       handlers:
         python:
           paths: [backend]
-
-nav:
-  - Home: codebase/README.md
-  - Architecture:
-    - Overview: codebase/ARCHITECTURE_MAP.md
-    - Data Flow: codebase/DATA_FLOW_MAP.md
-    - Services: codebase/SERVICE_MAP.md
-    - Database: codebase/DATABASE_MAP.md
-    - API Contracts: codebase/API_CONTRACT_MAP.md
-    - Harvester Architecture: codebase/HARVESTER_ARCHITECTURE.md
-  - Deployment & Testing:
-    - Deployment Map: codebase/DEPLOYMENT_MAP.md
-    - Testing Map: codebase/TESTING_MAP.md
-    - Router Migration Runbook: codebase/ROUTER_MIGRATION_RUNBOOK.md
-    - LLM Credit Risk Guide: codebase/LLM_CREDIT_RISK.md
-  - Status & Coverage:
-    - Documentation Coverage: codebase/DOCUMENTATION_COVERAGE_REPORT.md
-  - Backend API Reference:
-    - Models: backend_api/models.md
-    - Services: backend_api/services.md
-    - Routers: backend_api/routers.md
+          options:
+            docstring_options:
+              warn_missing_types: false
+              warn_unknown_params: false
 
 markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+      permalink_title: Link to this section
+  - pymdownx.arithmatex:
+      generic: true
+      inline_syntax: [round]
+  - pymdownx.betterem
+  - pymdownx.caret
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
   - pymdownx.highlight:
       anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
   - pymdownx.inlinehilite
-  - pymdownx.snippets
+  - pymdownx.keys
+  - pymdownx.mark
+  - pymdownx.snippets:
+      base_path: [".", "docs/overrides/includes"]
+      auto_append: [abbreviations.md]
+      check_paths: true
   - pymdownx.superfences:
       custom_fences:
         - name: mermaid
           class: mermaid
           format: !!python/name:pymdownx.superfences.fence_code_format
-  - admonition
-  - pymdownx.details
   - pymdownx.tabbed:
       alternate_style: true
+      combine_header_slug: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+
+nav:
+  - Home: index.md
+  - Research Lab:
+      - platform/index.md
+      - Simulate:
+          - Time Machine: platform/time-machine.md
+          - Costs & charges: platform/costs.md
+      - Learn:
+          - Trade Autopsy & Mentor: platform/autopsy-and-mentor.md
+          - Trader School: platform/trader-school.md
+      - Research:
+          - Hypothesis Lab: platform/hypothesis-lab.md
+          - Feature Language: platform/feature-language.md
+          - Statistics: platform/statistics.md
+          # experiments/ is an index.md, so it must be its own section or Material makes it the
+          # link target of the enclosing "Research" section (navigation.indexes).
+          - Experiment log:
+              - platform/experiments/index.md
+      - Platform:
+          - Data & provenance: platform/data.md
+          - iOS screens: platform/ios.md
+          - Limitations: platform/limitations.md
+          - Status & continuation plan: platform/status.md
+  - Reference:
+      - Lab API contract: platform/api-contract.md
+      - Verified facts: platform/research/verified-facts.md
+      - Literature review: platform/research/literature.md
+  - Codebase:
+      - Overview: codebase/README.md
+      - Architecture:
+          - Overview: codebase/ARCHITECTURE_MAP.md
+          - Data Flow: codebase/DATA_FLOW_MAP.md
+          - Services: codebase/SERVICE_MAP.md
+          - Database: codebase/DATABASE_MAP.md
+          - API Contracts: codebase/API_CONTRACT_MAP.md
+          - Harvester Architecture: codebase/HARVESTER_ARCHITECTURE.md
+      - Deployment & Testing:
+          - Deployment Map: codebase/DEPLOYMENT_MAP.md
+          - Testing Map: codebase/TESTING_MAP.md
+          - Router Migration Runbook: codebase/ROUTER_MIGRATION_RUNBOOK.md
+          - LLM Credit Risk Guide: codebase/LLM_CREDIT_RISK.md
+      - Status & Coverage:
+          - Documentation Coverage: codebase/DOCUMENTATION_COVERAGE_REPORT.md
+      - Backend API Reference:
+          - Models: backend_api/models.md
+          - Services: backend_api/services.md
+          - Routers: backend_api/routers.md

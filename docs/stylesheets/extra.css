@@ -1,0 +1,193 @@
+/* Nivesh docs identity: deep ink-indigo with a saffron/gold accent. */
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,650&display=swap");
+
+:root {
+  --nv-ink-950: #0e0d26;
+  --nv-ink-900: #16153a;
+  --nv-ink-800: #1b1a4a;
+  --nv-ink-700: #2a2870;
+  --nv-ink-600: #3b3893;
+  --nv-ink-400: #7d7ad1;
+  --nv-saffron-700: #a8560a;
+  --nv-saffron-600: #c86a0a;
+  --nv-saffron-500: #e8891b;
+  --nv-saffron-400: #f4a62a;
+  --nv-gold-300: #ffd27a;
+  --nv-radius: 14px;
+  --nv-display: "Fraunces", Georgia, "Times New Roman", serif;
+}
+
+/* ---------- light ---------- */
+[data-md-color-scheme="default"] {
+  --md-primary-fg-color: var(--nv-ink-800);
+  --md-primary-fg-color--light: var(--nv-ink-600);
+  --md-primary-fg-color--dark: var(--nv-ink-950);
+  --md-primary-bg-color: #fdfcf7;
+  --md-primary-bg-color--light: rgba(253, 252, 247, 0.72);
+  --md-accent-fg-color: var(--nv-saffron-600);
+  --md-accent-fg-color--transparent: rgba(200, 106, 10, 0.1);
+  --md-accent-bg-color: #fff;
+  --md-default-bg-color: #fdfcf8;
+  --md-typeset-a-color: var(--nv-ink-600);
+  --md-code-bg-color: #f4f2ec;
+  --md-typeset-mark-color: rgba(244, 166, 42, 0.35);
+  --nv-surface: #ffffff;
+  --nv-surface-2: #f6f4ee;
+  --nv-border: rgba(27, 26, 74, 0.12);
+  --nv-muted: #5b5a78;
+  --nv-hero-bg: radial-gradient(1200px 380px at 85% -10%, rgba(244, 166, 42, 0.28), transparent 60%),
+    linear-gradient(135deg, #16153a 0%, #23215e 55%, #2f2c7a 100%);
+}
+
+/* ---------- dark ---------- */
+[data-md-color-scheme="slate"] {
+  --md-hue: 245;
+  --md-primary-fg-color: var(--nv-ink-900);
+  --md-primary-fg-color--light: var(--nv-ink-700);
+  --md-primary-fg-color--dark: var(--nv-ink-950);
+  --md-primary-bg-color: #f3f1ff;
+  --md-primary-bg-color--light: rgba(243, 241, 255, 0.7);
+  --md-accent-fg-color: var(--nv-saffron-400);
+  --md-accent-fg-color--transparent: rgba(244, 166, 42, 0.12);
+  --md-default-bg-color: #11102a;
+  --md-default-fg-color: rgba(236, 234, 255, 0.9);
+  --md-default-fg-color--light: rgba(236, 234, 255, 0.66);
+  --md-default-fg-color--lighter: rgba(236, 234, 255, 0.36);
+  --md-default-fg-color--lightest: rgba(236, 234, 255, 0.1);
+  --md-typeset-a-color: var(--nv-gold-300);
+  --md-code-bg-color: #1a1940;
+  --md-code-fg-color: #e6e4ff;
+  --md-typeset-mark-color: rgba(244, 166, 42, 0.3);
+  --md-footer-bg-color: #0b0a1f;
+  --md-footer-bg-color--dark: #08071a;
+  --nv-surface: #17163a;
+  --nv-surface-2: #1c1b45;
+  --nv-border: rgba(160, 156, 255, 0.16);
+  --nv-muted: #a9a6d6;
+  --nv-hero-bg: radial-gradient(1100px 380px at 85% -10%, rgba(244, 166, 42, 0.22), transparent 60%),
+    linear-gradient(135deg, #0c0b22 0%, #16153a 55%, #211f55 100%);
+}
+
+/* ---------- chrome ---------- */
+.md-header { box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06); }
+.md-tabs { background-color: var(--md-primary-fg-color--dark); }
+.md-tabs__link--active, .md-tabs__item--active .md-tabs__link { color: var(--nv-gold-300); }
+.md-header__topic:first-child { font-family: var(--nv-display); font-weight: 650; letter-spacing: 0.01em; }
+.md-banner { background: linear-gradient(90deg, var(--nv-saffron-700), var(--nv-saffron-600)); color: #fff; }
+.md-banner a { color: #fff; text-decoration: underline; }
+.md-banner code { background: rgba(0, 0, 0, 0.2); color: #fff; }
+.nv-announce svg { width: 1.1em; height: 1.1em; vertical-align: -0.2em; fill: currentColor; margin-right: 0.3em; }
+
+/* ---------- typography ---------- */
+.md-typeset h1 { font-family: var(--nv-display); font-weight: 650; letter-spacing: -0.01em; color: var(--md-default-fg-color); }
+.md-typeset h2 { font-weight: 700; letter-spacing: -0.01em; border-bottom: 1px solid var(--nv-border); padding-bottom: 0.25em; }
+.md-typeset h3 { font-weight: 650; }
+.md-typeset a { text-underline-offset: 0.18em; }
+.md-typeset code { border-radius: 6px; }
+.md-typeset .arithmatex { overflow-x: auto; }
+
+/* ---------- tables ---------- */
+.md-typeset table:not([class]) {
+  border: 1px solid var(--nv-border);
+  border-radius: var(--nv-radius);
+  overflow: hidden;
+  font-size: 0.74rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+.md-typeset table:not([class]) th {
+  background: var(--nv-surface-2);
+  color: var(--md-default-fg-color);
+  font-weight: 650;
+}
+.md-typeset table:not([class]) tr:hover { background: var(--md-accent-fg-color--transparent); box-shadow: none; }
+
+/* ---------- admonitions ---------- */
+.md-typeset .admonition, .md-typeset details { border-radius: var(--nv-radius); border-width: 1px; box-shadow: none; }
+
+/* ---------- grid cards ---------- */
+.md-typeset .grid.cards > ul > li, .md-typeset .grid > .card {
+  border: 1px solid var(--nv-border);
+  border-radius: var(--nv-radius);
+  background: var(--nv-surface);
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+.md-typeset .grid.cards > ul > li:hover, .md-typeset .grid > .card:hover {
+  transform: translateY(-2px);
+  border-color: var(--md-accent-fg-color);
+  box-shadow: 0 10px 28px -14px rgba(27, 26, 74, 0.45);
+}
+.md-typeset .grid.cards .lg { color: var(--md-accent-fg-color); }
+
+/* ---------- landing hero ---------- */
+.nv-hero {
+  background: var(--nv-hero-bg);
+  color: #f3f1ff;
+  border-radius: calc(var(--nv-radius) + 6px);
+  padding: 2.6rem 2.2rem 2.2rem;
+  margin: 0 0 2rem;
+  position: relative;
+  overflow: hidden;
+}
+.nv-hero::after {
+  content: "";
+  position: absolute;
+  inset: auto -10% -60% auto;
+  width: 420px; height: 420px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 210, 122, 0.18);
+  pointer-events: none;
+}
+.nv-hero .nv-eyebrow {
+  display: inline-block;
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--nv-gold-300);
+  border: 1px solid rgba(255, 210, 122, 0.4);
+  border-radius: 999px;
+  padding: 0.2em 0.9em;
+  margin-bottom: 1rem;
+}
+.md-typeset .nv-hero h1 {
+  font-family: var(--nv-display);
+  font-size: clamp(1.9rem, 4.2vw, 2.9rem);
+  line-height: 1.08;
+  color: #fff;
+  margin: 0 0 0.8rem;
+}
+.md-typeset .nv-hero h1 em { font-style: italic; color: var(--nv-saffron-400); }
+.md-typeset .nv-hero p { max-width: 44rem; font-size: 0.92rem; line-height: 1.65; color: rgba(243, 241, 255, 0.86); }
+.md-typeset .nv-hero .md-button {
+  margin: 0.4rem 0.5rem 0 0;
+  border-radius: 999px;
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.45);
+}
+.md-typeset .nv-hero .md-button--primary {
+  background: var(--nv-saffron-500);
+  border-color: var(--nv-saffron-500);
+  color: #1b1200;
+}
+.md-typeset .nv-hero .md-button:hover { background: var(--nv-gold-300); border-color: var(--nv-gold-300); color: #1b1200; }
+
+/* ---------- small helpers ---------- */
+.nv-pill {
+  display: inline-block;
+  font-size: 0.66rem;
+  font-weight: 650;
+  border-radius: 999px;
+  padding: 0.1em 0.65em;
+  border: 1px solid currentColor;
+  white-space: nowrap;
+}
+.nv-pill.real { color: #1f8a4c; }
+.nv-pill.partial { color: var(--nv-saffron-600); }
+.nv-pill.planned { color: var(--nv-muted); }
+[data-md-color-scheme="slate"] .nv-pill.real { color: #5fd496; }
+[data-md-color-scheme="slate"] .nv-pill.partial { color: var(--nv-saffron-400); }
+
+.nv-lede { font-size: 0.86rem; color: var(--nv-muted); max-width: 46rem; }
+
+@media screen and (max-width: 44.9375em) {
+  .nv-hero { padding: 1.8rem 1.2rem 1.4rem; border-radius: var(--nv-radius); }
+}
