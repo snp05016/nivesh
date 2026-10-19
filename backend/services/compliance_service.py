@@ -276,6 +276,15 @@ ERASURE_POLICY: dict[str, str] = {
 }
 
 
+# User-linked columns that have no foreign key (research engine and LLM ledgers): table ->
+# (column, policy). 'null_user' sets the column to NULL on erasure; 'delete' removes the rows.
+# test_privacy_export.py fails for any new *user_id column with no FK that is not listed.
+EXTRA_USER_COLUMNS: dict[str, tuple[str, str]] = {
+    "research_reports": ("requested_by_user_id", "null_user"),
+    "llm_usage": ("user_id", "null_user"),
+}
+
+
 def user_fk_columns() -> list:
     """(table, column) for every column with a foreign key to users.id, children
     before parents (reverse dependency order), so deletes never hit an FK."""
@@ -340,6 +349,17 @@ def erase_user(user_id: int, request_id: Optional[int] = None) -> dict:
             else:
                 continue
             counts[table.name] = counts.get(table.name, 0) + (result.rowcount or 0)  # type: ignore[attr-defined]
+
+        for table_name, (column_name, policy) in EXTRA_USER_COLUMNS.items():
+            table = Base.metadata.tables.get(table_name)
+            if table is None or column_name not in table.c:
+                continue
+            column = table.c[column_name]
+            if policy == "delete":
+                result = session.execute(table.delete().where(column == user_id))
+            else:
+                result = session.execute(table.update().where(column == user_id).values({column_name: None}))
+            counts[table_name] = counts.get(table_name, 0) + (result.rowcount or 0)  # type: ignore[attr-defined]
 
         # Random suffix: a real account could already be named deleted_<id>.
         user.username = f"deleted_{user_id}_{secrets.token_hex(4)}"  # type: ignore[assignment]

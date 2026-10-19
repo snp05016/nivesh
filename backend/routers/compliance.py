@@ -11,11 +11,12 @@ cancelled until then.
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from typing import Optional
 
 from core.security import rate_limited_user, require_auth
-from services import compliance_service, disclosure_service
+from services import compliance_service, disclosure_service, privacy_export
 from services.product_bounds import ProductBoundsError
 
 router = APIRouter(prefix="/api/v1/compliance", tags=["Compliance"])
@@ -119,6 +120,24 @@ def get_audit_trail(limit: int = 50, user_id: int = Depends(require_auth)):
     newest first."""
     capped_limit = max(1, min(limit, 200))
     return compliance_service.get_audit_trail(user_id, limit=capped_limit)
+
+
+@router.get("/my-data")
+def get_my_data(user_id: int = Depends(rate_limited_user("privacy_export"))):
+    """DPDP s.11 access right: everything stored about the caller as a JSON download.
+    Not behind a flag. 404 only when the account is missing or deleted."""
+    try:
+        export = privacy_export.build_user_export(user_id)
+    except LookupError:
+        raise HTTPException(status_code=404, detail="Not available")
+    privacy_export.record_export(user_id, export)
+    return JSONResponse(
+        export,
+        headers={
+            "Content-Disposition": f'attachment; filename="{privacy_export.export_filename()}"',
+            "Cache-Control": "no-store",
+        },
+    )
 
 
 # ---------------------------------------------------------------------------
