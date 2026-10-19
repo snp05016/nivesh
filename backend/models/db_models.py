@@ -989,11 +989,18 @@ class YouTubeVideoSummary(Base):
 class UserPreference(Base):
     """User theme and notification preferences."""
     __tablename__ = "user_preferences"
+    __table_args__ = (
+        CheckConstraint(
+            "preferred_language IN ('en','hi')", name="ck_user_preferences_preferred_language"
+        ),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, unique=True, index=True)
     theme = Column(String(50), default="banknote_standard")
     alerts_enabled = Column(Boolean, default=True)
+    # Language of glossary explanations only (DPDP purpose limitation).
+    preferred_language = Column(String(10), nullable=False, default="en", server_default="en")
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(
         DateTime,
