@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 import os
 
 /// Server-side feature flags (backend core/feature_flags.py, spec_money 2.1).

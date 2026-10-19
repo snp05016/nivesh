@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 
 /// One holding's detail page (C11). Read-only: nothing here starts an analysis or calls an LLM.
 @MainActor

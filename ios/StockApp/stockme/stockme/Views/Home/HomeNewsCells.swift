@@ -1,3 +1,4 @@
+import SafariServices
 import SwiftUI
 
 // MARK: - Compact News Cell — rich card with expand-to-detail
