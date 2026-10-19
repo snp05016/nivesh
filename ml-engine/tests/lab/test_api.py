@@ -88,6 +88,7 @@ def test_recent_data_embargo(client, monkeypatch):
     c, data = client
     b = body(data)
     b["config"]["end"] = (date.today() - timedelta(days=5)).isoformat()
+    b["config"]["start"] = (date.today() - timedelta(days=200)).isoformat()
     r = c.post("/lab/v1/sim/state", json=b, headers=KEY)
     assert r.status_code == 422 and "30 days" in r.json()["detail"]
     monkeypatch.setenv("LAB_MIN_DATA_AGE_DAYS", "0")
