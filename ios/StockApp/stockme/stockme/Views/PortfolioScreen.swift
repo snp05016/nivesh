@@ -286,6 +286,8 @@ struct PortfolioScreen: View {
                             if let user = authManager.currentUser {
                                 PortfolioChartsStrip(userId: user.userId)
                                     .padding(.horizontal, Theme.screenPadding)
+                                PortfolioToolsCard(userId: user.userId)
+                                    .padding(.horizontal, Theme.screenPadding)
                             }
 
                             HStack(spacing: Theme.Spacing.none) {

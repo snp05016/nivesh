@@ -2,7 +2,7 @@ import SwiftUI
 
 // MARK: - EMI Calculator
 //
-// MOCK/DEMO — purely a local, offline projection tool. No loan application,
+// Purely a local, offline projection tool. No loan application,
 // disbursement, or backend call is involved; this only estimates a monthly
 // instalment using the standard reducing-balance EMI formula.
 //
@@ -12,7 +12,8 @@ import SwiftUI
 //   n = tenure in months
 //
 // Mirrors FixedDepositCalculatorView's shape (FDInputSlider + result card).
-// Embedded only in CalculatorsView (Settings > Tools > Calculators).
+// Embedded only in CalculatorsView (Settings > Tools > Calculators, and the
+// Portfolio Tools card).
 
 /// Slider inputs, owned by CalculatorsView so they survive tab switches.
 struct EMIInputs {

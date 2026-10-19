@@ -35,6 +35,8 @@ final class SessionStorageTests: XCTestCase {
         UserDefaults.standard.set(legacy, forKey: AuthManager.storageKey)
         UserDefaults.standard.set("a@example.com", forKey: "nivesh_profileEmail")
         UserDefaults.standard.set("9999999999", forKey: "nivesh_profilePhone")
+        UserDefaults.standard.set(Data("{}".utf8), forKey: "watchlistTags")
+        UserDefaults.standard.set(Data("[]".utf8), forKey: "customScreenerPresets")
         // Mark the disclaimer as recorded so init sends no consent request.
         let disclaimerKey = "nivesh_disclaimerRecordedVersion_42"
         UserDefaults.standard.set(PolicyVersion.current, forKey: disclaimerKey)
@@ -53,6 +55,8 @@ final class SessionStorageTests: XCTestCase {
         XCTAssertFalse(defaults.keys.contains { $0.hasPrefix("nivesh_user") })
         XCTAssertNil(defaults["nivesh_profileEmail"])
         XCTAssertNil(defaults["nivesh_profilePhone"])
+        XCTAssertNil(defaults["watchlistTags"])
+        XCTAssertNil(defaults["customScreenerPresets"])
         XCTAssertFalse(defaults.values.contains { ($0 as? String)?.contains("tok.secret") == true })
     }
 

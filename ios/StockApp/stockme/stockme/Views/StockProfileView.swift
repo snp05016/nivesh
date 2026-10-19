@@ -323,7 +323,7 @@ struct StockProfileView: View {
     let exchange: String
 
     @StateObject private var vm: StockProfileViewModel
-    @State private var activeTab = 0
+    @State private var activeTab: ProfileTab = .overview
     @State private var chartPeriod = "1y"
 
     init(ticker: String, exchange: String = "NSE") {
@@ -464,20 +464,20 @@ struct StockProfileView: View {
                     // Tab bar
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: Theme.Spacing.none) {
-                            ForEach(Array(tabItems.enumerated()), id: \.offset) { idx, item in
+                            ForEach(ProfileTab.allCases, id: \.self) { tab in
                                 Button {
                                     HapticManager.selection()
                                     withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
-                                        activeTab = idx
+                                        activeTab = tab
                                     }
                                 } label: {
                                     VStack(spacing: Theme.Spacing.small) {
-                                        Text(item.label.uppercased())
+                                        Text(tab.label.uppercased())
                                             .font(Theme.officialStampFont(size: 9))
                                             .tracking(1.0)
-                                            .foregroundStyle(activeTab == idx ? Theme.securityGold : Theme.inkTertiary)
+                                            .foregroundStyle(activeTab == tab ? Theme.securityGold : Theme.inkTertiary)
                                         Rectangle()
-                                            .fill(activeTab == idx ? Theme.securityGold : Color.clear)
+                                            .fill(activeTab == tab ? Theme.securityGold : Color.clear)
                                             .frame(height: 1.5)
                                     }
                                     .padding(.horizontal, Theme.Spacing.card)
@@ -493,11 +493,10 @@ struct StockProfileView: View {
 
                     GuillocheDivider()
 
-                    // Tab content (12 tabs)
+                    // Tab content
                     ZStack {
                         switch activeTab {
-                        case 0:
-                            // 0: Overview
+                        case .overview:
                             ScrollView {
                                 LazyVStack(spacing: Theme.sectionSpacing) {
                                     OverviewTabView(
@@ -521,23 +520,11 @@ struct StockProfileView: View {
                             }
                             .transition(.opacity)
 
-                        case 1:
-                            // 1: Chart
+                        case .chart:
                             ChartTabView(ticker: ticker, vm: vm)
                                 .transition(.opacity)
 
-                        case 2:
-                            // 2: Forecast
-                            ForecastTabView(ticker: ticker)
-                                .transition(.opacity)
-
-                        case 3:
-                            // 3: MC Insights
-                            MCInsightsTabView(ticker: ticker)
-                                .transition(.opacity)
-
-                        case 4:
-                            // 4: Financials
+                        case .financials:
                             ScrollView {
                                 FinancialsTabView(
                                     isLoading: vm.financialsLoading,
@@ -549,13 +536,7 @@ struct StockProfileView: View {
                             }
                             .transition(.opacity)
 
-                        case 5:
-                            // 5: Peers
-                            PeerComparisonView(ticker: ticker)
-                                .transition(.opacity)
-
-                        case 6:
-                            // 6: Fundamentals
+                        case .fundamentals:
                             ScrollView {
                                 LazyVStack(spacing: Theme.sectionSpacing) {
                                     FundamentalsTabView(vm: vm)
@@ -564,8 +545,11 @@ struct StockProfileView: View {
                             }
                             .transition(.opacity)
 
-                        case 7:
-                            // 7: News & Events
+                        case .dividends:
+                            DividendsTabView(ticker: ticker)
+                                .transition(.opacity)
+
+                        case .news:
                             ScrollView {
                                 LazyVStack(spacing: Theme.sectionSpacing) {
                                     NewsTabView(
@@ -581,8 +565,7 @@ struct StockProfileView: View {
                             }
                             .transition(.opacity)
 
-                        case 8:
-                            // 8: Ownership
+                        case .ownership:
                             ScrollView {
                                 LazyVStack(spacing: Theme.sectionSpacing) {
                                     HoldersTabView(
@@ -598,23 +581,13 @@ struct StockProfileView: View {
                             }
                             .transition(.opacity)
 
-                        case 9:
-                            // 9: Macro
+                        case .macro:
                             MacroTabView(ticker: ticker, exchange: exchange, vm: vm)
                                 .transition(.opacity)
 
-                        case 10:
-                            // 10: Corporate
-                            CorporateTabView(ticker: ticker)
-                                .transition(.opacity)
-
-                        case 11:
-                            // 11: Quant Lab
+                        case .quantLab:
                             QuantLabView(symbol: ticker)
                                 .transition(.opacity)
-                                
-                        default:
-                            EmptyView()
                         }
                     }
                     .animation(.spring(response: 0.35, dampingFraction: 0.85), value: activeTab)
@@ -635,21 +608,25 @@ struct StockProfileView: View {
             .toolbarBackground(.visible, for: .navigationBar)
         .task { await vm.fetchStockProfile() }
     }
+}
 
-    private var tabItems: [(label: String, icon: String)] {
-        [
-            ("Overview", "doc.text"),
-            ("Chart", "chart.xyaxis.line"),
-            ("Forecast", "chart.line.uptrend.xyaxis"),
-            ("MC Insights", "lightbulb"),
-            ("Financials", "dollarsign.circle"),
-            ("Peers", "person.2"),
-            ("Fundamentals", "chart.bar.doc.horizontal"),
-            ("News & Events", "newspaper"),
-            ("Ownership", "person.3"),
-            ("Macro", "globe.asia.australia"),
-            ("Corporate", "briefcase"),
-            ("Quant Lab", "flask")
-        ]
+/// Stock profile tabs. Forecast, MC Insights, Peers and Corporate were removed
+/// (they only ever rendered "unavailable" stubs); add a case back once a real
+/// data source backs it.
+private enum ProfileTab: CaseIterable {
+    case overview, chart, financials, fundamentals, dividends, news, ownership, macro, quantLab
+
+    var label: String {
+        switch self {
+        case .overview: return "Overview"
+        case .chart: return "Chart"
+        case .financials: return "Financials"
+        case .fundamentals: return "Fundamentals"
+        case .dividends: return "Dividends"
+        case .news: return "News & Events"
+        case .ownership: return "Ownership"
+        case .macro: return "Macro"
+        case .quantLab: return "Quant Lab"
+        }
     }
 }

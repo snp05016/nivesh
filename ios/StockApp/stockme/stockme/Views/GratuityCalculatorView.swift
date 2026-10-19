@@ -2,7 +2,7 @@ import SwiftUI
 
 // MARK: - Gratuity Calculator
 //
-// MOCK/DEMO — a simplified, offline estimate only. This is NOT tax or legal
+// A simplified, offline estimate only. This is NOT tax or legal
 // advice; it approximates the gratuity formula of the Code on Social Security,
 // 2020 (Chapter V, which replaced the Payment of Gratuity Act, 1972) and the
 // common 15/30 convention for non-covered establishments, and does not account
@@ -97,14 +97,14 @@ struct GratuityCalculationResult: Equatable {
     static let fixedTermMinimumYears = 1
 
     /// Statutory ceiling under the Code on Social Security, 2020 (Chapter V)
-    /// (current value as of this demo).
+    /// (current value).
     static let statutoryCeiling: Double = 20_00_000
 
     /// Covered: (Salary × 15 × Years) / 26, a final part-year over 6 months
     /// counted as a full year. Not covered: (Salary × 15 × Completed Years) / 30.
     /// Payable is 0 below the minimum service; `uncappedGratuity` is still filled
     /// so the card can show the value that applies on death/disablement.
-    /// Pure/local — simplified/demo estimate only, not tax or legal advice.
+    /// Pure/local — simplified estimate only, not tax or legal advice.
     static func computeLocally(
         lastDrawnSalary: Double,
         yearsOfService: Int,
