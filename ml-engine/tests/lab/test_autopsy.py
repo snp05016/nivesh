@@ -52,7 +52,7 @@ def test_autopsy_separates_process_from_outcome():
 
 
 def test_counterfactual_hold_cash_undoes_the_trade():
-    acts = [{"type": "advance", "days": 30}, {"type": "order", "symbol": "AAA", "side": "BUY", "qty": 100, "planned_stop": 120},
+    acts = [{"type": "advance", "days": 30}, {"type": "order", "symbol": "AAA", "side": "BUY", "qty": 100, "planned_stop": 105},
             {"type": "advance", "days": 10}]
     cfg, data, sim = run(acts)
     cf = {c["variant"]: c for c in counterfactuals(cfg, data, acts, "o1")}
@@ -62,12 +62,23 @@ def test_counterfactual_hold_cash_undoes_the_trade():
     assert "followed_stop_plan" in cf
 
 
-def test_counterfactual_invalid_when_later_sell_depends_on_entry():
-    acts = [{"type": "advance", "days": 30}, {"type": "order", "symbol": "AAA", "side": "BUY", "qty": 100},
+def test_counterfactuals_clip_dependent_sells():
+    acts = [{"type": "advance", "days": 30}, {"type": "order", "symbol": "AAA", "side": "BUY", "qty": 100, "planned_stop": 100},
             {"type": "advance", "days": 3}, {"type": "order", "symbol": "AAA", "side": "SELL", "qty": 100}, {"type": "advance", "days": 1}]
-    cfg, data, _ = run(acts)
+    cfg, data, sim = run(acts)
     cf = {c["variant"]: c for c in counterfactuals(cfg, data, acts, "o1")}
-    assert cf["hold_cash"]["valid"] is False
+    assert all(c["valid"] for c in cf.values())
+    assert cf["hold_cash"]["final_equity"] == cfg.capital  # no trade, no cost
+    assert cf["half_size"]["delta_vs_actual"] == pytest.approx(-(sim.trades[0].pnl) / 2, rel=0.05)
+
+
+def test_stop_orders_must_be_on_the_right_side():
+    from lab.sim import ActionError
+    with pytest.raises(ActionError, match="sell stop must be below"):
+        run([{"type": "order", "symbol": "AAA", "side": "BUY", "qty": 10}, {"type": "advance", "days": 1},
+             {"type": "order", "symbol": "AAA", "side": "SELL", "qty": 10, "order_type": "STOP", "stop": 10_000}])
+    with pytest.raises(ActionError, match="planned stop"):
+        run([{"type": "order", "symbol": "AAA", "side": "BUY", "qty": 10, "planned_stop": 10_000}])
 
 
 def test_canonical_splits_advances():

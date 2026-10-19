@@ -146,6 +146,7 @@ class Sim:
     equity: list[EquityPoint] = field(default_factory=list)
     events: list[dict] = field(default_factory=list)
     finished: bool = False
+    lenient: bool = False  # counterfactual replays clip sells that the changed history can no longer cover
 
     def __post_init__(self) -> None:
         cal = [d for d in self.data.calendar() if self.cfg.start <= d <= self.cfg.end]
@@ -213,8 +214,23 @@ class Sim:
             raise ActionError("tif must be DAY or GTC")
         if side == "SELL":
             pending = sum(o.remaining for o in self.orders if o.symbol == sym and o.side == "SELL" and o.status in ("OPEN", "PARTIAL"))
-            if qty + pending > self.qty(sym):
+            free = self.qty(sym) - pending
+            if qty > free and self.lenient:
+                if free <= 0:
+                    self._log("action_skipped", symbol=sym, reason="nothing left to sell in this counterfactual")
+                    return
+                qty = free
+            elif qty > free:
                 raise ActionError(f"you hold {self.qty(sym)} {sym} with {pending} already pending sale; short selling is not allowed in delivery")
+        last = self.last_close(sym)
+        if otype == "STOP" and last is not None and isinstance(stop, (int, float)):
+            if side == "SELL" and stop >= last:
+                raise ActionError(f"a sell stop must be below the last close ({last:.2f}); use a market or limit order to sell now")
+            if side == "BUY" and stop <= last:
+                raise ActionError(f"a buy stop must be above the last close ({last:.2f})")
+        ps = a.get("planned_stop")
+        if side == "BUY" and isinstance(ps, (int, float)) and last is not None and ps >= last:
+            raise ActionError(f"the planned stop for a purchase must be below the last close ({last:.2f})")
         conf = a.get("conviction")
         o = Order(
             id=f"o{len(self.orders) + 1}", symbol=sym, side=side, qty=qty, order_type=otype,
@@ -411,9 +427,12 @@ class Sim:
         }
 
 
-def replay(cfg: SimConfig, data: MarketData, actions: list[dict]) -> Sim:
-    """Rebuild a session from its action log. Raises ActionError at the first invalid action."""
-    sim = Sim(cfg, data)
+def replay(cfg: SimConfig, data: MarketData, actions: list[dict], lenient: bool = False) -> Sim:
+    """Rebuild a session from its action log. Raises ActionError at the first invalid action.
+
+    `lenient=True` (counterfactuals only) clips later sells to what is actually held.
+    """
+    sim = Sim(cfg, data, lenient=lenient)
     for i, a in enumerate(actions):
         try:
             sim.apply(a)

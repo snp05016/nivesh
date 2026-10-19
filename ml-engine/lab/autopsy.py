@@ -168,7 +168,7 @@ def counterfactuals(cfg: SimConfig, data: MarketData, actions: list[dict], order
     out = []
     for name, va in variants.items():
         try:
-            fe = performance(replay(cfg, data, va))["final_equity"]
+            fe = performance(replay(cfg, data, va, lenient=True))["final_equity"]
             out.append({"variant": name, "final_equity": fe, "delta_vs_actual": round(fe - base, 2), "valid": True})
         except ActionError as e:  # e.g. a later sell of shares this variant never bought
             out.append({"variant": name, "valid": False, "reason": str(e)})
@@ -208,8 +208,9 @@ def behaviour(sim: Sim) -> list[dict]:
     if len(sim.fills) / sessions * 20 > 8 and perf["cost_drag"] > 0.005:
         flags.append(_flag("overtrading", "medium", {"fills_per_20_sessions": round(len(sim.fills) / sessions * 20, 1), "cost_drag": perf["cost_drag"]},
                            "Frequent trading added visible cost drag. Barber & Odean (2000) found the most active retail accounts earned less after costs."))
-    if perf["costs_inr"] and perf["costs_inr"] > 0.25 * max(sum(t.pnl for t in sim.trades if t.pnl > 0), 1):
-        flags.append(_flag("ignored_costs", "medium", {"costs_inr": perf["costs_inr"]}, "Charges consumed more than a quarter of gross gains."))
+    gains = sum(t.pnl for t in sim.trades if t.pnl > 0)
+    if (gains > 0 and perf["costs_inr"] > 0.25 * gains) or perf["cost_drag"] > 0.01:
+        flags.append(_flag("ignored_costs", "medium", {"costs_inr": perf["costs_inr"]}, "Charges consumed more than a quarter of gross gains, or more than 1% of starting capital."))
     max_w = _max_weight(sim)
     if max_w > 0.30:
         flags.append(_flag("concentration", "high" if max_w > 0.5 else "medium", {"max_position_weight": round(max_w, 3)}, "One position exceeded 30% of equity at a close."))
