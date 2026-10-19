@@ -75,16 +75,6 @@ struct AnalysisScreen: View {
                             ChangeBadge(value: pct)
                         }
                     }
-                    if retainedAnalysis != nil {
-                        Button {
-                            HapticManager.selection()
-                            shareAsImage()
-                        } label: {
-                            Image(systemName: "square.and.arrow.up")
-                                .foregroundStyle(Theme.inkPrimary)
-                        }
-                        .accessibilityLabel("Share as Image")
-                    }
                 }
             }
         }
@@ -152,42 +142,6 @@ struct AnalysisScreen: View {
                 if let info = await NetworkManager.shared.quickInfo(ticker: ticker, exchange: exchange) {
                     livePrice = info.price
                 }
-            }
-        }
-    }
-
-    // MARK: - Share as Image
-
-    private func shareAsImage() {
-        guard let analysis = viewModel.analysis else { return }
-
-        let viewToRender = ZStack {
-            Theme.canvas.ignoresSafeArea()
-            DenominationBackground(denomination: .hundred)
-            BanknoteWatermark(text: "CONFIDENTIAL", size: 100, opacity: 0.018, alignment: .center)
-
-            VStack(spacing: Theme.Spacing.sectionGap) {
-                AnalysisCoreSections(analysis: analysis, previousAnalysis: previousAnalysis, ticker: ticker, livePrice: livePrice, viewModel: viewModel)
-                if analysis.analysisTier == "extreme" {
-                    AnalysisExtremeSections(analysis: analysis, previousAnalysis: previousAnalysis, viewModel: viewModel)
-                }
-            }
-            .padding(.horizontal, Theme.screenPadding)
-            .padding(.top, Theme.Spacing.standard)
-            .padding(.bottom, Theme.Spacing.large)
-        }
-        .frame(width: UIScreen.main.bounds.width)
-
-        let renderer = ImageRenderer(content: viewToRender)
-        renderer.scale = UIScreen.main.scale
-
-        if let uiImage = renderer.uiImage {
-            let avc = UIActivityViewController(activityItems: [uiImage], applicationActivities: nil)
-            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-               let rootVC = windowScene.windows.first(where: { $0.isKeyWindow })?.rootViewController {
-                avc.popoverPresentationController?.sourceView = rootVC.view
-                avc.popoverPresentationController?.sourceRect = CGRect(x: UIScreen.main.bounds.midX, y: UIScreen.main.bounds.midY, width: 0, height: 0)
-                rootVC.present(avc, animated: true)
             }
         }
     }

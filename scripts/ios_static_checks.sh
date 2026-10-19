@@ -33,6 +33,8 @@ fail_if_any swift_grep '\.toolbar *\{ *HapticManager'
 fail_if_any swift_grep 'Button\([^()]*action: *[^(){}]*\) *\{ *HapticManager'
 # Auth state has one owner: the @StateObject in stockmeApp, injected as an environment
 # object. A static instance would be a second, stale source of truth (audit WIP-12).
+# The legacy image export of saved AI analyses is gone (no share surface; docs/proposals/share-card-reentry.md).
+fail_if_any swift_grep 'shareAsImage|Share as Image'
 fail_if_any swift_grep 'AuthManager\.shared\b|static +(let|var) +[A-Za-z_]+ *(: *AuthManager)? *= *AuthManager\('
 # Stacked haptics (closed #556, audit WIP-13): two HapticManager calls on one line, or on
 # consecutive non-blank lines unless the first line closes its closure with `}`.
