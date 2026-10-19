@@ -7,7 +7,7 @@ Run on your server (with internet access) to keep the stock database fresh:
     python3 backend/scripts/refresh_nse_symbols.py
 
 Sources:
-  NSE equities : https://archives.nseindia.com/content/equities/EQUITY_L.csv
+  NSE equities : https://nsearchives.nseindia.com/content/equities/EQUITY_L.csv
   BSE equities : https://github.com/maanavshah/stock-market-india (names.js)
 
 Output:
@@ -16,8 +16,10 @@ Output:
       by the iOS app (written only when that directory exists in the checkout)
 """
 
-import csv, json, os, re, subprocess, sys, tempfile, time, urllib.request
-from io import StringIO
+import json, os, re, subprocess, sys, tempfile, time
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from services import instruments  # noqa: E402  (fetch/parse helpers; no database needed)
 
 OUTPUT_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "nse_bse_symbols.json")
 IOS_RESOURCE_DIR = os.path.join(
@@ -25,7 +27,6 @@ IOS_RESOURCE_DIR = os.path.join(
     "ios", "StockApp", "stockme", "stockme", "Resources",
 )
 REPO_URL    = "https://github.com/maanavshah/stock-market-india.git"
-NSE_CSV_URL = "https://archives.nseindia.com/content/equities/EQUITY_L.csv"
 
 # ── Sector guesser ─────────────────────────────────────────────────────────
 SECTOR_KEYWORDS = {
@@ -55,28 +56,18 @@ def guess_sector(name: str) -> str:
 # ── NSE ────────────────────────────────────────────────────────────────────
 def fetch_nse() -> list[dict]:
     logging.info("Fetching NSE EQUITY_L.csv...")
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
-        "Referer": "https://www.nseindia.com/",
-    }
     try:
-        req = urllib.request.Request(NSE_CSV_URL, headers=headers)
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            raw = resp.read().decode("utf-8", errors="replace")
+        text = instruments.fetch_equity_list()
     except Exception as e:
         logging.info(f"  NSE fetch failed: {e}")
         return []
 
-    reader = csv.DictReader(StringIO(raw))
     stocks = []
-    for row in reader:
-        if row.get("SERIES", "").strip().upper() != "EQ":
+    for row in instruments.parse_equity_list(text):
+        if row["series"] != "EQ":
             continue
-        ticker = row.get("SYMBOL", "").strip().upper()
-        name   = row.get("NAME OF COMPANY", "").strip()
-        if ticker and name:
-            stocks.append({"ticker": ticker, "name": name,
-                           "sector": guess_sector(name), "exchange": "NSE"})
+        stocks.append({"ticker": row["symbol"], "name": row["name"],
+                       "sector": guess_sector(row["name"]), "exchange": "NSE"})
     logging.info(f"  NSE: {len(stocks)} equity symbols")
     return stocks
 
