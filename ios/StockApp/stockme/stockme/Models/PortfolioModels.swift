@@ -70,7 +70,7 @@ struct TradeJournalStatsResponse: Codable {
     let totalEntries: Int
     let mostJournalledTicker: String?
     let winLossRatio: WinLossRatio?
-    let topKeywords: [String]?
+    let topKeywords: [KeywordCount]?
     let actionBreakdown: [String: Int]?
     let patterns: [JournalPattern]?
 
@@ -82,6 +82,11 @@ struct TradeJournalStatsResponse: Codable {
         case actionBreakdown = "action_breakdown"
         case patterns
     }
+}
+
+struct KeywordCount: Codable, Equatable {
+    let word: String
+    let count: Int
 }
 
 struct WinLossRatio: Codable {
