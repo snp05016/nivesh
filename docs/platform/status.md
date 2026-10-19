@@ -22,7 +22,7 @@ was verified. Nothing has been pushed or merged yet, and the <code>research_lab<
 | Trader School (`school/`) | <span class="nv-pill real">done</span> | Tests (44 lessons, 49 concepts, BKT) |
 | Probabilistic forecasts (`forecast.py`) | <span class="nv-pill real">done</span> | Tests and a recorded dev run in [Forecasts](experiments/forecasts.md) |
 | ml-engine `/lab/v1` API | <span class="nv-pill real">done</span> | `tests/lab/test_api.py` |
-| Backend `/api/v1/research-lab` (sessions, school, research ledger, mentor) | <span class="nv-pill planned">written, not run</span> | Static checks only (`py_compile`, `ruff`). Backend tests must not run locally (AGENTS.md §6.5), so CI has to run `tests/test_research_lab.py` |
+| Backend `/api/v1/research-lab` (sessions, school, research ledger, mentor) | <span class="nv-pill planned">written, not run</span> | Static checks (`py_compile`, `ruff`), every import resolved to a real symbol, a single Alembic head, a clean merge into `audit/integration`, and a line-by-line desk-check that traced all 17 tests in `tests/test_research_lab.py` to a pass. Backend tests must not run locally (AGENTS.md §6.5), so CI still has to run them |
 | iOS Lab screens | <span class="nv-pill real">verified</span> | Every screen driven in the simulator against a local dev gateway that mirrors the backend contract (see below) |
 | Documentation (this site) | <span class="nv-pill real">done</span> | `mkdocs build --strict` |
 
