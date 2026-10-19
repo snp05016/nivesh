@@ -1,6 +1,6 @@
 """Prediction calibration and pillar attribution response schemas."""
 
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -115,6 +115,7 @@ class CalibrationHealthResponse(BaseModel):
     latest_prediction_date: Optional[str] = Field(None, description="Date of most recent prediction")
     is_ready_for_calibration: bool = Field(..., description="Whether enough data exists to run calibration")
     warnings: List[str] = Field(..., description="Warnings about data quality or volume")
+    last_outcome_run: Optional[Dict[str, Any]] = Field(None, description="Heartbeat of the prediction_outcomes job (last_run_at, last_success_at, status, summary)")
 
 
 # ---------------------------------------------------------------------------

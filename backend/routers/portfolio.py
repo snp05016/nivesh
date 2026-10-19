@@ -31,11 +31,10 @@ from services.staleness import compute_staleness
 from repositories.analysis_repo import latest_signals_by_ticker
 
 
-# _adjust_for_splits, _adjust_for_bonus, _apply_corporate_actions
-# imported from services.portfolio_service
+# Splits/bonuses reach holdings as ledger SPLIT rows (ledger_service.sync_corporate_actions_all_users).
 
 from services.portfolio_service import (
-    _adjust_for_splits, _adjust_for_bonus, _apply_corporate_actions, _nse_session,
+    _nse_session,
     compute_holding_pnl,
     _INDICES_TICKERS,
 )

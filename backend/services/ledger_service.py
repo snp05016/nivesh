@@ -23,7 +23,7 @@ Rules (AGENTS.md §3.1):
 from __future__ import annotations
 
 import hashlib
-from datetime import datetime, timedelta, timezone
+from datetime import date as _date, datetime, time, timedelta, timezone
 from typing import Optional, cast
 
 from sqlalchemy import text
@@ -243,6 +243,7 @@ def record_transaction(
     purchase_date: Optional[str] = None,
     is_virtual: bool = False,
     client_request_id: Optional[str] = None,
+    session: Optional[Session] = None,
 ) -> Transaction:
     """
     Insert an immutable Transaction and refresh the Portfolio read-model.
@@ -263,95 +264,125 @@ def record_transaction(
         is_virtual:       Paper-trade flag forwarded to Portfolio row.
         client_request_id: Client Idempotency-Key; a repeat returns the first
                           Transaction instead of inserting another.
+        session:          Optional caller-owned session: the write is flushed into
+                          it and the caller commits. Default: own get_session() + commit.
 
     Returns:
-        The committed Transaction (the existing one for a repeated
-        client_request_id).
+        The committed Transaction (flushed only, when `session` is passed; the
+        existing one for a repeated client_request_id).
 
     Raises:
         LedgerError: a SELL exceeds the shares held on its trade date, or
                      invalidates a later SELL. Nothing is written.
     """
+    args = (user_id, ticker, transaction_type, quantity, price, group_id, fees, date, notes,
+            company_name, target_price, purchase_date, is_virtual, client_request_id)
+    if session is not None:
+        # ponytail: an idempotency-key race rolls back the caller's whole transaction
+        # (session.rollback below); only tests pass a session today.
+        return _record_in_session(session, *args)
     from database import get_session
-    with get_session() as session:
-        _lock_position(session, user_id, ticker)
-        if client_request_id is not None:
-            existing_tx = _find_client_request(session, user_id, client_request_id)
-            if existing_tx is not None:
-                return existing_tx
+    with get_session() as own:
+        tx = _record_in_session(own, *args)
+        own.commit()
+        own.refresh(tx)
+        return tx
 
-        resolved_group_id: int
-        if group_id is None:
-            group = get_or_create_default_group(session, user_id)
-            resolved_group_id = cast(int, group.id)
-        else:
-            resolved_group_id = group_id
 
-        now = datetime.now(timezone.utc)
-        # Never future-date a trade: adjust/close date their ADJUST at now(), so a
-        # future-dated BUY would replay after it and resurrect a removed holding.
-        tx_date = min(_as_utc(date), now) if date is not None else now
-        # A back-dated trade keeps its trade date: the replay runs in date order
-        # and validates it strictly (_replay), so splits and SELLs see real chronology.
-        # A reconcile ADJUST restates the row as it is now, so it goes after the
-        # whole ledger, not at the trade's date.
-        latest = session.query(Transaction.date).filter_by(
-            user_id=user_id, ticker=ticker
-        ).order_by(Transaction.date.desc()).first()
-        reconcile_at = tx_date
-        if latest is not None and latest[0] is not None:
-            reconcile_at = max(tx_date, _as_utc(latest[0]))
-        _reconcile_with_read_model(session, user_id, resolved_group_id, ticker, reconcile_at)
-        # ponytail: ADJUST is an absolute restatement (edit/remove), so a trade dated
-        # before it would be silently absorbed; such trades are dated at the restatement.
-        last_adjust = session.query(Transaction.date).filter_by(
-            user_id=user_id, ticker=ticker, transaction_type="ADJUST"
-        ).order_by(Transaction.date.desc()).first()
-        if last_adjust is not None and last_adjust[0] is not None and tx_date < _as_utc(last_adjust[0]):
-            tx_date = _as_utc(last_adjust[0])
-
-        tx = Transaction(
-            user_id=user_id,
-            group_id=resolved_group_id,
-            ticker=ticker,
-            transaction_type=transaction_type.upper(),
-            quantity=quantity,
-            price=price,
-            fees=fees,
-            date=tx_date,
-            notes=notes,
-            client_request_id=client_request_id,
-        )
-        session.add(tx)
-        try:
-            session.flush()
-        except IntegrityError:
-            # A concurrent request with the same Idempotency-Key won the insert.
-            session.rollback()
-            existing_tx = (
-                _find_client_request(session, user_id, client_request_id)
-                if client_request_id is not None else None
-            )
-            if existing_tx is None:
-                raise
+def _record_in_session(
+    session: Session,
+    user_id: int,
+    ticker: str,
+    transaction_type: str,
+    quantity: float,
+    price: float,
+    group_id: Optional[int],
+    fees: float,
+    date: Optional[datetime],
+    notes: Optional[str],
+    company_name: str,
+    target_price: Optional[float],
+    purchase_date: Optional[str],
+    is_virtual: bool,
+    client_request_id: Optional[str],
+) -> Transaction:
+    """record_transaction's body: writes and flushes in `session`, never commits."""
+    _lock_position(session, user_id, ticker)
+    if client_request_id is not None:
+        existing_tx = _find_client_request(session, user_id, client_request_id)
+        if existing_tx is not None:
             return existing_tx
 
-        # Replays the whole (user, ticker) ledger in date order, so a backdated
-        # SELL is validated against the position held on its own date.
-        _recalculate_portfolio_snapshot(
-            session=session,
-            user_id=user_id,
-            group_id=resolved_group_id,
-            ticker=ticker,
-            company_name=company_name,
-            target_price=target_price,
-            purchase_date=purchase_date,
-            is_virtual=is_virtual,
-            new_tx=tx,
+    resolved_group_id: int
+    if group_id is None:
+        group = get_or_create_default_group(session, user_id)
+        resolved_group_id = cast(int, group.id)
+    else:
+        resolved_group_id = group_id
+
+    now = datetime.now(timezone.utc)
+    # Never future-date a trade: adjust/close date their ADJUST at now(), so a
+    # future-dated BUY would replay after it and resurrect a removed holding.
+    tx_date = min(_as_utc(date), now) if date is not None else now
+    # A back-dated trade keeps its trade date: the replay runs in date order
+    # and validates it strictly (_replay), so splits and SELLs see real chronology.
+    # A reconcile ADJUST restates the row as it is now, so it goes after the
+    # whole ledger, not at the trade's date.
+    latest = session.query(Transaction.date).filter_by(
+        user_id=user_id, ticker=ticker
+    ).order_by(Transaction.date.desc()).first()
+    reconcile_at = tx_date
+    if latest is not None and latest[0] is not None:
+        reconcile_at = max(tx_date, _as_utc(latest[0]))
+    _reconcile_with_read_model(session, user_id, resolved_group_id, ticker, reconcile_at)
+    # ponytail: ADJUST is an absolute restatement (edit/remove), so a trade dated
+    # before it would be silently absorbed; such trades are dated at the restatement.
+    last_adjust = session.query(Transaction.date).filter_by(
+        user_id=user_id, ticker=ticker, transaction_type="ADJUST"
+    ).order_by(Transaction.date.desc()).first()
+    if last_adjust is not None and last_adjust[0] is not None and tx_date < _as_utc(last_adjust[0]):
+        tx_date = _as_utc(last_adjust[0])
+
+    tx = Transaction(
+        user_id=user_id,
+        group_id=resolved_group_id,
+        ticker=ticker,
+        transaction_type=transaction_type.upper(),
+        quantity=quantity,
+        price=price,
+        fees=fees,
+        date=tx_date,
+        notes=notes,
+        client_request_id=client_request_id,
+    )
+    session.add(tx)
+    try:
+        session.flush()
+    except IntegrityError:
+        # A concurrent request with the same Idempotency-Key won the insert.
+        session.rollback()
+        existing_tx = (
+            _find_client_request(session, user_id, client_request_id)
+            if client_request_id is not None else None
         )
-        session.commit()
-        session.refresh(tx)
-        return tx
+        if existing_tx is None:
+            raise
+        return existing_tx
+
+    # Replays the whole (user, ticker) ledger in date order, so a backdated
+    # SELL is validated against the position held on its own date.
+    _recalculate_portfolio_snapshot(
+        session=session,
+        user_id=user_id,
+        group_id=resolved_group_id,
+        ticker=ticker,
+        company_name=company_name,
+        target_price=target_price,
+        purchase_date=purchase_date,
+        is_virtual=is_virtual,
+        new_tx=tx,
+    )
+    return tx
 
 
 def _find_client_request(session: Session, user_id: int, client_request_id: str) -> Optional[Transaction]:
@@ -520,3 +551,103 @@ def get_transactions_for_ticker(user_id: int, ticker: str) -> list[dict]:
             }
             for t in rows
         ]
+
+
+_IST = timezone(timedelta(hours=5, minutes=30))
+
+
+def _split_effective_at(ex_date: _date) -> datetime:
+    """The instant a split takes effect in the ledger: one second before IST midnight
+    of the ex-date, so a trade on the ex-date (trade-date midnight UTC, or now())
+    replays after it and a trade on the day before replays before it."""
+    return (datetime.combine(ex_date, time(0, 0), tzinfo=_IST) - timedelta(seconds=1)).astimezone(timezone.utc)
+
+
+def apply_split_events(user_id: int, ticker: str, events: list[tuple[_date, float]]) -> int:
+    """Write each split/bonus (ex_date, ratio) as a ledger SPLIT row and re-derive the holding (MATH-07).
+
+    A SPLIT multiplies only the shares held before the ex-date (_replay), so a BUY
+    on or after the ex-date is not multiplied. Idempotent: one SPLIT per effective
+    instant per (user, ticker); the replay spans all groups, so per-group rows would
+    double-apply. Only ex-dates after the position was first recorded in the app
+    (earliest of the holdings row's and its ledger rows' created_at) apply: earlier
+    ones are already in the quantity the user entered, whatever trade date it carries.
+    A holding with no ledger first gets its opening BUY. Nothing is written when no
+    event applies. Returns SPLIT rows added.
+    """
+    if not events:
+        return 0
+    from database import get_session
+    added = 0
+    with get_session() as session:
+        _lock_position(session, user_id, ticker)
+        row = session.query(Portfolio).filter_by(user_id=user_id, ticker=ticker, group_name="holdings").first()
+        if row is None:
+            return 0
+        now = datetime.now(timezone.utc)
+        # When the app first knew of this position. Quantities entered after an ex-date
+        # are the broker's already-adjusted ones (trade date is user-entered and may be
+        # backdated), so only ex-dates after this instant are applied automatically.
+        # ponytail: per position, not per BUY; a backdated BUY recorded later still
+        # replays before an older SPLIT row; upgrade: compare each BUY's created_at to the ex-date.
+        known = [cast(Optional[datetime], row.created_at)]
+        known += [cast(Optional[datetime], t.created_at) for t in _ledger_rows(session, user_id, ticker)]
+        recorded_at = min((_as_utc(c) for c in known if c is not None), default=now)
+        group_id = cast(int, get_or_create_default_group(session, user_id).id)
+        _reconcile_with_read_model(session, user_id, group_id, ticker, now)
+        ledger = _ledger_rows(session, user_id, ticker)
+        done = {_as_utc(t.date) for t in ledger if t.transaction_type.upper() == "SPLIT" and t.date is not None}  # type: ignore[arg-type]
+        for ex_date, ratio in sorted(events):
+            effective = _split_effective_at(ex_date)
+            if effective in done or effective > now or effective <= recorded_at:
+                continue
+            held, _ = _replay([t for t in ledger if t.date is not None and _as_utc(t.date) < effective])  # type: ignore[arg-type]
+            if held <= 0:
+                continue
+            session.add(Transaction(
+                user_id=user_id, group_id=group_id, ticker=ticker, transaction_type="SPLIT",
+                quantity=ratio, price=0.0, fees=0.0, date=effective,
+                notes=f"auto: corporate action ex {ex_date.isoformat()} (yfinance)",
+            ))
+            session.flush()
+            ledger = _ledger_rows(session, user_id, ticker)
+            done.add(effective)
+            added += 1
+        if not added:
+            session.rollback()  # drop an opening BUY / ADJUST that nothing needed
+            return 0
+        _recalculate_portfolio_snapshot(session=session, user_id=user_id, group_id=group_id, ticker=ticker)
+        session.commit()
+    return added
+
+
+def sync_corporate_actions_all_users() -> dict:
+    """Daily job: apply Yahoo splits/bonuses to every holding recorded before their ex-date (MATH-07).
+
+    Reads (user, ticker) pairs in one short session, fetches each ticker's splits
+    once with no session open, then applies per holding. Errors are per ticker.
+    """
+    import logging
+    from database import get_session
+    from services.portfolio_service import fetch_split_events
+
+    log = logging.getLogger(__name__)
+    with get_session() as session:
+        pairs = session.query(Portfolio.user_id, Portfolio.ticker).filter(
+            Portfolio.group_name == "holdings", Portfolio.shares > 0,
+        ).distinct().all()
+    by_ticker: dict[str, list[int]] = {}
+    for user_id, ticker in pairs:
+        by_ticker.setdefault(str(ticker), []).append(int(user_id))
+
+    counts = {"tickers": len(by_ticker), "splits_added": 0, "errors": 0}
+    for ticker, user_ids in by_ticker.items():
+        events = fetch_split_events(ticker)
+        for user_id in user_ids:
+            try:
+                counts["splits_added"] += apply_split_events(user_id, ticker, events)
+            except Exception:
+                counts["errors"] += 1
+                log.exception("[corporate-actions] %s for user %s failed", ticker, user_id)
+    log.info(f"[corporate-actions] {counts}")
+    return counts

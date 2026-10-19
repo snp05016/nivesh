@@ -664,7 +664,9 @@ def evaluate_analysis_outcomes(db) -> int:
     for analysis in pending:
         try:
             ticker = analysis.ticker
-            if not ticker or analysis.created_at is None:
+            if not ticker:
+                analysis.outcome_checked_at = now  # unscorable: never reselect it (it would starve the batch)
+                db.commit()
                 continue
             anchor = pd.Timestamp(analysis.created_at.date())
             exit_on = anchor + pd.Timedelta(days=horizon_days)
@@ -688,4 +690,6 @@ def evaluate_analysis_outcomes(db) -> int:
             logger.warning(f"[outcome_eval] {getattr(analysis, 'ticker', '?')}: {e}")
 
     logger.info(f"[outcome_eval] Evaluated {evaluated} analysis outcomes")
+    if pending and evaluated == 0:
+        logger.warning(f"[outcome_eval] {len(pending)} due rows, 0 labelled: check price data (DB-03)")
     return evaluated

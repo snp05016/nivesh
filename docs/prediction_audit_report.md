@@ -1,7 +1,7 @@
 # Nivesh Prediction Logging & Outcome Tracking Audit Report
 
 **Date:** June 24, 2026
-**Status:** ✅ Passed & Fully Verified
+**Status:** Corrected 2026-10-11: the outcome job was never scheduled (it existed only as an undeployed Celery task), so no outcome labels were written until the `prediction_outcomes` APScheduler job was added (audit package w5-01, ML-03).
 
 This document confirms the completion of a full structural audit of the Nivesh prediction logging feedback loop, ensuring that all AI/Quant predictions are meticulously stored and tracked to build training datasets for LightGBM.
 
@@ -31,5 +31,5 @@ During the audit, the following structural enhancements were proactively applied
 With this audit complete, the system functions as a closed loop:
 1. `orchestrator.py` mathematically computes a fused prediction.
 2. It explicitly logs all deterministic components to SQLite/Postgres.
-3. The nightly `run_outcome_tracking_task` polls `yfinance`, checks actual market reality, and calculates the mathematical penalty (`(confidence - outcome)^2`).
+3. The nightly APScheduler job `prediction_outcomes` (21:10 UTC, `harvest_worker._run_prediction_outcomes` -> `outcome_tracker.update_prediction_outcomes`) polls `yfinance`, checks actual market reality, and calculates the mathematical penalty (`(confidence - outcome)^2`). Its last run is reported as `last_outcome_run` by `GET /api/v1/predictions/calibration/health`.
 4. This results in a continuously growing dataset of perfectly formatted, labeled rows ready for ML alpha model training in `ml-engine`.

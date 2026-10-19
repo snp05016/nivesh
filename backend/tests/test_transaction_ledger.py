@@ -468,15 +468,9 @@ def auth(api_client):
 
     data = r.json()
     token = data.get("access_token") or data.get("token")
-    if not token:
-        pytest.skip("No token returned")
-
-    me = api_client.get("/me", headers={"Authorization": f"Bearer {token}"})
-    if me.status_code != 200:
-        pytest.skip("/me endpoint unavailable")
-
-    user_id = me.json().get("user_id") or me.json().get("id")
-    return user_id, {"Authorization": f"Bearer {token}"}
+    assert token, "login returned no token"
+    # /login returns the user id (there is no /me route).
+    return data["user_id"], {"Authorization": f"Bearer {token}"}
 
 
 class TestPortfolioAddEndpoint:

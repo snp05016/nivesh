@@ -93,3 +93,13 @@ def test_cashflows_use_trade_dates_and_restart_at_adjust():
 
 def test_ledgerless_holding_is_one_buy_on_fallback_date():
     assert holding_cashflows([], 2, 100.0, date(2025, 3, 5)) == [(date(2025, 3, 5), -200.0)]
+
+
+def test_ios_benchmark_keys_mirror_pct_values():
+    """DB-V2: the shipped iOS BenchmarkData decodes portfolio_cagr/benchmark_cagr/alpha."""
+    start = TODAY - timedelta(days=100)
+    r = compute_benchmark([(start, -1000.0)], 1150.0, [(start, 100.0), (TODAY, 110.0)], TODAY)
+
+    assert (r["portfolio_cagr"], r["benchmark_cagr"], r["alpha"]) == (15.0, 10.0, 5.0)
+    assert r["tracking_error"] is None and r["information_ratio"] is None
+    assert r["return_basis"] == "absolute"  # iOS labels it a return, not a CAGR

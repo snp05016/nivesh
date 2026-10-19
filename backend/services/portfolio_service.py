@@ -29,67 +29,25 @@ from services.nse_client import (  # noqa: F401
 # Corporate-actions helpers
 # ---------------------------------------------------------------------------
 
-def _adjust_for_splits(ticker: str, buy_price: float, quantity: float, buy_date: str) -> tuple:
-    """Fix 2.44: Adjust historical buy_price and quantity for corporate splits.
+def fetch_split_events(ticker: str) -> list[tuple[date, float]]:
+    """Yahoo split history for an NSE/BSE ticker as [(ex_date, ratio)], oldest first.
 
-    Uses yfinance split history. Returns (adjusted_buy_price, adjusted_quantity, split_ratio).
+    Yahoo records Indian bonus issues as splits too (1:1 bonus = 2.0), so this one
+    series covers both; reading "Stock Splits" again from .actions would double-apply
+    them (MATH-07). The index is tz-aware, so it is reduced to plain dates here.
+    Returns [] when Yahoo has no data or fails.
     """
+    from services.yfinance_client import _to_ns
     try:
-        t = yf.Ticker(f"{ticker}.NS" if not ticker.endswith((".NS", ".BO")) else ticker)
-        splits = t.splits
+        splits = yf.Ticker(_to_ns(ticker)).splits
         if splits is None or len(splits) == 0:
-            return buy_price, quantity, 1.0
-        buy_dt = datetime.strptime(buy_date[:10], "%Y-%m-%d")
-        cumulative_ratio = 1.0
-        for split_date, ratio in splits.items():
-            if split_date > buy_dt:
-                cumulative_ratio *= ratio
-        if cumulative_ratio != 1.0:
-            return buy_price / cumulative_ratio, quantity * cumulative_ratio, cumulative_ratio
-        return buy_price, quantity, 1.0
-    except Exception as e:
-        logging.warning(f"[corporate-actions] _adjust_for_splits failed for {ticker}: {e}")
-        return buy_price, quantity, 1.0
-
-
-def _adjust_for_bonus(ticker: str, buy_price: float, quantity: float, buy_date: str) -> tuple:
-    """Adjust historical buy_price and quantity for corporate bonus issues.
-
-    Uses yfinance actions DataFrame (Dividends & Stock Splits).
-    Returns (adjusted_buy_price, adjusted_quantity, cumulative_ratio).
-    """
-    try:
+            return []
         import pandas as pd
-        t = yf.Ticker(f"{ticker}.NS" if not ticker.endswith((".NS", ".BO")) else ticker)
-        actions = t.actions
-        if actions is None or actions.empty or "Stock Splits" not in actions.columns:
-            return buy_price, quantity, 1.0
-
-        buy_dt = pd.to_datetime(buy_date[:10]).tz_localize(None)
-        cumulative_ratio = 1.0
-
-        for action_date, row in actions.iterrows():
-            dt = action_date
-            if hasattr(dt, "tz_localize") and dt.tzinfo is not None:
-                dt = dt.tz_localize(None)
-            if dt > buy_dt:
-                split = float(row.get("Stock Splits", 0.0))
-                if split > 0:
-                    cumulative_ratio *= split
-
-        if cumulative_ratio != 1.0:
-            return buy_price / cumulative_ratio, quantity * cumulative_ratio, cumulative_ratio
-        return buy_price, quantity, 1.0
+        events = [(pd.Timestamp(idx).date(), float(r)) for idx, r in splits.items()]  # type: ignore[arg-type]  (DatetimeIndex)
     except Exception as e:
-        logging.warning(f"[corporate-actions] _adjust_for_bonus failed for {ticker}: {e}")
-        return buy_price, quantity, 1.0
-
-
-def _apply_corporate_actions(ticker: str, buy_price: float, quantity: float, buy_date: str) -> tuple:
-    """Adjustment pipeline that applies both splits and bonus issues."""
-    bp1, q1, _ = _adjust_for_splits(ticker, buy_price, quantity, buy_date)
-    bp2, q2, _ = _adjust_for_bonus(ticker, bp1, q1, buy_date)
-    return bp2, q2, (quantity / q2) if q2 > 0 else 1.0
+        logging.warning(f"[corporate-actions] split history unavailable for {ticker}: {e}")
+        return []
+    return sorted((d, r) for d, r in events if r > 0 and not math.isnan(r) and r != 1.0)
 
 
 # ---------------------------------------------------------------------------
@@ -396,12 +354,21 @@ def compute_benchmark(
             except ValueError:  # XIRR found no root
                 nifty_pct = None
 
+    port = round(port_pct, 2)
+    nifty = round(nifty_pct, 2) if nifty_pct is not None else None
+    alpha = round(port_pct - nifty_pct, 2) if nifty_pct is not None else None
     return {
-        "portfolio_cagr_pct": round(port_pct, 2),
-        "nifty_cagr_pct": round(nifty_pct, 2) if nifty_pct is not None else None,
-        "alpha_pct": round(port_pct - nifty_pct, 2) if nifty_pct is not None else None,
+        "portfolio_cagr_pct": port,
+        "nifty_cagr_pct": nifty,
+        "alpha_pct": alpha,
         "return_basis": "annualized_xirr" if annualize else "absolute",
         "period_days": period_days,
+        # Names the iOS BenchmarkData decodes (same percent values, DB-V2).
+        "portfolio_cagr": port,
+        "benchmark_cagr": nifty,
+        "alpha": alpha,
+        "tracking_error": None,
+        "information_ratio": None,
     }
 
 

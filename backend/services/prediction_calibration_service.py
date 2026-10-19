@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import hashlib
 import json
 import math
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import func, case, cast, Float
 from database import get_session
@@ -786,7 +787,16 @@ def get_calibration_health() -> Dict[str, Any]:
             warnings.append(f"Insufficient 30d matured data for reliable calibration ({matured_30d}/100).")
         if matured_7d < 30:
             warnings.append(f"Low 7d matured data ({matured_7d}/30).")
-            
+
+        # Heartbeat written by harvest_worker._run_prediction_outcomes (ML-03).
+        from services import disk_cache
+        last_run = disk_cache.get("job_heartbeat", "prediction_outcomes")
+        last_ok = (last_run or {}).get("last_success_at")
+        if last_ok is None:
+            warnings.append("Outcome tracking job has not completed a run.")
+        elif datetime.now(timezone.utc) - datetime.fromisoformat(last_ok) > timedelta(hours=36):
+            warnings.append(f"Outcome tracking last succeeded at {last_ok} (over 36h ago).")
+
         return {
             "total_predictions": total,
             "matured_7d": matured_7d,
@@ -795,6 +805,7 @@ def get_calibration_health() -> Dict[str, Any]:
             "latest_prediction_date": latest.isoformat() if latest else None,
             "is_ready_for_calibration": matured_30d >= 100,
             "warnings": warnings,
+            "last_outcome_run": last_run,
         }
 
 

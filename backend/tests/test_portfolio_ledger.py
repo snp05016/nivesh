@@ -448,8 +448,8 @@ def test_client():
 
 
 @pytest.fixture(scope="module")
-def auth_headers(test_client):
-    """Register + login a test user, return Bearer headers."""
+def auth_user(test_client):
+    """Register + login a test user, return (user_id, Bearer headers)."""
     import uuid
     tag = uuid.uuid4().hex[:8]
     email = f"ledger_test_{tag}@example.com"
@@ -467,9 +467,9 @@ def auth_headers(test_client):
         pytest.skip("Auth endpoint unavailable in this test environment")
 
     token = r.json().get("access_token") or r.json().get("token")
-    if not token:
-        pytest.skip("No token returned — skipping API tests")
-    return {"Authorization": f"Bearer {token}"}
+    assert token, "login returned no token"
+    # /login returns the user id (there is no /me route).
+    return r.json()["user_id"], {"Authorization": f"Bearer {token}"}
 
 
 class TestTransactionsEndpoint:
@@ -482,13 +482,9 @@ class TestTransactionsEndpoint:
         )
         assert r.status_code == 401
 
-    def test_transactions_endpoint_returns_list(self, test_client, auth_headers):
+    def test_transactions_endpoint_returns_list(self, test_client, auth_user):
         """Authenticated request returns a JSON list (possibly empty)."""
-        # Get user_id from /auth/me or similar
-        me = test_client.get("/me", headers=auth_headers)
-        if me.status_code != 200:
-            pytest.skip("No /auth/me endpoint available")
-        user_id = me.json().get("user_id") or me.json().get("id")
+        user_id, auth_headers = auth_user
 
         r = test_client.get(
             "/portfolio/transactions/TESTSTOCK",
@@ -498,12 +494,9 @@ class TestTransactionsEndpoint:
         assert r.status_code == 200
         assert isinstance(r.json(), list)
 
-    def test_no_western_scale_in_responses(self, test_client, auth_headers):
+    def test_no_western_scale_in_responses(self, test_client, auth_user):
         """Portfolio responses must not contain Million/Billion/Trillion."""
-        me = test_client.get("/me", headers=auth_headers)
-        if me.status_code != 200:
-            pytest.skip("No /auth/me endpoint")
-        user_id = me.json().get("user_id") or me.json().get("id")
+        user_id, auth_headers = auth_user
 
         r = test_client.get(
             "/portfolio/transactions/TESTSTOCK",
@@ -725,3 +718,18 @@ def test_concurrent_sells_exactly_one_succeeds():
         t.join()
 
     assert sorted(outcomes) == ["ok", "rejected"]
+
+
+# ---------------------------------------------------------------------------
+# GH-647: record_transaction(session=...) writes into the caller's session
+# ---------------------------------------------------------------------------
+
+def test_record_transaction_with_session_leaves_commit_to_caller(db_session):
+    tx = record_transaction(user_id=1, ticker="SESS", transaction_type="BUY", quantity=5,
+                            price=100.0, company_name="Test Co", session=db_session)
+    assert tx.id is not None  # flushed
+    assert _holding(db_session, 1, "SESS") is not None
+
+    db_session.rollback()  # the caller owns the transaction
+    assert db_session.query(Transaction).filter_by(ticker="SESS").count() == 0
+    assert _holding(db_session, 1, "SESS") is None

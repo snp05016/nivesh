@@ -149,6 +149,7 @@ def start_scheduler() -> bool:
     })
 
     from services.advisor_harvester import harvest_all_advisors, evaluate_analysis_outcomes
+    from services.ledger_service import sync_corporate_actions_all_users
     from services.news_harvester import harvest_news
     from services.youtube_harvester import harvest_youtube_metadata, harvest_portfolio_videos
     from services.portfolio_snapshot import snapshot_all_users, pregen_morning_briefs_all_users
@@ -294,6 +295,12 @@ def start_scheduler() -> bool:
     _scheduler.add_job(_snapshot_all_users_job,       "cron", hour=12, minute=0)   # 5:30 PM IST (12:00 UTC)
     _scheduler.add_job(_run_nightly_screen_job,       "cron", hour=11, minute=15)  # 4:45 PM IST (11:15 UTC)
     _scheduler.add_job(_run_evaluate_analysis_outcomes,"cron", hour=20, minute=30)  # 2:00 AM IST (20:30 UTC)
+    # AnalysisPrediction outcomes (7d/30d/90d/target labels, Brier); the only caller (ML-03).
+    _scheduler.add_job(_run_prediction_outcomes, "cron", hour=21, minute=10,
+                       id="prediction_outcomes", replace_existing=True)  # 2:40 AM IST
+    # Splits/bonuses -> ledger SPLIT rows, so holdings show the post-action share count (MATH-07).
+    _scheduler.add_job(sync_corporate_actions_all_users, "cron", hour=2, minute=0,
+                       id="corporate_actions", replace_existing=True)  # 7:30 AM IST
 
     # ── Notification TTL sweeper (daily, 3:00 AM IST) ───────────────────────
     def _run_notification_cleanup():
@@ -387,11 +394,46 @@ def start_scheduler() -> bool:
     logging.info(
         "All schedulers started — existing: (advisor 1:30, news 12:30, yt-channel 1:00, "
         "yt-portfolio 1:15, snapshot 4:30 PM + retry 5:30 PM, pkscreener 4:45 PM, outcome-eval 2:00 AM) | "
-        "new: (bhavcopy 7:00 PM, morning-brief-pregen 6:30 AM, "
+        "new: (bhavcopy 7:00 PM, morning-brief-pregen 6:30 AM, prediction-outcomes 2:40 AM, "
+        "corporate-actions 7:30 AM, "
         "piotroski-weekly Sun 11 PM, error-digest 7:00 AM, db-backup 2:30 AM, retention 3:20 AM) | "
         "harvesters: (expert 120min, sebi 120min, yt-expert 120min) [all IST]"
     )
     return True
+
+
+_OUTCOME_HEARTBEAT = ("job_heartbeat", "prediction_outcomes")
+
+
+def _run_prediction_outcomes():
+    """Scheduled update_prediction_outcomes with a cross-process heartbeat (ML-03).
+
+    The heartbeat (disk_cache job_heartbeat/prediction_outcomes) is what
+    get_calibration_health reports as last_outcome_run. Three consecutive runs in
+    which every symbol lacked price data log an error: labels have stopped maturing.
+    """
+    from services import disk_cache
+    from services.outcome_tracker import update_prediction_outcomes
+
+    prev = disk_cache.get(*_OUTCOME_HEARTBEAT) or {}
+    now = datetime.now(timezone.utc).isoformat()
+    beat = {"last_run_at": now, "last_success_at": prev.get("last_success_at"),
+            "no_data_runs": prev.get("no_data_runs", 0)}
+    try:
+        summary = update_prediction_outcomes()
+    except Exception as e:
+        logging.exception("[outcome_tracking] update_prediction_outcomes failed")
+        beat.update(status="error", summary={"error": type(e).__name__})
+    else:
+        symbols = summary.get("processed_symbols", 0)
+        no_data = symbols > 0 and summary.get("missing_price_data", 0) >= symbols
+        beat.update(status="ok", summary=summary, last_success_at=now,
+                    no_data_runs=beat["no_data_runs"] + 1 if no_data else 0)
+        if beat["no_data_runs"] >= 3:
+            logging.error("[outcome_tracking] no outcomes written: no price data for %d consecutive runs",
+                          beat["no_data_runs"])
+    disk_cache.set(*_OUTCOME_HEARTBEAT, beat, ttl=30 * 86400)
+    return beat
 
 
 def _run_expert_harvest_bg():
