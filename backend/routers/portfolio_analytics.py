@@ -35,7 +35,7 @@ from services import llm_budget
 from repositories.analysis_repo import latest_signals_by_ticker
 from services.portfolio_service import (
     _get_asm_gsm_lists, _risk_label, compute_sip, compute_pearson_correlation,
-    compute_benchmark, holding_cashflows,
+    compute_benchmark, holding_cashflows, compute_sector_attribution,
 )
 from services.ledger_service import parse_trade_date
 from models.db_models import Transaction
@@ -892,12 +892,9 @@ def portfolio_attribution_endpoint(
         ).all()
 
     if not holdings:
-        return {"sectors": []}
+        return {"sectors": [], "portfolio_return_pct": 0.0}
 
-    sector_data = defaultdict(lambda: {"total_value": 0.0, "total_pnl": 0.0, "invested": 0.0})
-    portfolio_total_value = 0.0
-    portfolio_total_pnl = 0.0
-
+    rows: list[tuple[str, float, float]] = []
     for h in holdings:
         try:
             sym = _resolve_ticker(h.ticker, "NSE")
@@ -914,35 +911,10 @@ def portfolio_attribution_endpoint(
             current_price = h.buy_price
             sector = "Unknown"
         
-        invested = h.shares * h.buy_price
-        val = h.shares * current_price
-        pnl = val - invested
-        
-        sector_data[sector]["total_value"] += val
-        sector_data[sector]["invested"] += invested
-        sector_data[sector]["total_pnl"] += pnl
-        
-        portfolio_total_value += val
-        portfolio_total_pnl += pnl
+        shares = float(h.shares or 0)  # type: ignore[arg-type]
+        rows.append((sector, shares * float(h.buy_price or 0), shares * float(current_price or 0)))  # type: ignore[arg-type]
 
-    results = []
-    for sector, data in sector_data.items():
-        val = data["total_value"]
-        pnl = data["total_pnl"]
-        weight = (val / portfolio_total_value * 100) if portfolio_total_value > 0 else 0.0
-        contrib = (pnl / portfolio_total_pnl * 100) if portfolio_total_pnl != 0 else 0.0
-        
-        results.append({
-            "sector": sector,
-            "weight_pct": round(weight, 2),
-            "total_value": round(val, 2),
-            "total_pnl": round(pnl, 2),
-            "contribution_to_total_pnl_pct": round(contrib, 2)
-        })
-
-    results.sort(key=lambda x: abs(x["contribution_to_total_pnl_pct"]), reverse=True)
-    
-    return {"sectors": results}
+    return compute_sector_attribution(rows)
 
 
 @router.get("/signal-accuracy")

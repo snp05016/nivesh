@@ -111,8 +111,9 @@ def portfolio_endpoint(user_id: int, _caller: int = Depends(require_user_match),
                 "ticker": h.ticker,
                 "company_name": h.company_name,
                 "group": h.group_name,
-                "shares": shares,
-                "buy_price": buy_price,
+                # The read model stores full precision; round only for display.
+                "shares": round(shares, 6),
+                "buy_price": round(buy_price, 2),
                 "purchase_date": getattr(h, "purchase_date", "N/A"),
                 "notes": getattr(h, "notes", ""),
                 "target_price": float(getattr(h, "target_price", 0.0) or 0.0),
@@ -205,6 +206,10 @@ def portfolio_add_endpoint(
         raise HTTPException(status_code=400, detail="Shares must be greater than 0.")
     if req.buy_price <= 0:
         raise HTTPException(status_code=400, detail="Buy price must be greater than 0.")
+    # Paper trades would merge into the real holding (one read-model row per
+    # user+ticker, no is_virtual on Transaction), so reject them until built.
+    if req.is_virtual:
+        raise HTTPException(status_code=400, detail="Paper trades are not supported yet.")
 
     ticker = req.ticker.upper().strip()
     trade_date = _parse_trade_date(req.purchase_date)
@@ -221,7 +226,6 @@ def portfolio_add_endpoint(
             company_name=req.company_name,
             target_price=req.target_price,
             purchase_date=trade_date.strftime("%Y-%m-%d") if trade_date else None,
-            is_virtual=getattr(req, "is_virtual", False),
             client_request_id=idempotency_key,
         )
         _cache_invalidate("morning_brief", str(req.user_id))

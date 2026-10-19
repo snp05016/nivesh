@@ -285,7 +285,7 @@ def start_scheduler() -> bool:
     _snapshot_all_users_job = _sync(snapshot_all_users)
     _run_nightly_screen_job = _sync(run_nightly_screen)
 
-    _scheduler.add_job(_run_harvest_all_advisors,     "cron", hour=1,  minute=30)  # 1:30 AM IST
+    _scheduler.add_job(_run_harvest_all_advisors,     "cron", hour=1,  minute=30)  # 07:00 IST (01:30 UTC)
     _scheduler.add_job(_run_harvest_news,             "interval", hours=2, **_stagger(5))
     _scheduler.add_job(_run_harvest_youtube_metadata, "interval", hours=2, **_stagger(25))
     _scheduler.add_job(_run_harvest_portfolio_videos, "interval", hours=2, **_stagger(45))

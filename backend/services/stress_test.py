@@ -6,6 +6,7 @@ Liquidity Penalty → Concentration Analysis → Scoring.
 """
 from __future__ import annotations
 import logging
+import re
 import numpy as np
 import threading
 from typing import List, Dict, Any, Optional
@@ -66,32 +67,69 @@ MACRO_ASSUMPTION = (
 
 # ── Sector Classification ────────────────────────────────────────────
 
-def get_sector(company_name: str) -> str:
+# yfinance `industry` strings (a controlled vocabulary), checked in order.
+_INDUSTRY_SECTOR: list[tuple[str, str]] = [
+    ("banks", "Banking"), ("information technology", "IT"), ("software", "IT"),
+    ("telecom", "Telecom"), ("aerospace & defense", "Defence"), ("oil & gas", "Oil & Gas"),
+    ("utilities", "Power"), ("steel", "Metals"), ("aluminum", "Metals"), ("copper", "Metals"),
+    ("other industrial metals", "Metals"), ("building materials", "Cement"),
+    ("credit services", "NBFC"), ("mortgage finance", "NBFC"), ("auto", "Auto"),
+    ("drug manufacturers", "Pharma"), ("medical care", "Pharma"), ("real estate", "Real Estate"),
+    ("engineering & construction", "Infra"), ("household", "FMCG"), ("packaged foods", "FMCG"),
+    ("tobacco", "FMCG"), ("beverages", "FMCG"),
+]
+
+# Company-name fallback, checked in order.
+_NAME_SECTOR: list[tuple[list[str], str]] = [
+    (["infosys","tcs","wipro","tech mahindra","hcl","ltim","coforge","persistent","mphasis"], "IT"),
+    (["bank","hdfc","icici","kotak","sbi","axis","federal","idfc","yes"], "Banking"),
+    (["fmcg","itc","nestle","brit","hindustan unilever","hul","godrej","marico","dabur","tata consumer","colgate"], "FMCG"),
+    (["auto","tata motors","maruti","mahindra","bajaj auto","eicher","tvs","ashok leyland"], "Auto"),
+    (["pharma","sun pharma","cipla","dr reddy","lupin","divis","apollo hospitals","aurobindo","torrent","alkem"], "Pharma"),
+    (["oil","reliance","ongc","bpcl","hpcl","ioc","petronet","gail"], "Oil & Gas"),
+    (["power","ntpc","tata power","power grid","jsw energy","torrent power","nhpc"], "Power"),
+    (["steel","tata steel","jsw","hindalco","vedanta","jindal"], "Metals"),
+    (["cement","ultratech","shree","ambuja","acc","dalmia","ramco"], "Cement"),
+    (["nbfc","bajaj finance","cholamandalam","shriram","muthoot"], "NBFC"),
+    (["defence","hal","bel","mazagon","cochin","bharat dynamics","beml"], "Defence"),
+    (["infra","larsen","l&t","gmr","irb"], "Infra"),
+    (["real","dlf","godrej properties","oberoi","prestige","brigade","lodha"], "Real Estate"),
+    (["telecom","bharti","vodafone","idea","tata comm","tejas"], "Telecom"),
+]
+
+
+def _name_has(name: str, token: str) -> bool:
+    """Single-token, ticker-shaped names keep the old substring match ('sunpharma',
+    'tatasteel', 'aubank'). Multi-word names need the token at a word start, and tokens of
+    3 chars or fewer must be whole words (so 'hal' misses 'Chalet Hotels', 'acc' misses
+    'Accelya Solutions', 'yes' misses 'Garware Polyester')."""
+    if not re.search(r"\s", name):
+        return token in name
+    tail = r"\b" if len(token) <= 3 else ""
+    return re.search(r"\b" + re.escape(token) + tail, name) is not None
+
+
+def get_sector(company_name: str, industry: str = "") -> str:
     """
-    Map a company name to its primary sector.
+    Map a holding to its primary sector: the yfinance industry when it matches
+    a rule, else word-anchored tokens in the company name.
 
     Args:
         company_name (str): The name of the company.
+        industry (str): yfinance info['industry'], if known.
 
     Returns:
         str: The identified sector name, or "Other" if no match is found.
     """
+    ind = (industry or "").lower()
+    for token, sector in _INDUSTRY_SECTOR:
+        if token in ind:
+            return sector
     if not company_name: return "Other"
     name = company_name.lower()
-    if any(x in name for x in ["infosys","tcs","wipro","tech mahindra","hcl","ltim","coforge","persistent","mphasis"]): return "IT"
-    if any(x in name for x in ["bank","hdfc","icici","kotak","sbi","axis","federal","idfc","yes"]): return "Banking"
-    if any(x in name for x in ["fmcg","itc","nestle","brit","hindustan unilever","hul","godrej","marico","dabur","tata consumer","colgate"]): return "FMCG"
-    if any(x in name for x in ["auto","tata motors","maruti","mahindra","bajaj auto","eicher","tvs","ashok leyland"]): return "Auto"
-    if any(x in name for x in ["pharma","sun pharma","cipla","dr reddy","lupin","divis","apollo hospitals","aurobindo","torrent","alkem"]): return "Pharma"
-    if any(x in name for x in ["oil","reliance","ongc","bpcl","hpcl","ioc","petronet","gail"]): return "Oil & Gas"
-    if any(x in name for x in ["power","ntpc","tata power","power grid","jsw energy","torrent power","nhpc"]): return "Power"
-    if any(x in name for x in ["steel","tata steel","jsw","hindalco","vedanta","jindal"]): return "Metals"
-    if any(x in name for x in ["cement","ultratech","shree","ambuja","acc","dalmia","ramco"]): return "Cement"
-    if any(x in name for x in ["nbfc","bajaj finance","cholamandalam","shriram","muthoot"]): return "NBFC"
-    if any(x in name for x in ["defence","hal","bel","mazagon","cochin","bharat dynamics","beml"]): return "Defence"
-    if any(x in name for x in ["infra","larsen","l&t","gmr","irb"]): return "Infra"
-    if any(x in name for x in ["real","dlf","godrej properties","oberoi","prestige","brigade","lodha"]): return "Real Estate"
-    if any(x in name for x in ["telecom","bharti","vodafone","idea","tata comm","tejas"]): return "Telecom"
+    for tokens, sector in _NAME_SECTOR:
+        if any(_name_has(name, t) for t in tokens):
+            return sector
     return "Other"
 
 
@@ -195,7 +233,7 @@ def enrich_holdings(holdings, progress_callback=None) -> List[Dict[str, Any]]:
                 info = {}
             beta_hint = float(info.get("beta") or 1.0)
             adv = float(info.get("averageVolume") or info.get("averageDailyVolume10Day") or 0.0)
-            sector = get_sector(h.company_name or "")
+            sector = get_sector(h.company_name or "", str(info.get("industry") or ""))
             
             result = {
                 "ticker": ticker,

@@ -311,10 +311,10 @@ def _insert_insight(
 
 
 # ---------------------------------------------------------------------------
-# Claude Haiku extraction
+# LLM (DeepSeek) stance extraction
 # ---------------------------------------------------------------------------
 
-def _extract_stance_with_haiku(advisor_name: str, ticker: str, snippet: str) -> dict | None:
+def _extract_stance_llm(advisor_name: str, ticker: str, snippet: str) -> dict | None:
     """Extracts a structured stance from a transcript snippet using an LLM.
 
     Args:
@@ -352,7 +352,7 @@ def _extract_stance_with_haiku(advisor_name: str, ticker: str, snippet: str) -> 
         data = json.loads(raw_text)
     except json.JSONDecodeError as exc:
         logger.warning(
-            "Malformed Haiku JSON for %s/%s — %s — raw: %s",
+            "Malformed stance JSON for %s/%s — %s — raw: %s",
             advisor_name,
             ticker,
             exc,
@@ -529,8 +529,8 @@ async def harvest_single_advisor(advisor: dict, lookback_hours: int = 24) -> int
                 window_end = min(len(snippet), ticker_pos + 800)
                 snippet = snippet[window_start:window_end]
 
-            # Call Claude Haiku
-            extracted = _extract_stance_with_haiku(advisor_name, ticker, snippet)
+            # Call the stance-extraction LLM (DeepSeek)
+            extracted = _extract_stance_llm(advisor_name, ticker, snippet)
             if extracted is None:
                 continue
 

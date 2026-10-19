@@ -226,7 +226,7 @@ class TestPreLedgerHoldings:
         h = _holding(db_session, 1, "TCS")
         assert h is not None
         assert _f(h.shares) == 105.0
-        assert _f(h.buy_price) == 3214.29
+        assert round(_f(h.buy_price), 2) == 3214.29
 
     def test_opening_balance_inserted_once(self, db_session):
         g = _make_group(db_session)
@@ -577,7 +577,7 @@ class TestLedgerConsistency:
         rows = db_session.query(Portfolio).filter_by(user_id=1, ticker="SBIN", group_name="holdings").all()
         assert len(rows) == 1
         assert _f(rows[0].shares) == 15.0
-        assert _f(rows[0].buy_price) == 633.33  # (10*600 + 5*700) / 15
+        assert round(_f(rows[0].buy_price), 2) == 633.33  # (10*600 + 5*700) / 15
 
     def test_idempotent_replay(self, db_session):
         g = _make_group(db_session)
@@ -590,6 +590,35 @@ class TestLedgerConsistency:
         assert len(session_query_all(db_session, "ITC", 1)) == 1
         h = _holding(db_session, 1, "ITC")
         assert h is not None and _f(h.shares) == 10.0
+
+    def test_fractional_sell_closes_position(self, db_session):
+        """The read model keeps full precision, so selling every fractional unit closes it (MATH-20)."""
+        g = _make_group(db_session)
+        db_session.commit()
+
+        _buy(1, g.id, "NIFTYBEES", 10.125, 250.0)
+        db_session.commit()
+        h = _holding(db_session, 1, "NIFTYBEES")
+        assert h is not None and _f(h.shares) == pytest.approx(10.125, abs=1e-9)
+
+        _sell(1, g.id, "NIFTYBEES", 10.125, 260.0)
+        db_session.commit()
+        assert _holding(db_session, 1, "NIFTYBEES") is None
+
+    def test_wac_keeps_precision(self, db_session):
+        """WAC is stored unrounded: (900.09 + 100.003) / 10 = 100.0093, not 100.01 (MATH-20)."""
+        g = _make_group(db_session)
+        db_session.commit()
+
+        for price in (100.0, 100.01, 100.02):
+            _buy(1, g.id, "IDEA", 3, price)
+        _buy(1, g.id, "IDEA", 1, 100.003)
+        db_session.commit()
+
+        h = _holding(db_session, 1, "IDEA")
+        assert h is not None
+        assert abs(_f(h.buy_price) - 100.0093) < 1e-6
+        assert _f(h.shares) == 10.0
 
     def test_default_group_unique(self, db_session):
         _make_group(db_session)
@@ -641,6 +670,20 @@ class TestAddEndpointErrors:
         assert bought.status_code == 200, bought.text
         assert oversold.status_code == 422, oversold.text
         assert "only 10.0 shares held" in oversold.json()["detail"]
+
+    def test_paper_trade_rejected_without_ledger_write(self, client):
+        """Paper trades would merge into the real holding row, so they are refused (MATH-10)."""
+        from services.ledger_service import get_transactions_for_ticker
+
+        user_id, headers = _api_user_headers()
+        payload = {"user_id": user_id, "ticker": "INFY", "company_name": "Infosys",
+                   "shares": 10.0, "buy_price": 1500.0, "is_virtual": True}
+
+        resp = client.post("/portfolio/add", json=payload, headers=headers)
+
+        assert resp.status_code == 400, resp.text
+        assert "Paper trades" in resp.json()["detail"]
+        assert get_transactions_for_ticker(user_id, "INFY") == []
 
     def test_idempotency_key_header_dedupes(self, client):
         from unittest.mock import patch

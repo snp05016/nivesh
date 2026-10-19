@@ -403,3 +403,44 @@ def compute_benchmark(
         "return_basis": "annualized_xirr" if annualize else "absolute",
         "period_days": period_days,
     }
+
+
+# ---------------------------------------------------------------------------
+# Sector attribution (MATH-15)
+# ---------------------------------------------------------------------------
+
+def compute_sector_attribution(rows: list[tuple[str, float, float]]) -> dict:
+    """Per-sector P&L attribution from (sector, invested, current_value) rows.
+
+    Contribution is in percentage points of the portfolio's invested base
+    (sector_pnl / total_invested * 100), so the sectors sum to the portfolio
+    return and keep their sign whatever the total P&L is.
+    """
+    agg: dict[str, dict[str, float]] = {}
+    for sector, invested, value in rows:
+        d = agg.setdefault(sector, {"invested": 0.0, "value": 0.0})
+        d["invested"] += invested
+        d["value"] += value
+
+    total_invested = sum(d["invested"] for d in agg.values())
+    total_value = sum(d["value"] for d in agg.values())
+    sectors = []
+    for sector, d in agg.items():
+        pnl = d["value"] - d["invested"]
+        contribution = pnl / total_invested * 100 if total_invested > 0 else 0.0
+        sectors.append({
+            "sector": sector,
+            "weight_pct": round(d["value"] / total_value * 100, 2) if total_value > 0 else 0.0,
+            "total_value": round(d["value"], 2),
+            "total_pnl": round(pnl, 2),
+            "contribution_pp": round(contribution, 2),
+            # Legacy key, same value (it used to be a share of total P&L).
+            "contribution_to_total_pnl_pct": round(contribution, 2),
+            "sector_return_pct": round(pnl / d["invested"] * 100, 2) if d["invested"] > 0 else 0.0,
+        })
+    sectors.sort(key=lambda s: abs(s["contribution_pp"]), reverse=True)
+    portfolio_pnl = total_value - total_invested
+    return {
+        "sectors": sectors,
+        "portfolio_return_pct": round(portfolio_pnl / total_invested * 100, 2) if total_invested > 0 else 0.0,
+    }

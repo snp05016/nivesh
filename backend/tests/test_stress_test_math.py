@@ -88,6 +88,29 @@ def test_policy_shock_psu_override():
     assert _holding_impact_pct(_holding(ticker="INFY"), sc) == -18.0
 
 
+def test_sector_mapping():
+    """yfinance industry wins; the name fallback matches whole words, not substrings (MATH-16)."""
+    get_sector = stress_test.get_sector
+    assert get_sector("Bharti Airtel Ltd", "Telecom Services") == "Telecom"
+    assert get_sector("Tata Consultancy Services", "Information Technology Services") == "IT"
+    assert get_sector("Chalet Hotels Ltd", "Lodging") != "Defence"
+    assert get_sector("Shalby Ltd") != "Defence"
+    assert get_sector("Garware Polyester") != "Banking"
+    assert get_sector("Accelya Solutions") != "Cement"
+    assert get_sector("HDFC Bank Ltd") == "Banking"
+    assert get_sector("Bharti Airtel Ltd") == "Telecom"
+    # Ticker-shaped names (degraded mode: no yfinance industry) still classify.
+    assert get_sector("SBIN") == "Banking"
+    assert get_sector("HCLTECH") == "IT"
+    assert get_sector("YESBANK") == "Banking"
+    assert get_sector("JSWSTEEL") == "Metals"
+    # Sector token mid-ticker: single-token names keep the old substring match.
+    assert get_sector("SUNPHARMA") == "Pharma"
+    assert get_sector("TATASTEEL") == "Metals"
+    assert get_sector("TATAPOWER") == "Power"
+    assert get_sector("AUBANK") == "Banking"
+
+
 def test_cash_is_never_shocked():
     assert _holding_impact_pct(_holding(ticker="CASH", sector="Cash"), SCENARIOS_DEF["nifty_crash"]) == 0.0
 

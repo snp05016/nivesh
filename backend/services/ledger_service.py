@@ -16,8 +16,8 @@ row, so a replay never overwrites, deletes or resurrects them.
 Rules (AGENTS.md §3.1):
 - No HTTP concerns here; callers handle auth and validation.
 - All DB access via the session passed in from get_session() context.
-- Floats are rounded to 6 decimal places internally; the read-model stores
-  rounded-to-2 values for display.
+- Floats are rounded to 6 decimal places; the read-model stores them at that
+  precision (display rounding happens in API responses).
 """
 
 from __future__ import annotations
@@ -409,8 +409,8 @@ def _recalculate_portfolio_snapshot(
         return
 
     if existing is not None:
-        existing.shares = round(total_shares, 2)  # type: ignore[assignment]
-        existing.buy_price = round(wac, 2)  # type: ignore[assignment]
+        existing.shares = total_shares  # type: ignore[assignment]
+        existing.buy_price = wac  # type: ignore[assignment]
         if group_id is not None:
             existing.group_id = group_id  # type: ignore[assignment]
         # Old clients send 0.0 for "no target": never let that wipe a real one.
@@ -421,8 +421,8 @@ def _recalculate_portfolio_snapshot(
             user_id=user_id,
             ticker=ticker,
             company_name=company_name,
-            shares=round(total_shares, 2),
-            buy_price=round(wac, 2),
+            shares=total_shares,
+            buy_price=wac,
             group_name="holdings",
             group_id=group_id,
             target_price=target_price if target_price is not None and target_price > 0 else None,
