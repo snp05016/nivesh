@@ -14,8 +14,14 @@ from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import func, case, cast, Float
 from database import get_session
-from services.predictions_performance import _safe_hit_rate
 from models.db_models import AnalysisPrediction, StockUniverse
+
+
+def _safe_hit_rate(hit_col):
+    # Lazy: predictions_performance imports this module at load time, so a top-level
+    # import here made the pair fail with a circular ImportError on app start.
+    from services.predictions_performance import _safe_hit_rate as safe_hit_rate
+    return safe_hit_rate(hit_col)
 
 
 # ---------------------------------------------------------------------------

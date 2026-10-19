@@ -12,6 +12,7 @@ import os
 import time
 from contextvars import ContextVar
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 from fastapi import Depends, HTTPException
 from sqlalchemy import func
@@ -37,7 +38,12 @@ _GLOBAL_TTL_SEC = 60.0
 # forked mid-refresh (job_manager uses fork) and deadlock it. Racing threads just refresh twice.
 _global_cache: tuple[float, float] | None = None  # (time.monotonic() of the read, spend today)
 
-_PAUSED_DETAIL = "AI features are temporarily paused. Please try again later."
+_IST_ZONE = ZoneInfo("Asia/Kolkata")
+_PAUSED_DETAIL = {
+    "error_code": "AI_PAUSED",
+    "error_title": "AI paused",
+    "error_detail": "AI features are paused for today. Everything else in Nivesh works.",
+}
 
 
 class LlmBudgetExceeded(RuntimeError):
@@ -87,9 +93,25 @@ def _env_usd(name: str, default: float) -> float:
     return float(os.getenv(name) or default)
 
 
+def _today_start_utc() -> datetime:
+    """Midnight IST today, as a UTC datetime."""
+    return datetime.now(_IST).replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
+
+
+def seconds_to_ist_midnight(now: datetime | None = None) -> int:
+    """Whole seconds until the next IST midnight (when the daily allowance resets), at least 1."""
+    now_ist = (now or datetime.now(timezone.utc)).astimezone(_IST_ZONE)
+    next_midnight = (now_ist + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+    return max(1, int((next_midnight - now_ist).total_seconds()))
+
+
+def _retry_after() -> dict[str, str]:
+    return {"Retry-After": str(seconds_to_ist_midnight())}
+
+
 def _spend_today(user_id: int | None = None) -> float:
     """USD spent since midnight IST by one user, or by everyone when user_id is None."""
-    start = datetime.now(_IST).replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
+    start = _today_start_utc()
     with get_session() as session:
         query = session.query(func.coalesce(func.sum(LlmUsage.cost_usd), 0.0)).filter(LlmUsage.created_at >= start)
         if user_id is not None:
@@ -97,11 +119,11 @@ def _spend_today(user_id: int | None = None) -> float:
         return float(query.scalar() or 0.0)
 
 
-def assert_global_budget() -> None:
-    """Raise LlmBudgetExceeded once everyone's spend today reaches LLM_GLOBAL_DAILY_BUDGET_USD.
+def global_paused() -> bool:
+    """True once everyone's spend today reaches LLM_GLOBAL_DAILY_BUDGET_USD.
 
-    An unreadable ledger is logged and lets the call through, so a DB hiccup does not
-    switch off every AI feature.
+    The global sum is memoised for _GLOBAL_TTL_SEC. An unreadable ledger is logged and
+    reads as not paused, so a DB hiccup does not switch off every AI feature.
     """
     global _global_cache
     cached = _global_cache
@@ -111,36 +133,67 @@ def assert_global_budget() -> None:
             cached = (now, _spend_today())
         except Exception as e:
             logger.warning("LLM global budget check skipped, ledger unreadable: %s", e)
-            return
+            return False
         _global_cache = cached  # one atomic assignment
     spend = cached[1]
     cap = _env_usd("LLM_GLOBAL_DAILY_BUDGET_USD", 25.0)
     if spend >= cap:
         logger.warning("LLM global daily budget reached: $%.2f of $%.2f", spend, cap)
+        return True
+    return False
+
+
+def assert_global_budget() -> None:
+    """Raise LlmBudgetExceeded once everyone's spend today reaches LLM_GLOBAL_DAILY_BUDGET_USD."""
+    if global_paused():
         raise LlmBudgetExceeded("Daily AI budget reached")
 
 
 def check_global_budget() -> None:
-    """HTTP form of assert_global_budget: 503 while the global daily cap is spent."""
+    """HTTP form of assert_global_budget: 503 AI_PAUSED while the global daily cap is spent."""
     try:
         assert_global_budget()
     except LlmBudgetExceeded:
-        raise HTTPException(status_code=503, detail=_PAUSED_DETAIL)
+        raise HTTPException(status_code=503, detail=dict(_PAUSED_DETAIL), headers=_retry_after())
+
+
+def _user_cap_usd(user_id: int) -> float:
+    tier = get_effective_tier(user_id)
+    return _env_usd(f"LLM_USER_DAILY_BUDGET_USD_{tier.upper()}",
+                    _DEFAULT_USER_CAP_USD.get(tier, _DEFAULT_USER_CAP_USD["free"]))
+
+
+def _user_spent_today_usd(user_id: int) -> float:
+    return _spend_today(user_id)
 
 
 def check_user_budget(user_id: int) -> None:
     """429 once the user's spend today reaches LLM_USER_DAILY_BUDGET_USD_<TIER>."""
-    tier = get_effective_tier(user_id)
-    cap = _env_usd(f"LLM_USER_DAILY_BUDGET_USD_{tier.upper()}",
-                   _DEFAULT_USER_CAP_USD.get(tier, _DEFAULT_USER_CAP_USD["free"]))
+    cap = _user_cap_usd(user_id)
     # ponytail: check-then-spend, so concurrent requests from one user can all pass the
     # check and overshoot the cap by their combined cost; upgrade path: atomic reservation.
-    if _spend_today(user_id) >= cap:
+    if _user_spent_today_usd(user_id) >= cap:
         raise HTTPException(status_code=429, detail={
             "error_code": "AI_QUOTA_EXCEEDED",
             "error_title": "Daily AI Limit Reached",
             "error_detail": "You have used today's AI allowance. It resets at midnight IST.",
-        })
+        }, headers=_retry_after())
+
+
+def allowance(user_id: int) -> dict:
+    """The user's visible allowance: a percentage and a state, never money, caps or tier."""
+    cap = _user_cap_usd(user_id)
+    spent = _user_spent_today_usd(user_id)
+    used_pct = 100 if cap <= 0 else min(100, int(spent / cap * 100))
+    if global_paused():
+        state = "paused"
+    elif spent >= cap:
+        state = "exhausted"
+    elif used_pct >= 80:
+        state = "low"
+    else:
+        state = "ok"
+    return {"used_pct": used_pct, "state": state}
 
 
 def guard(user_id: int, feature: str) -> None:

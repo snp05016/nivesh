@@ -4,6 +4,9 @@ from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from pydantic import BaseModel, Field, field_validator
 from typing import List, Dict, Any, Literal, Optional
 
+from core.feature_flags import require_flag
+from core.security import require_auth
+from services import llm_budget
 from services.llm_budget import require_llm_budget
 from services.copilot_service import process_copilot_request
 
@@ -70,3 +73,12 @@ we'll await the service call which handles the processing.
     except Exception:
         logger.exception("copilot chat failed for user %s", user_id)
         raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.get("/api/v1/ai/allowance")
+def ai_allowance(
+    user_id: int = Depends(require_auth),
+    _flag: None = Depends(require_flag("ai_allowance")),
+) -> dict:
+    """Today's AI allowance as a percentage and a state; never money, caps or tier."""
+    return llm_budget.allowance(user_id)
