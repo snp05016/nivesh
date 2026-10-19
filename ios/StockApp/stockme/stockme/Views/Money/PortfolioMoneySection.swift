@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Flag-gated money rows under the portfolio hero (spec 2.6). Later money packages
-/// (X-ray, tax) append their rows here; each row hides itself when off.
+/// (tax) append their rows here; each row hides itself when off.
 struct PortfolioMoneySection: View {
     let userId: Int
     /// Bumped by PortfolioScreen after each portfolio load so money rows re-fetch.
@@ -14,6 +14,9 @@ struct PortfolioMoneySection: View {
         }
         if flags.isOn(.moneyCasImport) {
             CASImportRows()
+        }
+        if flags.isOn(.moneyXray) {
+            XRayRow()
         }
     }
 }
@@ -36,5 +39,16 @@ private struct CASImportRows: View {
         .onAppear {
             if CASNotice.consumeOpenOnce(flagOn: FeatureFlags.shared.isOn(.moneyCasImport)) { showImport = true }
         }
+    }
+}
+
+/// "Portfolio X-ray". Exists only while money_xray is on.
+private struct XRayRow: View {
+    @State private var showXRay = false
+
+    var body: some View {
+        MoneyLinkRow(icon: "chart.bar.doc.horizontal", title: "Portfolio X-ray") { showXRay = true }
+            .banknoteCard()
+            .navigationDestination(isPresented: $showXRay) { PortfolioXRayView() }
     }
 }
