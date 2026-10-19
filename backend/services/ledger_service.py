@@ -35,7 +35,10 @@ from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from models.db_models import Portfolio, PortfolioGroup, Transaction
+from core.timeutil import IST
+from models.db_models import (
+    CorporateAction, CorporateActionApplication, Portfolio, PortfolioGroup, Transaction,
+)
 
 ASSET_CLASSES = ("EQ", "MF")
 _AUTO_SPLIT_PREFIX = "auto: corporate action"
@@ -732,83 +735,156 @@ def get_transactions_for_ticker(user_id: int, ticker: str) -> list[dict]:
         ]
 
 
-_IST = timezone(timedelta(hours=5, minutes=30))
+_CORPORATE_TYPES = ("SPLIT", "BONUS", "DIVIDEND")
+UNDO_WINDOW = timedelta(days=30)
 
 
-def _split_effective_at(ex_date: _date) -> datetime:
-    """The instant a split takes effect in the ledger: one second before IST midnight
-    of the ex-date, so a trade on the ex-date (trade-date midnight UTC, or now())
-    replays after it and a trade on the day before replays before it."""
-    return (datetime.combine(ex_date, time(0, 0), tzinfo=_IST) - timedelta(seconds=1)).astimezone(timezone.utc)
+def effective_for(ex_on: _date) -> datetime:
+    """The instant a split takes effect in the ledger: 23:59:59 UTC on the day before the ex-date,
+    so a trade dated the ex-date (trade-date midnight UTC, or now()) replays after it and a trade
+    dated the day before replays before it."""
+    return datetime.combine(ex_on - timedelta(days=1), time(23, 59, 59), tzinfo=timezone.utc)
 
 
-def apply_split_events(user_id: int, ticker: str, events: list[tuple[_date, float]]) -> int:
-    """Write each split/bonus (ex_date, ratio) as a ledger SPLIT row and re-derive the holding (MATH-07).
+def _group_rows(rows: list[Transaction], group_id: Optional[int]) -> list[Transaction]:
+    return [t for t in rows if cast(Optional[int], t.group_id) == group_id]
 
-    A SPLIT multiplies only the shares held before the ex-date (_replay), so a BUY
-    on or after the ex-date is not multiplied. Idempotent: one SPLIT per effective
-    instant per (user, ticker); the replay spans all groups, so per-group rows would
-    double-apply. Only ex-dates after the position was first recorded in the app
-    (earliest of the holdings row's and its ledger rows' created_at) apply: earlier
-    ones are already in the quantity the user entered, whatever trade date it carries.
-    A holding with no ledger first gets its opening BUY. Nothing is written when no
-    event applies. Returns SPLIT rows added.
+
+def shares_held_before(
+    session: Session, user_id: int, ticker: str, effective: datetime, group_id: Optional[int]
+) -> float:
+    """Shares one group held just before `effective` (WAC replay of that group's earlier rows).
+
+    # ponytail: the holdings read-model still replays across groups (C4/DB-09 per-group
+    # replay is not on this line), so a SPLIT written for one group also multiplies the
+    # other groups' earlier shares. Upgrade: replay per group once C4 lands.
+    """
+    earlier = [
+        t for t in _group_rows(_ledger_rows(session, user_id, ticker), group_id)
+        if t.date is not None and _as_utc(cast(datetime, t.date)) < effective
+    ]
+    return _replay(earlier)[0]
+
+
+def is_ambiguous(
+    rows: list[Transaction], ex_on: _date, opening_created_at: Optional[datetime] = None
+) -> bool:
+    """True when the user may have entered an already-adjusted quantity: any pre-ex-date
+    non-corporate row without a created_at, or created (IST date) on or after the ex-date.
+
+    An opening-balance row is dated at app entry, so it is judged by the holding's own
+    created_at (`opening_created_at`) when given.
+    """
+    for t in rows:
+        if str(t.transaction_type or "").upper() in _CORPORATE_TYPES:
+            continue
+        created = cast(Optional[datetime], t.created_at)
+        if is_opening_balance(t) and opening_created_at is not None:
+            created = opening_created_at
+        if created is None or _as_utc(created).astimezone(IST).date() >= ex_on:
+            return True
+    return False
+
+
+def is_cas_only(rows: list[Transaction]) -> bool:
+    """Every BUY came from a statement (CAS) import: the broker's quantity is already adjusted."""
+    buys = [t for t in rows if str(t.transaction_type or "").upper() == "BUY" and not is_opening_balance(t)]
+    return bool(buys) and all(
+        getattr(t, "source", None) == "cas" or cast(Optional[int], t.import_batch_id) is not None for t in buys
+    )
+
+
+def _application_exists(session: Session, user_id: int, ca_id: int, group_id: Optional[int]) -> bool:
+    q = session.query(CorporateActionApplication.id).filter_by(user_id=user_id, corporate_action_id=ca_id)
+    q = q.filter(CorporateActionApplication.group_id.is_(None)) if group_id is None else q.filter_by(group_id=group_id)
+    return q.first() is not None
+
+
+def apply_split_events(
+    user_id: int,
+    ticker: str,
+    events: list[tuple[_date, float]],
+    action_ids: Optional[dict[_date, int]] = None,
+) -> int:
+    """Apply Yahoo splits/bonuses (ex_date, ratio) to a holding, per (group, event), guarded (MATH-07 + I18).
+
+    Skipped for a group when: an application exists for it (any status); a SPLIT already sits at
+    the effective instant; nothing was held before it; or every BUY is a statement import.
+    Unambiguous (every earlier row was entered before the ex-date): the SPLIT row is written and
+    the holding re-derived. Ambiguous (a back-dated or undated row): never auto-applied. With
+    `action_ids` and data_corp_actions_confirm on for the user, a pending application is
+    recorded for the user to answer; otherwise the event is only recorded.
+    Returns SPLIT rows added.
     """
     if not events:
         return 0
     from database import get_session
-    added = 0
+    from services import data_flags
+
+    added = proposed = 0
     with get_session() as session:
         _lock_position(session, user_id, ticker)
         row = _holdings_row(session, user_id, ticker)
         if row is None:
             return 0
         now = datetime.now(timezone.utc)
-        # When the app first knew of this position. Quantities entered after an ex-date
-        # are the broker's already-adjusted ones (trade date is user-entered and may be
-        # backdated), so only ex-dates after this instant are applied automatically.
-        # ponytail: per position, not per BUY; a backdated BUY recorded later still
-        # replays before an older SPLIT row; upgrade: compare each BUY's created_at to the ex-date.
-        known = [cast(Optional[datetime], row.created_at)]
-        known += [cast(Optional[datetime], t.created_at) for t in _ledger_rows(session, user_id, ticker)]
-        recorded_at = min((_as_utc(c) for c in known if c is not None), default=now)
-        group_id = cast(int, get_or_create_default_group(session, user_id).id)
-        _reconcile_with_read_model(session, user_id, group_id, ticker, now)
+        default_group = cast(int, get_or_create_default_group(session, user_id).id)
+        _reconcile_with_read_model(session, user_id, default_group, ticker, now)
         ledger = _ledger_rows(session, user_id, ticker)
-        done = {_as_utc(t.date) for t in ledger if t.transaction_type.upper() == "SPLIT" and t.date is not None}  # type: ignore[arg-type]
-        for ex_date, ratio in sorted(events):
-            effective = _split_effective_at(ex_date)
-            if effective in done or effective > now or effective <= recorded_at:
+        groups = sorted({cast(Optional[int], t.group_id) for t in ledger}, key=lambda g: (g is None, g or 0))
+        holding_created = cast(Optional[datetime], row.created_at)
+        asset_class = cast(Optional[str], row.asset_class) or "EQ"
+        for ex_on, ratio in sorted(events):
+            effective = effective_for(ex_on)
+            if effective > now:
                 continue
-            held, _ = _replay([t for t in ledger if t.date is not None and _as_utc(t.date) < effective])  # type: ignore[arg-type]
-            if held <= 0:
-                continue
-            session.add(Transaction(
-                user_id=user_id, group_id=group_id, ticker=ticker, transaction_type="SPLIT",
-                quantity=ratio, price=0.0, fees=0.0, date=effective,
-                notes=f"auto: corporate action ex {ex_date.isoformat()} (yfinance)",
-                asset_class=cast(Optional[str], row.asset_class) or "EQ",
-            ))
-            session.flush()
-            ledger = _ledger_rows(session, user_id, ticker)
-            done.add(effective)
-            added += 1
-        if not added:
+            ca_id = (action_ids or {}).get(ex_on)
+            for gid in groups:
+                rows = _group_rows(ledger, gid)
+                if ca_id is not None and _application_exists(session, user_id, ca_id, gid):
+                    continue
+                if any(t.transaction_type.upper() == "SPLIT" and t.date is not None
+                       and _as_utc(cast(datetime, t.date)) == effective for t in rows):
+                    continue
+                earlier = [t for t in rows if t.date is not None and _as_utc(cast(datetime, t.date)) < effective]
+                held, _ = _replay(earlier)
+                if held <= 0 or is_cas_only(earlier):
+                    continue
+                if not is_ambiguous(earlier, ex_on, holding_created):
+                    session.add(Transaction(
+                        user_id=user_id, group_id=gid, ticker=ticker, transaction_type="SPLIT",
+                        quantity=ratio, price=0.0, fees=0.0, date=effective,
+                        notes=f"auto: corporate action ex {ex_on.isoformat()} (yfinance)",
+                        asset_class=asset_class,
+                    ))
+                    session.flush()
+                    ledger = _ledger_rows(session, user_id, ticker)
+                    added += 1
+                elif ca_id is not None and data_flags.enabled_for("data_corp_actions_confirm", user_id):
+                    session.add(CorporateActionApplication(
+                        user_id=user_id, group_id=gid, corporate_action_id=ca_id, status="pending",
+                        shares_before=held,
+                    ))
+                    session.flush()
+                    proposed += 1
+        if not added and not proposed:
             session.rollback()  # drop an opening BUY / ADJUST that nothing needed
             return 0
-        _recalculate_portfolio_snapshot(session=session, user_id=user_id, group_id=group_id, ticker=ticker)
+        if added:
+            _recalculate_portfolio_snapshot(session=session, user_id=user_id, group_id=default_group, ticker=ticker)
         session.commit()
     return added
 
 
 def sync_corporate_actions_all_users() -> dict:
-    """Daily job: apply Yahoo splits/bonuses to every holding recorded before their ex-date (MATH-07).
+    """Daily job: record Yahoo splits/bonuses and apply the unambiguous ones to every holding (MATH-07).
 
-    Reads (user, ticker) pairs in one short session, fetches each ticker's splits
-    once with no session open, then applies per holding. Errors are per ticker.
+    Reads (user, ticker) pairs in one short session, fetches each ticker's splits once with no
+    session open, then applies per holding. Errors are per ticker.
     """
     import logging
     from database import get_session
+    from services import corporate_actions
     from services.portfolio_service import fetch_split_events
 
     log = logging.getLogger(__name__)
@@ -824,11 +900,121 @@ def sync_corporate_actions_all_users() -> dict:
     counts = {"tickers": len(by_ticker), "splits_added": 0, "errors": 0}
     for ticker, user_ids in by_ticker.items():
         events = fetch_split_events(ticker)
+        try:
+            ids = corporate_actions.record_events(ticker, events)
+        except Exception:
+            ids = {}
+            counts["errors"] += 1
+            log.exception("[corporate-actions] recording %s failed", ticker)
         for user_id in user_ids:
             try:
-                counts["splits_added"] += apply_split_events(user_id, ticker, events)
+                counts["splits_added"] += apply_split_events(user_id, ticker, events, action_ids=ids)
             except Exception:
                 counts["errors"] += 1
                 log.exception("[corporate-actions] %s for user %s failed", ticker, user_id)
     log.info(f"[corporate-actions] {counts}")
     return counts
+
+
+# ---------------------------------------------------------------------------
+# User answers to a pending proposal: apply, dismiss, undo (I18)
+# ---------------------------------------------------------------------------
+
+def _load_application(session: Session, user_id: int, app_id: int):
+    app = session.get(CorporateActionApplication, app_id)
+    if app is None or cast(int, app.user_id) != user_id:
+        raise LookupError("NOT_FOUND")
+    action = session.get(CorporateAction, app.corporate_action_id)
+    if action is None:
+        raise LookupError("NOT_FOUND")
+    return app, action
+
+
+def _holding_view(session: Session, user_id: int, ticker: str) -> Optional[dict]:
+    row = _holdings_row(session, user_id, ticker)
+    if row is None:
+        return None
+    return {"ticker": ticker, "shares": float(cast(float, row.shares)), "avg_price": float(cast(float, row.buy_price))}
+
+
+def _utc_naive_now() -> datetime:
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
+def apply_corporate_action(user_id: int, app_id: int) -> dict:
+    """Write the SPLIT for a pending proposal in its own group and re-derive the holding.
+
+    LookupError for a missing or foreign id; ValueError('INVALID_STATE') unless pending;
+    LedgerError when the replay rejects the result. Returns {'item', 'holding'}.
+    """
+    from database import get_session
+    from services import corporate_actions
+
+    with get_session() as session:
+        app, action = _load_application(session, user_id, app_id)
+        if app.status != "pending":
+            raise ValueError("INVALID_STATE")
+        ticker = cast(str, action.ticker)
+        _lock_position(session, user_id, ticker)
+        row = _holdings_row(session, user_id, ticker)
+        asset_class = (cast(Optional[str], row.asset_class) if row is not None else None) or "EQ"
+        default_group = cast(int, get_or_create_default_group(session, user_id).id)
+        tx = Transaction(
+            user_id=user_id, group_id=app.group_id, ticker=ticker, transaction_type="SPLIT",
+            quantity=float(cast(float, action.ratio)), price=0.0, fees=0.0,
+            date=effective_for(cast(_date, action.ex_on)), notes=f"confirmed: corporate action #{action.id}",
+            asset_class=asset_class,
+        )
+        session.add(tx)
+        session.flush()
+        _recalculate_portfolio_snapshot(session=session, user_id=user_id, group_id=default_group, ticker=ticker)
+        app.status = "applied"
+        app.transaction_id = tx.id
+        app.decided_at = _utc_naive_now()
+        session.commit()
+        holding = _holding_view(session, user_id, ticker)
+    return {"item": corporate_actions.item_for(user_id, app_id), "holding": holding}
+
+
+def dismiss_corporate_action(user_id: int, app_id: int) -> dict:
+    """pending -> dismissed ("I've already updated it"); the ledger is untouched."""
+    from database import get_session
+    from services import corporate_actions
+
+    with get_session() as session:
+        app, _ = _load_application(session, user_id, app_id)
+        if app.status != "pending":
+            raise ValueError("INVALID_STATE")
+        app.status = "dismissed"
+        app.decided_at = _utc_naive_now()
+        session.commit()
+    return {"item": corporate_actions.item_for(user_id, app_id), "holding": None}
+
+
+def undo_corporate_action(user_id: int, app_id: int) -> dict:
+    """applied or dismissed -> pending within 30 days of the decision; an applied SPLIT is deleted first."""
+    from database import get_session
+    from services import corporate_actions
+
+    with get_session() as session:
+        app, action = _load_application(session, user_id, app_id)
+        decided = cast(Optional[datetime], app.decided_at)
+        if app.status not in ("applied", "dismissed") or decided is None \
+                or _utc_naive_now() - decided > UNDO_WINDOW:
+            raise ValueError("INVALID_STATE")
+        ticker = cast(str, action.ticker)
+        holding = None
+        if app.status == "applied":
+            _lock_position(session, user_id, ticker)
+            tx = session.get(Transaction, app.transaction_id) if app.transaction_id else None
+            if tx is not None and cast(int, tx.user_id) == user_id and tx.transaction_type == "SPLIT":
+                session.delete(tx)
+                session.flush()
+            default_group = cast(int, get_or_create_default_group(session, user_id).id)
+            _recalculate_portfolio_snapshot(session=session, user_id=user_id, group_id=default_group, ticker=ticker)
+        app.status = "pending"
+        app.transaction_id = None
+        app.decided_at = None
+        session.commit()
+        holding = _holding_view(session, user_id, ticker)
+    return {"item": corporate_actions.item_for(user_id, app_id), "holding": holding}
