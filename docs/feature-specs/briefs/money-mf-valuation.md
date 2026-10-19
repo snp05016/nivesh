@@ -1,0 +1,34 @@
+# Feature package money-mf-valuation: MF rows valued at NAV in the portfolio list and snapshots, served only to MF-aware clients
+
+Cluster: money (Portfolio and money features); area: backend
+Features covered: 21 I28 CAS import + X-ray
+
+## Files (create or modify)
+- backend/routers/portfolio.py
+- backend/services/portfolio_snapshot.py
+- backend/tests/test_money_mf_valuation.py
+
+## Dependencies
+- Feature packages (integrated before you start): money-holding-api, money-ledger-schema, money-mf-isolation
+- Declared in the plan: money-holding-api, money-mf-isolation, money-ledger-schema, FIX:SILENT-01, FIX:DB-19. FIX:/ENG: items may or may not be on the tip yet: check the code; where one is missing, build against the documented interface behind the flag and report it.
+
+## Description
+(1) routers/portfolio.py portfolio_endpoint: mf_ok = 'asset_class' in [t.strip() for t in request.headers.get('X-Client-Features', '').split(',')]; query holdings with .execution_options(include_mf=True) only when mf_ok (shipped builds never see MF rows); price every row via money_pricing.price_quotes (EQ unchanged: _yf_price_with_status, concurrent); add 'asset_class' to each row (additive). (2) services/portfolio_snapshot.py: load each user's holdings with include_mf=True and value them via money_pricing.price_quotes instead of per-row get_current_price, so SILENT-01's skip-if-any-unpriced rule does not stop snapshots for fund holders whose NAV is known (MF with unavailable NAV still counts as unpriced). No stress_test_repo change: the ORM guard already keeps it stock-only.
+
+## Acceptance checks
+test_money_mf_valuation.py (monkeypatched scheme_info and _yf_price_with_status): MF priced at NAV with status nav and price_as_of = nav_date; NAV 6 days old -> stale; missing scheme -> unavailable and valued at cost; GET /portfolio/{id} without the header returns no MF rows; with 'X-Client-Features: asset_class' it returns MF rows with asset_class 'MF' and NAV-based current_value; the snapshot job writes a row for a user with one stock and one fund; stock-only users' responses are unchanged.
+
+## Cluster spec
+docs/feature-specs/spec_money.md holds the reviewed spec for the whole cluster (data model, API contracts, iOS states, flags, copy, tests) and the coverage table. Read the parts for your features and files; the contract written there is binding for both the backend and the iOS package of a feature.
+
+## Constraints (hard rules)
+- Fix track and engine: the audit-fix track and the Research Engine are integrated (or integrating) on the same line. Build on their code; never re-implement what they already do. If a dependency is not in the code yet, do not stub or duplicate it: build your part against the documented interface behind the feature flag, and report it.
+- Research Engine decisions win: every number is computed by validated code; DeepSeek only phrases computed facts behind the grounding validator; no buy/sell/hold, price targets or stock-level probabilities; English-only v1; legacy analysis routes are retired (410); track record and cohort display only when RESEARCH_SEBI_RA_REG_NO is set. Where a feature conflicts, the engine decision is the default and the feature sits behind a flag that is off.
+- Compliance: no advice, recommendations, ratings or targets; no performance claims in marketing or share content; never claim SEBI registration; DPDP Act 2023 / Rules 2025 (consent, purpose limitation, erasure, export, breach logging); App Store rules (5.1.1 account deletion, StoreKit for digital goods, privacy manifest).
+- Engineering: ORM models only in backend/models/db_models.py; schema changes only via a new Alembic revision with a RANDOM 12-hex id chained to the current single head; DB access through get_session(); thin routers, logic in services/; Lakhs/Crores; iOS colours only Theme.* tokens, stripEmoji on AI text, no GeometryReader inside ScrollView/HStack, no nested NavigationStack, ViewBuilder helpers over 5 lines become View structs; free, terms-respecting data sources only (AMFI NAV files, NSE/BSE public files, yfinance) with an honest User-Agent (contact https://github.com/snp05016/nivesh); no new third-party dependency unless the brief names one; every new surface behind a server-side feature flag (reuse the project's flag mechanism) that degrades gracefully; every feature with tests.
+- Backend code cannot be executed here: static checks plus hermetic tests that are correct by construction. iOS: swiftc -parse only. ml-engine code can be executed and its tests must pass.
+
+## Local test commands
+- ml-engine: cd <your worktree>/ml-engine && PYTHONDONTWRITEBYTECODE=1 backend/venv/bin/python -m pytest -p no:cacheprovider -q <tests>
+- backend: static checks only (pycheck, pyright_delta); tests hermetic and correct by construction.
+- iOS: swiftc -parse only; verify every symbol you use by grepping its declaration.
