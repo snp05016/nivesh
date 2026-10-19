@@ -1,7 +1,6 @@
 import SwiftUI
 
-/// Flag-gated money rows under the portfolio hero (spec 2.6). Later money packages
-/// (tax) append their rows here; each row hides itself when off.
+/// Flag-gated money rows under the portfolio hero (spec 2.6). Each row hides itself when off.
 struct PortfolioMoneySection: View {
     let userId: Int
     /// Bumped by PortfolioScreen after each portfolio load so money rows re-fetch.
@@ -17,6 +16,9 @@ struct PortfolioMoneySection: View {
         }
         if flags.isOn(.moneyXray) {
             XRayRow()
+        }
+        if flags.isOn(.moneyTaxReport) {
+            TaxReportRow()
         }
     }
 }
@@ -50,5 +52,16 @@ private struct XRayRow: View {
         MoneyLinkRow(icon: "chart.bar.doc.horizontal", title: "Portfolio X-ray") { showXRay = true }
             .banknoteCard()
             .navigationDestination(isPresented: $showXRay) { PortfolioXRayView() }
+    }
+}
+
+/// "Capital gains (tax working)". Exists only while money_tax_report is on.
+private struct TaxReportRow: View {
+    @State private var showReport = false
+
+    var body: some View {
+        MoneyLinkRow(icon: "doc.text", title: "Capital gains (tax working)") { showReport = true }
+            .banknoteCard()
+            .navigationDestination(isPresented: $showReport) { TaxReportView() }
     }
 }
