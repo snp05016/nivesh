@@ -146,6 +146,7 @@ from routers import harvester as harvester_router
 from routers.health import router as health_router  # Task 56
 from routers import youtube_summary as youtube_summary_router
 from routers import client_telemetry
+from routers import features as features_router
 
 app.include_router(health_router)  # every health probe (REL-18)
 app.include_router(auth.router)
@@ -191,6 +192,7 @@ app.include_router(notifications_inbox.router)
 app.include_router(youtube_summary_router.router)
 app.include_router(search.router)
 app.include_router(client_telemetry.router)
+app.include_router(features_router.router)  # GET /api/v1/features (server-side flags)
 # ARCH-17: money-control routers live under /api/v1/<name>. The old /api/<name>
 # paths stay as deprecated aliases, hidden from OpenAPI, for the shipped iOS app;
 # drop them in the release that moves the app to /api/v1.

@@ -25,6 +25,8 @@ PUBLIC_ROUTES = {
     ("GET", "/"), ("GET", "/ping"), ("GET", "/api/v1/ping"), ("GET", "/health"),
     ("GET", "/health/live"), ("GET", "/health/ready"), ("GET", "/favicon.ico"),
     ("OPTIONS", "/{rest_of_path:path}"),
+    # Server-side feature flags (no user data).
+    ("GET", "/api/v1/features"),
     # Authentication itself.
     ("POST", "/login"), ("POST", "/register"),
     # Public market data, fundamentals and content.

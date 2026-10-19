@@ -41,8 +41,10 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         # setdefault: the admin dashboard route sets its own, wider policy.
         response.headers.setdefault("Content-Security-Policy", "default-src 'self'")
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-        # Fixes #109, GH-695: never cache any response. Legacy user-data routes
+        # Fixes #109, GH-695: never cache a response by default. Legacy user-data routes
         # (/portfolio/{id}, /watchlist/{id}, /alerts/{id}, ...) live outside /api/.
-        response.headers["Cache-Control"] = "no-store, private"
-        response.headers["Pragma"] = "no-cache"
+        # A route that sets its own Cache-Control (e.g. GET /api/v1/features) keeps it.
+        if "cache-control" not in response.headers:
+            response.headers["Cache-Control"] = "no-store, private"
+            response.headers["Pragma"] = "no-cache"
         return response
