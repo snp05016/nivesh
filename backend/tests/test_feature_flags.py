@@ -21,6 +21,12 @@ DEFAULTS = {
     "money_commission_drag": False,
     "money_tax_report": False,
     "money_crisis_replay": False,
+    "data_instruments": True,
+    "data_eod_prices": True,
+    "data_eod_display": False,
+    "data_mf_universe": True,
+    "data_corp_actions_confirm": False,
+    "data_results_digest": False,
 }
 
 

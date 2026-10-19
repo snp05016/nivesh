@@ -25,6 +25,13 @@ FLAGS: dict[str, tuple[str, bool]] = {
     "money_commission_drag": ("FEATURE_MONEY_COMMISSION_DRAG", False),
     "money_tax_report": ("FEATURE_MONEY_TAX_REPORT", False),
     "money_crisis_replay": ("FEATURE_MONEY_CRISIS_REPLAY", False),
+    # Data foundation cluster (docs: spec_data 0.1). Cohort access: services/data_flags.py.
+    "data_instruments": ("FEATURE_DATA_INSTRUMENTS", True),
+    "data_eod_prices": ("FEATURE_DATA_EOD_PRICES", True),
+    "data_eod_display": ("FEATURE_DATA_EOD_DISPLAY", False),
+    "data_mf_universe": ("FEATURE_DATA_MF_UNIVERSE", True),
+    "data_corp_actions_confirm": ("FEATURE_DATA_CORP_ACTIONS_CONFIRM", False),
+    "data_results_digest": ("FEATURE_DATA_RESULTS_DIGEST", False),
 }
 
 _TRUE = frozenset({"1", "true", "yes", "on"})
