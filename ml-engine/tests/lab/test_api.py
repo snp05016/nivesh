@@ -129,3 +129,19 @@ def test_news_only_up_to_clock(client):
     data.__post_init__()
     j = c.post("/lab/v1/sim/state", json=body(data, [{"type": "advance", "days": 2}]), headers=KEY).json()
     assert [n["title"] for n in j["news"]] == ["early"]
+
+
+def test_school_routes_hide_answers_and_grade(client):
+    c, _ = client
+    cur = c.get("/lab/v1/school/curriculum", headers=KEY).json()
+    first = cur["lessons"][0]["id"]
+    les = c.get(f"/lab/v1/school/lessons/{first}", headers=KEY).json()
+    assert les["quiz"] and all("answer" not in q and "explain" not in q for q in les["quiz"])
+    from lab.school import get_lesson
+
+    right = [q["answer"] for q in get_lesson(first)["quiz"]]
+    g = c.post("/lab/v1/school/grade", json={"lesson_id": first, "answers": right}, headers=KEY).json()
+    assert g["score"] == 1.0 and g["state"]
+    nxt = c.post("/lab/v1/school/next", json={"state": g["state"], "weaknesses": ["overtrading"]}, headers=KEY).json()
+    assert nxt["lessons"]
+    assert c.get("/lab/v1/school/lessons/nope", headers=KEY).status_code == 404

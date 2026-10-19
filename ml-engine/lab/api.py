@@ -20,6 +20,7 @@ from research.api import require_key
 
 from . import autopsy as ap
 from . import events as evs
+from . import school as sch
 from . import hypothesis as hy
 from .featurelang import FDLError, compile_program, panel_schema
 from .data import MarketData, PITView
@@ -331,3 +332,67 @@ def events_timeline(body: TimelineIn) -> dict:
     if body.symbol not in md.bars:
         raise HTTPException(404, "no data for that symbol in this window")
     return {**evs.timeline(md, body.symbol, body.start, body.end), "provenance": md.provenance}
+
+
+# ---------------------------------------------------------------- trader school
+class GradeIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    lesson_id: str = Field(max_length=80)
+    answers: list[int] = Field(max_length=20)
+    state: dict[str, Any] | None = None
+
+
+class NextIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    state: dict[str, Any] | None = None
+    weaknesses: list[str] = Field(default_factory=list, max_length=50)
+    k: int = Field(3, ge=1, le=10)
+
+
+class PlacementIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    answers_by_lesson: dict[str, list[int]]
+    state: dict[str, Any] | None = None
+
+
+def _summary(les: dict) -> dict:
+    return {k: les[k] for k in ("id", "track", "title", "minutes", "prereqs", "concepts", "summary")}
+
+
+@router.get("/school/curriculum")
+def school_curriculum() -> dict:
+    cur = sch.load_curriculum()
+    return {"version": cur.get("version"), "tracks": cur["tracks"], "concepts": cur["concepts"], "lessons": [_summary(l) for l in cur["lessons"]]}
+
+
+@router.get("/school/lessons/{lesson_id}")
+def school_lesson(lesson_id: str) -> dict:
+    try:
+        les = sch.get_lesson(lesson_id)
+    except (KeyError, sch.CurriculumError):
+        raise HTTPException(404, "unknown lesson") from None
+    quiz = [{"id": q["id"], "q": q["q"], "choices": q["choices"]} for q in les["quiz"]]  # answers stay server-side
+    return {**{k: v for k, v in les.items() if k != "quiz"}, "quiz": quiz}
+
+
+@router.post("/school/grade")
+def school_grade(body: GradeIn) -> dict:
+    try:
+        return sch.grade_quiz(body.lesson_id, body.answers, body.state)
+    except KeyError:
+        raise HTTPException(404, "unknown lesson") from None
+    except (ValueError, sch.CurriculumError) as e:
+        raise HTTPException(422, str(e)) from None
+
+
+@router.post("/school/next")
+def school_next(body: NextIn) -> dict:
+    return {"lessons": [{"id": l["lesson_id"], **l} for l in sch.next_lessons(body.state, body.weaknesses, body.k)]}
+
+
+@router.post("/school/placement")
+def school_placement(body: PlacementIn) -> dict:
+    try:
+        return sch.placement(body.answers_by_lesson, body.state)
+    except (KeyError, ValueError, sch.CurriculumError) as e:
+        raise HTTPException(422, str(e)) from None
