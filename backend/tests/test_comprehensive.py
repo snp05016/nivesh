@@ -412,12 +412,9 @@ class TestAnalysisEndpoints:
 
 class TestUserEndpoints:
     def test_list_users(self):
-        """Test list users endpoint."""
-        try:
-            response = client.get("/users")
-            assert response.status_code in [200, 500]
-        except (AttributeError, Exception):
-            pass  # Known bug: User.name vs User.display_name
+        """/users is admin-only (require_admin): no token is 401."""
+        response = client.get("/users")
+        assert response.status_code == 401
     
     def test_watchlist_add(self):
         """Test adding to watchlist."""

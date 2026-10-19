@@ -59,39 +59,12 @@ jobs:
         FIRECRAWL_API_KEY: mock
         FRED_API_KEY: mock
         HF_TOKEN: mock
-      # AUTH-25: the route-auth inventory and the auth/ownership/rate-limit suites gate
-      # every PR, so a new route without auth (or a broken auth invariant) fails CI.
-      # FINSEC-27: so do the money/identity suites (loans, KYC, FD, subscription,
-      # compliance) and the gate that every such route has a test.
+      # TEST-06: run the whole backend suite. The old hand-picked file list (AUTH-25,
+      # FINSEC-27 suites included) left ~120 files never running in CI. Collect first
+      # so an import or collection error fails loudly instead of skipping a file.
       run: |
-        pytest backend/tests/test_ios_endpoints.py \
-          backend/tests/test_route_auth_inventory.py \
-          backend/tests/test_auth_*.py \
-          backend/tests/test_rate_limiter.py \
-          backend/tests/test_rate_limit_isolation.py \
-          backend/tests/test_write_rate_limits.py \
-          backend/tests/test_job_endpoints_ownership.py \
-          backend/tests/test_job_admission.py \
-          backend/tests/test_entitlements_fail_closed.py \
-          backend/tests/test_startup_config.py \
-          backend/tests/test_earnings_alerts_auth.py \
-          backend/tests/test_utility_routes_auth.py \
-          backend/tests/test_legacy_notification_auth.py \
-          backend/tests/test_portfolio_chart_auth.py \
-          backend/tests/test_portfolio_export_isolation.py \
-          backend/tests/test_admin_dashboard_security.py \
-          backend/tests/test_best_effort_degradation.py \
-          backend/tests/test_analyst_ratings_contract.py \
-          backend/tests/test_money_identity_routes.py \
-          backend/tests/test_key_fact_statement.py \
-          backend/tests/test_finance_loans.py \
-          backend/tests/test_kyc_consent_api.py \
-          backend/tests/test_fixed_deposits_api.py \
-          backend/tests/test_subscription_compliance_api.py \
-          backend/tests/test_subscription_lifecycle.py \
-          backend/tests/test_linked_bank_accounts.py \
-          backend/tests/test_finance_tracker_summary.py \
-          backend/tests/test_audit_trail.py
+        python -m pytest backend/tests --collect-only -q -p no:cacheprovider
+        python -m pytest backend/tests -q -p no:cacheprovider -rfE
 
     - name: Validate OpenAPI schema
       env:

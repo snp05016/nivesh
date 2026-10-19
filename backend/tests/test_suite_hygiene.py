@@ -4,6 +4,7 @@ Root-level backend/test_*.py debug scripts ran a paid analyze() and live
 Claude/DeepSeek calls at import time, and a bare `pytest` collected them.
 File-based checks only: no app import, no network.
 """
+import ast
 import configparser
 from pathlib import Path
 
@@ -41,3 +42,58 @@ def test_no_absolute_user_paths_in_tests():
         and "/Users/" in p.read_text(encoding="utf-8", errors="ignore")
     ]
     assert hits == []
+
+
+_BROAD_EXCEPTIONS = {"Exception", "BaseException", "AssertionError"}
+
+
+def _swallowed_asserts(tree: ast.AST) -> list[int]:
+    """Lines of `try:` blocks holding an assert whose broad handler only passes."""
+    hits = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Try):
+            continue
+        if not any(isinstance(n, ast.Assert) for stmt in node.body for n in ast.walk(stmt)):
+            continue
+        for handler in node.handlers:
+            caught = handler.type.elts if isinstance(handler.type, ast.Tuple) else [handler.type]
+            broad = any(
+                t is None or (isinstance(t, ast.Name) and t.id in _BROAD_EXCEPTIONS)
+                for t in caught
+            )
+            if broad and all(
+                isinstance(s, ast.Pass) or (isinstance(s, ast.Expr) and isinstance(s.value, ast.Constant))
+                for s in handler.body
+            ):
+                hits.append(node.lineno)
+    return hits
+
+
+def test_no_swallowed_asserts():
+    # TEST-06: `try: assert ... except Exception: pass` can never fail, since
+    # AssertionError is an Exception; the generated iOS endpoint tests had 32 of them.
+    tests = BACKEND / "tests"
+    hits = [
+        f"{p.relative_to(tests)}:{line}"
+        for p in sorted(tests.rglob("*.py"))
+        for line in _swallowed_asserts(ast.parse(p.read_text(encoding="utf-8")))
+    ]
+    assert hits == []
+
+
+def test_swallowed_assert_detector():
+    assert _swallowed_asserts(ast.parse("try:\n    assert x\nexcept Exception:\n    pass\n")) == [1]
+    assert _swallowed_asserts(ast.parse("try:\n    assert x\nexcept:\n    pass\n")) == [1]
+    assert _swallowed_asserts(ast.parse("try:\n    assert x\nexcept KeyError:\n    pass\n")) == []
+    assert _swallowed_asserts(ast.parse("try:\n    f()\nexcept Exception:\n    pass\n")) == []
+
+
+def test_backend_ci_runs_whole_suite():
+    # TEST-06: CI must run all of backend/tests, not a hand-picked list of files.
+    ci = REPO_ROOT / ".github" / "workflows" / "backend_ci.yml"
+    if not ci.exists():
+        pytest.skip("backend/ deployed without the repo root (e.g. the Docker image)")
+    text = ci.read_text(encoding="utf-8")
+    assert "python -m pytest backend/tests --collect-only" in text
+    assert "python -m pytest backend/tests -q" in text
+    assert "pytest backend/tests/" not in text, "CI pytest targets single files"
