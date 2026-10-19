@@ -1,0 +1,156 @@
+{
+ "statement_period": {
+  "from": "01-Jan-2016",
+  "to": "08-Oct-2026"
+ },
+ "file_type": "CAMS",
+ "cas_type": "DETAILED",
+ "investor_info": {
+  "name": "Test Investor",
+  "email": "test@example.invalid",
+  "address": "1 Test Road",
+  "mobile": "9999999999"
+ },
+ "folios": [
+  {
+   "folio": "1234567/89",
+   "amc": "HDFC Mutual Fund",
+   "PAN": "XXXXX0000X",
+   "KYC": "OK",
+   "PANKYC": "OK",
+   "schemes": [
+    {
+     "scheme": "HDFC Flexi Cap Fund - Direct Plan - Growth",
+     "advisor": "ARN-0000",
+     "rta_code": "HF1",
+     "rta": "CAMS",
+     "type": "EQUITY",
+     "isin": "INF179K01VC4",
+     "amfi": "118955",
+     "nominees": [
+      "Test Nominee"
+     ],
+     "open": "0",
+     "close": "100.000",
+     "close_calculated": "100.000",
+     "valuation": {
+      "date": "2026-10-08",
+      "nav": "45.67",
+      "cost": "4000.00",
+      "value": "4567.00"
+     },
+     "transactions": [
+      {
+       "date": "2020-01-01",
+       "description": "Purchase",
+       "amount": "4000",
+       "units": "100",
+       "nav": "40",
+       "balance": "100",
+       "type": "PURCHASE"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "folio": "7654321/01",
+   "amc": "HDFC Mutual Fund",
+   "PAN": "XXXXX0000X",
+   "KYC": "OK",
+   "PANKYC": "OK",
+   "schemes": [
+    {
+     "scheme": "HDFC Flexi Cap Fund - Direct Plan - Growth",
+     "advisor": null,
+     "rta_code": "HF1",
+     "rta": "CAMS",
+     "type": "EQUITY",
+     "isin": "INF179K01VC4",
+     "amfi": "118955",
+     "nominees": [],
+     "open": "0",
+     "close": "23.456",
+     "close_calculated": "23.456",
+     "valuation": {
+      "date": "2026-10-08",
+      "nav": "45.67",
+      "cost": "1000.00",
+      "value": "1071.07"
+     },
+     "transactions": []
+    }
+   ]
+  },
+  {
+   "folio": "555/1",
+   "amc": "Axis Mutual Fund",
+   "PAN": "XXXXX0000X",
+   "KYC": "OK",
+   "PANKYC": "OK",
+   "schemes": [
+    {
+     "scheme": "Axis Bluechip Fund - Regular Plan - Growth",
+     "advisor": "ARN-1111",
+     "rta_code": "AX1",
+     "rta": "KFINTECH",
+     "type": "EQUITY",
+     "isin": "INF846K01DP8",
+     "amfi": "112277",
+     "nominees": [],
+     "open": "0",
+     "close": "50.000",
+     "close_calculated": "50.000",
+     "valuation": {
+      "date": "2026-10-08",
+      "nav": "60.00",
+      "cost": null,
+      "value": "3000.00"
+     },
+     "transactions": []
+    },
+    {
+     "scheme": "Axis Old Fund - Direct Plan - Growth",
+     "advisor": null,
+     "rta_code": "AX2",
+     "rta": "KFINTECH",
+     "type": "DEBT",
+     "isin": "INF846K01ZZ1",
+     "amfi": "100001",
+     "nominees": [],
+     "open": "10",
+     "close": "0.000",
+     "close_calculated": "0.000",
+     "valuation": {
+      "date": "2026-10-08",
+      "nav": "20.00",
+      "cost": "0.00",
+      "value": "0.00"
+     },
+     "transactions": []
+    },
+    {
+     "scheme": "Mystery Fund - Growth",
+     "advisor": null,
+     "rta_code": "MY1",
+     "rta": "CAMS",
+     "type": null,
+     "isin": null,
+     "amfi": null,
+     "nominees": [],
+     "open": "5",
+     "close": "5.000",
+     "close_calculated": "5.000",
+     "valuation": {
+      "date": "2026-10-08",
+      "nav": "10.00",
+      "cost": "40.00",
+      "value": "50.00"
+     },
+     "transactions": []
+    }
+   ]
+  }
+ ],
+ "parse_warnings": []
+}

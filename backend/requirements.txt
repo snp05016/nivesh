@@ -98,3 +98,8 @@ nest_asyncio>=1.5.0  # patch asyncio for nested event loops (correlation_engine)
 cachetools>=5.0.0  # TTLCache for yfinance client
 
 PyPDF2>=3.0.0
+
+# CAMS/KFintech CAS import (money-cas-parse). MIT, Python >= 3.11, PDF backend pypdfium2.
+# CAS PDFs are password-protected multi-layout statements, so a maintained parser beats a hand-written one.
+# Runs only in a killable child process (services/money_cas_parser.py). Never install an AGPL/GPL extra.
+casparser==1.4.1
