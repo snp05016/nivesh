@@ -526,12 +526,16 @@ struct StockProfileView: View {
 
                         case .financials:
                             ScrollView {
-                                FinancialsTabView(
-                                    isLoading: vm.financialsLoading,
-                                    quarterlyFinancials: vm.quarterlyFinancials,
-                                    piotroski: vm.piotroski,
-                                    fetchFinancials: { await vm.fetchFinancials() }
-                                )
+                                VStack(spacing: Theme.Spacing.none) {
+                                    FinancialsTabView(
+                                        isLoading: vm.financialsLoading,
+                                        quarterlyFinancials: vm.quarterlyFinancials,
+                                        piotroski: vm.piotroski,
+                                        fetchFinancials: { await vm.fetchFinancials() }
+                                    )
+                                    LatestResultsCard(ticker: ticker)
+                                        .padding(.horizontal, Theme.screenPadding)
+                                }
                                 .padding(.bottom, Theme.sectionSpacing)
                             }
                             .transition(.opacity)
