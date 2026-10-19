@@ -1,0 +1,35 @@
+{
+  "as_of": "2026-01-01T00:00:00Z",
+  "holdings": [
+    {
+      "buy_price": 3500.0,
+      "company_name": "Tata Consultancy Services",
+      "current_price": 3600.0,
+      "current_value_inr": 36000.0,
+      "day_change_pct": 0.56,
+      "group": "holdings",
+      "invested_inr": 35000.0,
+      "notes": "",
+      "pnl_inr": 1000.0,
+      "pnl_pct": 2.86,
+      "price_as_of": "2026-01-01T09:15:00+00:00",
+      "price_status": "live",
+      "purchase_date": "2026-01-15",
+      "shares": 10.0,
+      "staleness": {
+        "reason": "never analysed",
+        "score": 40,
+        "urgency": "AGING"
+      },
+      "target_price": 0.0,
+      "ticker": "TCS"
+    }
+  ],
+  "total_current_inr": 36000.0,
+  "total_invested_inr": 35000.0,
+  "total_pnl_inr": 1000.0,
+  "total_pnl_pct": 2.86,
+  "unpriced_tickers": [],
+  "user": "Golden User",
+  "user_id": 7
+}

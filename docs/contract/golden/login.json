@@ -1,0 +1,7 @@
+{
+  "access_token": "<token>",
+  "display_name": "Golden User",
+  "token_type": "bearer",
+  "user_id": 7,
+  "username": "golden_user"
+}

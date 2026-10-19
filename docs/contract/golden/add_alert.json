@@ -1,0 +1,7 @@
+{
+  "alert_id": 1,
+  "direction": "above",
+  "success": true,
+  "target_price": 3550.0,
+  "ticker": "TCS"
+}

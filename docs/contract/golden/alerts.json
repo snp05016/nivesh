@@ -1,0 +1,15 @@
+{
+  "alerts": [
+    {
+      "company_name": "TCS",
+      "created_at": "2026-01-01T00:00:00Z",
+      "current_price": 3600.0,
+      "direction": "above",
+      "distance_pct": 1.41,
+      "id": 1,
+      "target_price": 3550.0,
+      "ticker": "TCS",
+      "triggered": false
+    }
+  ]
+}
