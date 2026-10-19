@@ -36,7 +36,8 @@ jobs:
 
     - name: Lint with ruff
       # Rules live in backend/ruff.toml: syntax errors (E9), broken comparisons/asserts (F63),
-      # misplaced statements (F7) and late __future__ imports (F404). Widen there.
+      # misplaced statements (F7), late __future__ imports (F404) and the flake8-async blocking-I/O
+      # codes (ASYNC210/220/221/222/230/251, shrink-only per-file baseline). Widen there.
       run: ruff check backend/
 
     - name: Lint workflows (actions pinned to commit SHAs)

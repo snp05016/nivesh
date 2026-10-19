@@ -1,9 +1,18 @@
-# Lint gate for backend CI (OPS-20). Start with fatal-only rules that pass today:
-# E9 syntax errors, F63 invalid comparisons/asserts, F7 misplaced statements,
-# F404 late __future__ imports.
+# Lint gate for backend CI (OPS-20). Fatal-only rules plus the flake8-async codes for blocking I/O
+# inside `async def` (C12): E9 syntax errors, F63 invalid comparisons/asserts, F7 misplaced
+# statements, F404 late __future__ imports, ASYNC210 blocking HTTP, ASYNC220/221/222 subprocess,
+# ASYNC230 open(), ASYNC251 time.sleep. Not the whole ASYNC prefix: ASYNC109/110 are style rules.
 # Next: add F821 (undefined name) once LLM-01's NameError fix lands, then widen.
 target-version = "py311"
 extend-exclude = ["tradingagents-core", "tests_suite", "venv", ".venv"]
 
 [lint]
-select = ["E9", "F63", "F7", "F404"]
+select = ["E9", "F63", "F7", "F404", "ASYNC210", "ASYNC220", "ASYNC221", "ASYNC222", "ASYNC230", "ASYNC251"]
+
+# Baseline of pre-existing flake8-async hits, computed 2026-10-19 on 57ffb85 with ruff 0.8.4.
+# Only remove entries; fix new hits or move the call into asyncio.to_thread.
+[lint.per-file-ignores]
+"routers/portfolio_analytics.py" = ["ASYNC230"]
+"services/news_harvester.py" = ["ASYNC210"]
+"services/youtube_harvester.py" = ["ASYNC251"]
+"tests/test_scheduler_jobs.py" = ["ASYNC251"]
