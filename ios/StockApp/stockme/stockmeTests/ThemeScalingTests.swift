@@ -42,6 +42,12 @@ final class ThemeScalingTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(size, 11)
     }
 
+    /// IOSUI-27: every Theme text helper floors sub-11pt design sizes by default.
+    func testDefaultFloorAppliesWithoutExplicitMinimum() {
+        XCTAssertEqual(Theme.scaledSize(7, relativeTo: .body, category: .large), 11, accuracy: 0.001)
+        XCTAssertEqual(Theme.scaledSize(14, relativeTo: .body, category: .large), 14, accuracy: 0.001)
+    }
+
     func testFontSizeMultiplierApplied() {
         let standard = Theme.scaledSize(14, relativeTo: .body, category: .large)
         UserDefaults.standard.set("Large", forKey: fontSizeKey)

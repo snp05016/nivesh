@@ -2,17 +2,16 @@ import pytest
 from types import SimpleNamespace
 from unittest.mock import patch, MagicMock
 
-from services.copilot_service import process_copilot_request, strip_emoji, _manage_tokens
+from services.copilot_service import process_copilot_request, strip_emoji, _trim_history
 
 def test_strip_emoji():
     assert strip_emoji("Hello 👋") == "Hello"
     assert strip_emoji("Bullish 🚀") == "Bullish"
     assert strip_emoji("₹1,200 – up 📈") == "₹1,200 – up"
 
-def test_manage_tokens_no_summary():
+def test_trim_history_keeps_short_history():
     history = [{"role": "user", "content": "hello"}]
-    managed = _manage_tokens(history)
-    assert len(managed) == 1
+    assert _trim_history(history) == history
 
 @patch("services.copilot_service.deepseek_chat")
 @patch("services.copilot_service.claude_haiku")

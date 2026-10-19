@@ -1,21 +1,39 @@
+import json
+import logging
 from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
-from pydantic import BaseModel
-from typing import List, Dict, Any, Optional
-import multiprocessing
+from pydantic import BaseModel, Field, field_validator
+from typing import List, Dict, Any, Literal, Optional
 
 from services.llm_budget import require_llm_budget
 from services.copilot_service import process_copilot_request
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(tags=["Copilot"])
 
+# LLM-13: the client never builds the system prompt and payloads are bounded.
+# A history turn may hold a full assistant reply (Haiku max_tokens 2000 is ~8000 chars).
+_MAX_USER_MESSAGE_CHARS = 4000
+_MAX_HISTORY_MESSAGE_CHARS = 8000
+_MAX_HISTORY_MESSAGES = 20
+_MAX_CONTEXT_JSON_CHARS = 8000  # iOS app_navigation is ~3 KB
+
+
 class ChatMessage(BaseModel):
-    role: str
-    content: str
+    role: Literal["user", "assistant"]
+    content: str = Field(..., max_length=_MAX_HISTORY_MESSAGE_CHARS)
 
 class CopilotRequest(BaseModel):
-    user_message: str
-    conversation_history: List[ChatMessage] = []
-    current_context: Dict[str, Any] = {}
+    user_message: str = Field(..., min_length=1, max_length=_MAX_USER_MESSAGE_CHARS)
+    conversation_history: List[ChatMessage] = Field(default_factory=list, max_length=_MAX_HISTORY_MESSAGES)
+    current_context: Dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("current_context")
+    @classmethod
+    def _bounded_context(cls, v: Dict[str, Any]) -> Dict[str, Any]:
+        if len(json.dumps(v, default=str)) > _MAX_CONTEXT_JSON_CHARS:
+            raise ValueError(f"current_context exceeds {_MAX_CONTEXT_JSON_CHARS} characters")
+        return v
 
 class CopilotResponse(BaseModel):
     reply: str
@@ -49,5 +67,6 @@ we'll await the service call which handles the processing.
             user_id=user_id
         )
         return CopilotResponse(**result)
-    except Exception as e:
+    except Exception:
+        logger.exception("copilot chat failed for user %s", user_id)
         raise HTTPException(status_code=500, detail="Internal server error")

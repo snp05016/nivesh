@@ -175,7 +175,8 @@ enum Theme {
     /// `.dynamicTypeSize(...DynamicTypeSize.accessibility2)` clamp in stockmeApp.
     static let maxContentSizeCategory: UIContentSizeCategory = .accessibilityLarge
 
-    /// Smallest size for micro text (stamps, serial numbers, micro labels).
+    /// Smallest design size any Theme text helper renders (IOSUI-27): the ~465 call
+    /// sites asking for 5-9 pt get 11 pt before Dynamic Type scaling.
     static let microTextFloor: CGFloat = 11
 
     /// The system "Larger Text" setting. Read from the trait collection (not
@@ -187,7 +188,8 @@ enum Theme {
 
     /// Scales a design size with Dynamic Type relative to `style`, clamped to
     /// `maxContentSizeCategory`, then applies the in-app Font Size multiplier.
-    static func scaledSize(_ size: CGFloat, relativeTo style: Font.TextStyle, minimum: CGFloat = 0,
+    /// `size` is floored at `minimum` (default `microTextFloor`) first.
+    static func scaledSize(_ size: CGFloat, relativeTo style: Font.TextStyle, minimum: CGFloat = Theme.microTextFloor,
                            category: UIContentSizeCategory = Theme.systemContentSizeCategory) -> CGFloat {
         let clamped = min(category, maxContentSizeCategory)
         let traits = UITraitCollection(preferredContentSizeCategory: clamped)

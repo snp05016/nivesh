@@ -71,7 +71,7 @@ def test_copilot_haiku_goes_through_gateway(monkeypatch):
     assert reply == "reply"
     kwargs = gateway.call_args.kwargs
     assert kwargs["feature"] == "copilot_haiku"
-    assert kwargs["system"] == "sys\n"
+    assert kwargs["system"] == copilot_service._SYSTEM_PROMPT  # LLM-13: never message-supplied
     assert kwargs["messages"] == [{"role": "user", "content": "q"}]
 
 
