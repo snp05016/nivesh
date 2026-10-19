@@ -7,6 +7,8 @@ struct GovernanceTabView: View {
     let ticker: String
     @ObservedObject var vm: StockProfileViewModel
     @State private var governanceCards: [HarvestedCard] = []
+    // One surveillance source on screen: when the risk-flags card covers ASM/GSM, hide the /quick-info banner.
+    @State private var riskFlagsCoverSurveillance = false
 
     var body: some View {
         LazyVStack(spacing: Theme.Spacing.card) {
@@ -14,7 +16,9 @@ struct GovernanceTabView: View {
                 SPSkeletonBlock(rows: 4)
                 SPSkeletonBlock(rows: 4)
             } else if let info = vm.quickInfo {
-                GovernanceSurveillanceBannerView(info: info)
+                if !riskFlagsCoverSurveillance {
+                    GovernanceSurveillanceBannerView(info: info)
+                }
                 GovernanceScoreCardView(info: info)
                 GovernancePromoterSectionView(info: info, promoterHistory: vm.promoterHistory)
                 GovernanceInstitutionalSectionView(info: info)
@@ -32,6 +36,9 @@ struct GovernanceTabView: View {
         .task { await vm.fetchOverview() }
         .task { await vm.fetchFinancials() }
         .task { governanceCards = (try? await NetworkManager.shared.fetchGovernanceCards(ticker: ticker)) ?? [] }
+        .task {
+            riskFlagsCoverSurveillance = (try? await NetworkManager.shared.fetchRiskFlags(symbol: ticker))?.checks?.contains("surveillance") ?? false
+        }
     }
 }
 

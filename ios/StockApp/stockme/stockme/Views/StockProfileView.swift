@@ -505,6 +505,8 @@ struct StockProfileView: View {
                                         quickInfo: vm.quickInfo,
                                         fetchOverview: { await vm.fetchOverview() }
                                     )
+                                    RiskFlagsCard(ticker: ticker)
+                                        .padding(.horizontal, Theme.screenPadding)
                                     if let hist = vm.history, !hist.prices.isEmpty {
                                         GuillocheDivider()
                                             .padding(.horizontal, Theme.screenPadding)
