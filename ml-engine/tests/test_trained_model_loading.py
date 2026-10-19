@@ -15,12 +15,14 @@ def test_model_status():
         assert "supported_horizons" in data
         assert "feature_count" in data
     
-    # Assuming the baseline model is loaded, verify these specific fields
-    # If this runs in an environment where the model is not present, it gracefully falls back,
-    # but for production verification, we assert it must be loaded.
+    # The shipped lgb_model.txt has no MANIFEST.json (ML-07): it loads, but is
+    # unregistered and unvalidated until a model passes the promotion gate.
     assert data["lightgbm_loaded"] is True
     assert data["ml_engine_mode"] == "trained_lightgbm_baseline"
-    assert data["model_version"] is not None
+    assert data["model_version"] == "unregistered"
+    assert data["model_validated"] is False
+    assert data["model_integrity_ok"] is True
+    assert data["manifest_version"] is None
 
 def test_predict_single():
     """Verify /predict/single returns complete metadata along with prediction."""
@@ -51,4 +53,6 @@ def test_predict_single():
         assert data["lightgbm_loaded"] is True
         assert data["ml_engine_mode"] == "trained_lightgbm_baseline"
         assert data["fallback_used"] is False
-        assert data["model_version"] is not None
+        assert data["model_version"] == "unregistered"
+        assert data["model_validated"] is False
+        assert data["signal_state"] == "no_edge"

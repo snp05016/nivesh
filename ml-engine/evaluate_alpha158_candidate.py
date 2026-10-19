@@ -154,10 +154,18 @@ def main():
 
     guardrails = evaluate_deployment_guardrails(latest_version, status="candidate")
     
+    # Thresholds live in training/promotion_gate.py; each check carries its own.
+    check_rows = "\n".join(
+        f"| {name} | {c['value']} | {c['ci_low'] if c['ci_low'] is not None else '-'} "
+        f"| {c['threshold']} | {'pass' if c['passed'] else 'FAIL'} |"
+        for name, c in guardrails["checks"].items()
+    )
     write_markdown("DEPLOYMENT_RECOMMENDATION.md", f"""# Deployment Recommendation
-- Passed Guardrails: {guardrails['passed']}
-- Hit Rate: {guardrails['mean_hit_rate']:.4f} (Required: > 0.53)
-- Brier Score: {guardrails['brier_score']:.4f} (Required: < 0.2529)
+- Promotion gate: **{"PASSED" if guardrails['passed'] else "FAILED"}**
+
+| Check | Value | CI low | Threshold | Result |
+|---|---|---|---|---|
+{check_rows}
 
 ### Reasons for Rejection
 {chr(10).join(['- ' + str(r) for r in guardrails['reasons_for_rejection']]) if guardrails['reasons_for_rejection'] else "None. Model passed all guardrails."}

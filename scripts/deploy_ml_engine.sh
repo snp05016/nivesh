@@ -6,8 +6,11 @@
 # saumyapatel@192.168.1.122 non-interactively. The server checkout is
 # fast-forwarded to exactly DEPLOY_SHA (default: local HEAD, which must already
 # be pushed to origin), then scripts/deploy_ml_microservice.sh runs there:
-# it builds first, swaps the container, and rolls back on a failed health
-# check. The backend API is never stopped or restarted.
+# it builds ml-engine:<short sha>, proves it as a candidate container on
+# 127.0.0.1:8011 (ready, model_integrity_ok, model_version from
+# ml-engine/models/MANIFEST.json or "unregistered"), then swaps the container
+# and rolls back on a failed readiness check. The backend API is never stopped
+# or restarted.
 #
 # Usage:
 #   chmod +x scripts/deploy_ml_engine.sh
@@ -18,7 +21,7 @@
 #   docker run -d --name ml-engine --restart unless-stopped --cpus=3 --memory=4g \
 #     --user "$(id -u):$(id -g)" -p 127.0.0.1:8001:8001 \
 #     -v ~/nivesh-data/research:/data --env-file ~/nivesh-data/ml-engine.env \
-#     -e RESEARCH_DATA_DIR=/data -e HOME=/data ml-engine:latest
+#     -e RESEARCH_DATA_DIR=/data -e HOME=/data ml-engine:<short sha>
 # ~/nivesh-data/research is mode 700. ~/nivesh-data/ml-engine.env is mode 600
 # and holds ML_ENGINE_API_KEY and RESEARCH_HTTP_CONTACT (create it once by hand
 # on the server; never commit it). The backend reads the same key from backend/.env.

@@ -7,7 +7,7 @@ How to tell whether the served model is healthy, what to alert on, and how to ro
 | Probe | Meaning | Used by |
 |---|---|---|
 | `GET /health` | The process is up. Always `{"status": "ok"}`. | Manual checks only |
-| `GET /ready` | 200 `{"status": "ready", "model_version", "model_validated"}` only when the LightGBM booster loaded. Otherwise 503 `{"status": "degraded", "reason": "model_not_loaded"}`. | Docker `HEALTHCHECK`, `scripts/deploy_ml_microservice.sh` |
+| `GET /ready` | 200 `{"status": "ready", "model_version", "model_validated", "model_integrity_ok", "manifest_version"}` only when the LightGBM booster loaded and, if `models/MANIFEST.json` exists, matches it (sha256, feature list, objective); `model_version` is `"unregistered"` without a manifest. Otherwise 503 `{"status": "degraded", "reason": "model_not_loaded" or "model_integrity"}`. | Docker `HEALTHCHECK`, `scripts/deploy_ml_microservice.sh` |
 
 A missing or misplaced `models/lgb_model.txt` keeps `/health` green while every
 prediction comes from the heuristic fallback. `/ready` turns that into a failed
@@ -86,14 +86,18 @@ deploy, without a manual cache flush.
 ## Rollback
 
 `scripts/deploy_ml_microservice.sh` tags the running image as
-`ml-engine:previous` before every deploy and restarts it automatically when the
-new container fails `/ready`.
+`ml-engine:previous` (image id also in `.ml-engine.previous` at the repo root)
+before every swap, and restarts it automatically when the new container fails
+`/ready`. A new `ml-engine:<sha>` image must first pass `/ready` as
+`ml-engine-candidate` on 127.0.0.1:8011, reporting the `MANIFEST.json` model
+version, or the running container is left untouched. The script prints the
+exact rollback command at the end.
 
 To roll back a model that passed `/ready` but behaves badly (degenerate, worse
 hit rate):
 
 1. Redeploy the previous model version: check out the commit whose
-   `ml-engine/models/` holds the previous `lgb_model.txt`, `DEPLOYED_VERSION` and
+   `ml-engine/models/` holds the previous `lgb_model.txt` and
    `MANIFEST.json`, and run `scripts/deploy_ml_engine.sh`. Use the registry
    promotion step instead once it exists.
 2. Or restore the previous image directly on the server:

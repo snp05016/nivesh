@@ -23,6 +23,7 @@ Lifecycle:
 
 from __future__ import annotations
 
+import hashlib
 import hmac
 import json
 from collections import deque
@@ -68,8 +69,12 @@ _feature_computer: FeatureComputer | None = None
 _inference_engine: InferenceEngine | None = None
 _model_version: str | None = None
 _model_validated: bool = False
+_manifest_version: str | None = None
+_model_integrity_error: str | None = None
 
-# Written at promotion time; records the gate result, base rate and neutral band.
+# Written at promotion time (training.model_registry.deploy_to_production):
+# version, sha256 of lgb_model.txt, objective, feature list, gate result,
+# base rate and neutral band. Verified against the booster at startup.
 MANIFEST_PATH = LIGHTGBM_MODEL_PATH.parent / "MANIFEST.json"
 
 SUPPORTED_HORIZONS = [20]
@@ -233,53 +238,12 @@ class ModelStatus(BaseModel):
     lightgbm_path: str | None = None
     model_version: str | None = None
     model_validated: bool = False
+    model_integrity_ok: bool = True
+    manifest_version: str | None = None
     recent_predictions: dict[str, Any] | None = None
 
 
-# ── Version Detection ─────────────────────────────────────────────────────────
-
-
-def _detect_model_version(model_path: Path) -> str | None:
-    """Try to read model version from VERSION file next to model or training artifacts."""
-    deployed_version_file = model_path.parent / "DEPLOYED_VERSION"
-    if deployed_version_file.exists():
-        try:
-            return deployed_version_file.read_text().strip()
-        except Exception as exc:
-            _LOG.warning("Model version detection failed at %s: %s", deployed_version_file, exc)
-
-    # Check for VERSION file next to the model
-    version_file = model_path.parent / "VERSION"
-    if version_file.exists():
-        try:
-            return version_file.read_text().strip()
-        except Exception as exc:
-            _LOG.warning("Model version detection failed at %s: %s", version_file, exc)
-
-    # Check training/artifacts for version directories or metadata
-    artifacts_dir = model_path.parent.parent / "training" / "artifacts"
-    if artifacts_dir.exists():
-        # Look for a version metadata JSON
-        meta_file = artifacts_dir / "model_metadata.json"
-        if meta_file.exists():
-            try:
-                meta = json.loads(meta_file.read_text())
-                return meta.get("version") or meta.get("model_version")
-            except Exception as exc:
-                _LOG.warning("Model version detection failed at %s: %s", meta_file, exc)
-
-        # Fall back to latest versioned subdirectory name
-        try:
-            version_dirs = sorted(
-                [d.name for d in artifacts_dir.iterdir() if d.is_dir()],
-                reverse=True,
-            )
-            if version_dirs:
-                return version_dirs[0]
-        except Exception as exc:
-            _LOG.warning("Model version detection failed at %s: %s", artifacts_dir, exc)
-
-    return None
+# ── Manifest ──────────────────────────────────────────────────────────────────
 
 
 def _load_manifest() -> dict[str, Any]:
@@ -297,13 +261,31 @@ def _load_manifest() -> dict[str, Any]:
     return manifest if isinstance(manifest, dict) else {}
 
 
+def _verify_model(booster: Any, manifest: dict[str, Any]) -> str | None:
+    """Return why the booster does not match its manifest, or None when it does."""
+    if not manifest:
+        return "no manifest"
+    sha = hashlib.sha256(Path(LIGHTGBM_MODEL_PATH).read_bytes()).hexdigest()
+    if sha != manifest.get("sha256"):
+        return f"sha256 of {LIGHTGBM_MODEL_PATH.name} {sha} != manifest {manifest.get('sha256')}"
+    n = booster.num_feature()
+    if not n == len(FEATURE_LIST) == manifest.get("num_features"):
+        return f"booster has {n} features, FEATURE_LIST {len(FEATURE_LIST)}, manifest {manifest.get('num_features')}"
+    if manifest.get("feature_list") != FEATURE_LIST:
+        return "manifest feature_list differs from FEATURE_LIST"
+    objective = booster.dump_model().get("objective", "")
+    if not str(objective).startswith("binary") or objective != manifest.get("objective"):
+        return f"objective {objective!r} (manifest {manifest.get('objective')!r}); expected a matching binary objective"
+    return None
+
+
 # ── Lifespan ───────────────────────────────────────────────────────────────────
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     """Load models and scaler at startup; clean up at shutdown."""
-    global _lightgbm_model, _feature_scaler
+    global _lightgbm_model, _feature_scaler, _manifest_version, _model_integrity_error
     global _feature_computer, _inference_engine, _model_version, _model_validated
 
     _LOG.info("ml-engine starting up — loading models...")
@@ -312,13 +294,6 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     try:
         _lightgbm_model = ModelLoader.load_lightgbm(LIGHTGBM_MODEL_PATH)
         _LOG.info("LightGBM model loaded from %s", LIGHTGBM_MODEL_PATH)
-
-        # Detect model version from VERSION file or training artifacts
-        _model_version = _detect_model_version(LIGHTGBM_MODEL_PATH)
-        if _model_version:
-            _LOG.info("Model version detected: %s", _model_version)
-        else:
-            _LOG.info("No model version file found — version will be None")
     except FileNotFoundError:
         _LOG.warning(
             "LightGBM model not found at %s — prediction will use fallback heuristic",
@@ -341,7 +316,25 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         feature_list=FEATURE_LIST,
         scaler_params=_feature_scaler,
     )
+
+    # Provenance: the version comes from a manifest that matches the booster.
+    # A mismatch unloads the booster (predictions become no_edge, /ready 503);
+    # no manifest keeps it loaded but unregistered and unvalidated.
     manifest = _load_manifest() if _lightgbm_model is not None else {}
+    _manifest_version = manifest.get("model_version")
+    _model_integrity_error = None
+    _model_version = None
+    if _lightgbm_model is not None:
+        if manifest:
+            _model_integrity_error = _verify_model(_lightgbm_model, manifest)
+        if _model_integrity_error:
+            _LOG.error("Model integrity check failed, booster unloaded: %s", _model_integrity_error)
+            _lightgbm_model = None
+            manifest = {}
+        else:
+            _model_version = manifest.get("model_version") or "unregistered"
+            _LOG.info("Model version: %s", _model_version)
+
     gate = manifest.get("gate")
     _model_validated = isinstance(gate, dict) and gate.get("passed") is True
     _inference_engine = InferenceEngine(
@@ -397,11 +390,16 @@ async def ready() -> JSONResponse:
     fallback, so deploy gates and the container HEALTHCHECK probe this instead.
     """
     if _lightgbm_model is None or _inference_engine is None:
-        return JSONResponse(status_code=503, content={"status": "degraded", "reason": "model_not_loaded"})
+        reason = "model_integrity" if _model_integrity_error else "model_not_loaded"
+        return JSONResponse(status_code=503, content={
+            "status": "degraded", "reason": reason, "model_integrity_ok": _model_integrity_error is None,
+        })
     return JSONResponse(content={
         "status": "ready",
         "model_version": _model_version,
         "model_validated": _model_validated,
+        "model_integrity_ok": _model_integrity_error is None,
+        "manifest_version": _manifest_version,
     })
 
 
@@ -421,6 +419,8 @@ async def model_status() -> ModelStatus:
         lightgbm_path=str(LIGHTGBM_MODEL_PATH) if lightgbm_loaded else None,
         model_version=_model_version,
         model_validated=_model_validated,
+        model_integrity_ok=_model_integrity_error is None,
+        manifest_version=_manifest_version,
         recent_predictions=_prediction_stats(),
     )
 

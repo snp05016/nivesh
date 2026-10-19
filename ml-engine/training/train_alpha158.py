@@ -647,11 +647,14 @@ def main(argv: list[str] | None = None) -> None:
     logger.info("=" * 60)
 
     from training.dataset_builder import SURVIVORSHIP_NOTE
-    from training.model_registry import save_model_artifact, deploy_to_production
+    from training.model_registry import deploy_to_production, save_model_artifact
+    from training.provenance import dataframe_sha256, git_sha
     from training.validation import INNER_VAL_FRAC
 
+    # Date + commit: a same-day rerun of the same code raises FileExistsError
+    # in save_model_artifact instead of overwriting the artifact.
     datestamp = datetime.now(timezone.utc).strftime("%Y%m%d")
-    model_version = f"lightgbm_alpha158_candidate_v1_{datestamp}"
+    model_version = f"lightgbm_alpha158_{datestamp}_{(git_sha() or 'nogit')[:7]}"
 
     training_metadata = {
         "target": target_col,
@@ -670,6 +673,7 @@ def main(argv: list[str] | None = None) -> None:
         "embargo_days": wf_config.embargo_days,
         "early_stopping": f"inner slice: last {INNER_VAL_FRAC:.0%} of each fold's training dates",
         "holdout_year": holdout_split.val_year if holdout_split is not None else None,
+        "data_sha256": dataframe_sha256(feature_df),
     }
 
     artifact_dir = save_model_artifact(
@@ -689,7 +693,8 @@ def main(argv: list[str] | None = None) -> None:
         logger.info("=" * 60)
         logger.info("STEP 9: Deploying to production")
         logger.info("=" * 60)
-        prod_path = deploy_to_production(model_version)
+        # Gated: raises GateFailedError (nothing copied) unless the gate passes.
+        prod_path = deploy_to_production(model_version, status="candidate")
         logger.info("Deployed to production: %s", prod_path)
     else:
         logger.info("Skipping deployment (use --deploy flag to deploy)")

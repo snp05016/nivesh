@@ -72,4 +72,4 @@ artifact = load_model_artifact("<model_version>", status="candidate")
 
 ## Deployment is gated
 
-`--deploy` must only put a model into production after it passes the promotion gate (audit item ML-05: Brier skill vs the base rate, AUC confidence interval, class balance, net-of-cost lift, independent holdout) and is registered with a verified `models/MANIFEST.json` (audit item ML-07). A failed gate stops the deploy before anything is copied. Until both land, do not deploy by hand: `ml-engine` serves `no_edge` (no direction, no confidence) for any booster without a manifest whose gate passed.
+`--deploy` must only put a model into production after it passes the promotion gate (audit item ML-05: Brier skill vs the base rate, AUC confidence interval, class balance, net-of-cost lift, independent holdout) and is registered with a verified `models/MANIFEST.json` (audit item ML-07). A failed gate stops the deploy before anything is copied. Do not copy a model into `models/` by hand: `ml-engine` serves `no_edge` (no direction, no confidence) for any booster without a manifest whose gate passed.

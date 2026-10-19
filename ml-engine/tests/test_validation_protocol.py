@@ -265,3 +265,8 @@ def test_train_alpha158_end_to_end(tmp_path, monkeypatch):
     assert {"fwd_ret_20d", "momentum_20d", "train_base_rate", "p_raw", "y"} <= set(oof.columns)
     # per-row predictions stay out of the metrics JSON
     assert "y_prob" not in json.loads((artifact / "validation_metrics.json").read_text())[0]
+    # ML-05/07: the gate reads the trainer's own output; 3 symbols are far too few rows
+    assert len(meta["data_sha256"]) == 64
+    gate = model_registry.evaluate_deployment_guardrails(artifact.name)
+    assert gate["passed"] is False and gate["checks"]
+    assert not any("missing columns" in r for r in gate["reasons"])

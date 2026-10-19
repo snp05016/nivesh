@@ -228,7 +228,7 @@ models/registry/candidate/
 
 ### Deployment
 
-Deployment is gated. `--deploy` (or `deploy_to_production()`) must first pass the promotion gate (audit item ML-05): Brier skill score against the training base rate with a confidence interval above 0, AUC lower bound above 0.52 per fold, no single predicted class above 80%, net-of-cost lift over always-up and momentum, and an independent holdout. A failed gate stops the deploy before anything is copied; there is no override.
+Deployment is gated. `--deploy` (or `deploy_to_production()`) must first pass the promotion gate (audit item ML-05): Brier skill score against the training base rate with a confidence interval above 0, AUC lower bound above 0.52 per fold, no single predicted class above 80%, net-of-cost lift over always-up and momentum, and an independent holdout. Every check scores the raw booster probability (`p_raw` in `oof_predictions.csv`), because that is what ml-engine serves: `calibrator.joblib` is a report artifact and is not shipped or applied in production. A failed gate stops the deploy before anything is copied; there is no override.
 
 A model that passes is copied to `models/lgb_model.txt` together with `models/MANIFEST.json` (audit item ML-07), which records the model version, the sha256 of the model file, objective, feature list, git SHA, data sha256, the gate result, `base_rate` and `neutral_band`. `ml-engine` verifies the manifest at startup and serves `no_edge` for any booster without one whose gate passed (section 6). Do not copy a model into `models/` by hand.
 
@@ -286,7 +286,7 @@ All modes return the same dict structure:
 }
 ```
 
-`/predict/single` and `/predict/cross-section` add `model_validated`, `ml_engine_mode`, `lightgbm_loaded`, `horizon` and `model_version`. The `model_version` field is populated from `models/DEPLOYED_VERSION` when a trained model is active, allowing downstream consumers to track which model produced each prediction.
+`/predict/single` and `/predict/cross-section` add `model_validated`, `ml_engine_mode`, `lightgbm_loaded`, `horizon` and `model_version`. The `model_version` field comes from `models/MANIFEST.json` once the booster matches it (`"unregistered"` without a manifest), allowing downstream consumers to track which model produced each prediction.
 
 ---
 

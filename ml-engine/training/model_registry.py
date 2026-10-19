@@ -12,13 +12,20 @@ Usage
 
     path = save_model_artifact(model, features, metadata, metrics, calibration)
     artifact = load_model_artifact()  # loads latest
-    deploy_to_production(artifact["model_version"])
+    deploy_to_production(artifact["model_version"])  # gated: raises GateFailedError
+
+Artifacts are immutable: saving a version that already exists raises
+FileExistsError. Production is models/lgb_model.txt plus models/MANIFEST.json,
+which ml-engine verifies at startup.
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
+import os
+import re
 import shutil
 from datetime import datetime, timezone
 from pathlib import Path
@@ -33,8 +40,7 @@ REGISTRY_DIR = _ML_ENGINE_DIR / "models" / "registry"
 
 # Production model path (mirrors config.py:LIGHTGBM_MODEL_PATH)
 _PRODUCTION_MODEL_PATH = _ML_ENGINE_DIR / "models" / "lgb_model.txt"
-_PRODUCTION_FEATURES_PATH = _ML_ENGINE_DIR / "models" / "features.json"
-_PRODUCTION_VERSION_PATH = _ML_ENGINE_DIR / "models" / "DEPLOYED_VERSION"
+_PRODUCTION_MANIFEST_PATH = _ML_ENGINE_DIR / "models" / "MANIFEST.json"
 
 # Version format prefix
 _VERSION_PREFIX = "lightgbm_baseline_alpha158_v1"
@@ -54,11 +60,9 @@ def _generate_model_version() -> str:
 
 def _parse_version_date(version: str) -> str:
     """Extract the YYYYMMDD suffix from a version string for sorting."""
-    # Version format: lightgbm_baseline_alpha158_v1_YYYYMMDD
-    parts = version.rsplit("_", 1)
-    if len(parts) == 2 and parts[1].isdigit() and len(parts[1]) == 8:
-        return parts[1]
-    return "00000000"
+    # ..._YYYYMMDD or ..._YYYYMMDD_<gitsha7>
+    match = re.search(r"_(\d{8})(?:_[0-9a-z]+)?$", version)
+    return match.group(1) if match else "00000000"
 
 
 def _write_json(path: Path, data: Any) -> None:
@@ -97,13 +101,15 @@ def save_model_artifact(
     feature_list : list[str]
         Ordered list of feature names used during training.
     training_metadata : dict
-        Training parameters, data range, n_samples, etc.
+        Training parameters, data range, n_samples, etc. ``data_sha256``
+        (hash of the feature frame) is carried into the production manifest.
     validation_metrics : list[dict]
         Per-fold walk-forward validation results.
     calibration_report : dict
         Overall calibration statistics.
     model_version : str or None
         Explicit version string. If None, auto-generated from today's date.
+        An existing version raises FileExistsError (artifacts are immutable).
     status : str
         Model status: 'candidate', 'stable', 'deprecated', 'latest'. Default is 'candidate'.
     calibrator : Any or None
@@ -124,7 +130,7 @@ def save_model_artifact(
     status_dir.mkdir(parents=True, exist_ok=True)
 
     artifact_dir = status_dir / model_version
-    artifact_dir.mkdir(parents=True, exist_ok=True)
+    artifact_dir.mkdir()  # FileExistsError: an artifact is never overwritten
 
     # ── Save the LightGBM model ──────────────────────────────────────────
     model_path = artifact_dir / "model.txt"
@@ -329,114 +335,108 @@ def get_latest_model_path() -> Path | None:
     return None
 
 
-def deploy_to_production(model_version: str, status: str = "stable") -> Path:
-    """Deploy a model artifact to the production model path.
+class GateFailedError(RuntimeError):
+    """The candidate failed the promotion gate; nothing was deployed."""
 
-    Copies model.txt to LIGHTGBM_MODEL_PATH (ml-engine/models/lgb_model.txt),
-    copies features.json alongside it, and writes a DEPLOYED_VERSION file
-    recording which registry version is currently active.
 
-    Parameters
-    ----------
-    model_version : str
-        The registry version to deploy.
-    status : str
-        The status directory where the version resides.
+def _sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
-    Returns
-    -------
-    Path
-        The production model path (ml-engine/models/lgb_model.txt).
+
+def deploy_to_production(model_version: str, status: str = "candidate") -> Path:
+    """Gate, verify and atomically deploy a registry artifact.
+
+    Runs the promotion gate first and raises GateFailedError before anything
+    is copied (there is no override). Then checks the booster's feature count
+    against the artifact's features.json and writes models/lgb_model.txt and
+    models/MANIFEST.json (sha256, objective, trees, features, git SHA, data
+    sha256, gate result, base rate, neutral band) via temp files + os.replace.
 
     Raises
     ------
     FileNotFoundError
         If the specified version does not exist in the registry.
+    GateFailedError
+        If the promotion gate fails.
+    ValueError
+        If the booster's feature count differs from features.json.
     """
     artifact_dir = REGISTRY_DIR / status / model_version
-    if not artifact_dir.exists():
-        raise FileNotFoundError(
-            f"Model version '{model_version}' not found in {REGISTRY_DIR}/{status}"
-        )
-
     source_model = artifact_dir / "model.txt"
-    source_features = artifact_dir / "features.json"
-
     if not source_model.exists():
         raise FileNotFoundError(
-            f"model.txt not found in artifact directory: {artifact_dir}"
+            f"model.txt for '{model_version}' not found in {REGISTRY_DIR}/{status}"
         )
 
-    # Ensure production directory exists
+    gate = evaluate_deployment_guardrails(model_version, status=status)
+    if not gate["passed"]:
+        raise GateFailedError(
+            f"{model_version} failed the promotion gate: {gate['reasons_for_rejection']}"
+        )
+
+    import lightgbm as lgb
+
+    from training.provenance import git_sha
+
+    booster = lgb.Booster(model_file=str(source_model))
+    features = _read_json(artifact_dir / "features.json")
+    if booster.num_feature() != len(features):
+        raise ValueError(
+            f"booster has {booster.num_feature()} features, features.json lists {len(features)}"
+        )
+    metadata_path = artifact_dir / "metadata.json"
+    metadata = _read_json(metadata_path) if metadata_path.exists() else {}
+
+    manifest = {
+        "model_version": model_version,
+        "sha256": _sha256(source_model),
+        "objective": booster.dump_model()["objective"],
+        "num_trees": booster.num_trees(),
+        "num_features": booster.num_feature(),
+        "feature_list": features,
+        "git_sha": git_sha() or "unknown",
+        "data_sha256": metadata.get("data_sha256"),
+        "gate": gate,
+        "base_rate": gate.get("base_rate"),
+        "neutral_band": gate.get("neutral_band"),
+        "deployed_at": datetime.now(timezone.utc).isoformat(),
+    }
+
     _PRODUCTION_MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
+    tmp_model = _PRODUCTION_MODEL_PATH.with_name(_PRODUCTION_MODEL_PATH.name + ".tmp")
+    tmp_manifest = _PRODUCTION_MANIFEST_PATH.with_name(_PRODUCTION_MANIFEST_PATH.name + ".tmp")
+    shutil.copyfile(source_model, tmp_model)
+    _write_json(tmp_manifest, manifest)
+    # Model first: a crash in between leaves a sha mismatch, which ml-engine refuses to serve.
+    os.replace(tmp_model, _PRODUCTION_MODEL_PATH)
+    os.replace(tmp_manifest, _PRODUCTION_MANIFEST_PATH)
 
-    # Copy model file
-    shutil.copy2(str(source_model), str(_PRODUCTION_MODEL_PATH))
-    _LOG.info("Model deployed to %s", _PRODUCTION_MODEL_PATH)
-
-    # Copy features file
-    if source_features.exists():
-        shutil.copy2(str(source_features), str(_PRODUCTION_FEATURES_PATH))
-        _LOG.info("Features deployed to %s", _PRODUCTION_FEATURES_PATH)
-
-    # Write deployed version marker
-    _PRODUCTION_VERSION_PATH.write_text(model_version, encoding="utf-8")
-    _LOG.info("Deployed version marker: %s", _PRODUCTION_VERSION_PATH)
-
-    _LOG.info(
-        "Production deployment complete: %s -> %s",
-        model_version,
-        _PRODUCTION_MODEL_PATH,
-    )
-
+    _LOG.info("Production deployment complete: %s -> %s", model_version, _PRODUCTION_MODEL_PATH)
     return _PRODUCTION_MODEL_PATH
 
+
 def evaluate_deployment_guardrails(model_version: str, status: str = "candidate") -> dict:
-    """Evaluate if a candidate model meets criteria for promotion to stable.
-    
-    Returns a dict with 'passed' bool and 'reasons_for_rejection' list.
+    """Run the promotion gate (training.promotion_gate) on the artifact's
+    oof_predictions.csv and write the result to gate_result.json.
+
+    Returns the gate result plus 'reasons_for_rejection' (same list as 'reasons').
     """
     artifact_dir = REGISTRY_DIR / status / model_version
     if not artifact_dir.exists():
         raise FileNotFoundError(f"Model version '{model_version}' not found in {REGISTRY_DIR}/{status}")
-        
-    validation_metrics_path = artifact_dir / "validation_metrics.json"
-    calibration_report_path = artifact_dir / "calibration_report.json"
-    
-    if not validation_metrics_path.exists() or not calibration_report_path.exists():
-        return {
-            "passed": False,
-            "mean_hit_rate": 0.0,
-            "brier_score": 1.0,
-            "reasons_for_rejection": ["Missing validation_metrics.json or calibration_report.json"]
-        }
-        
-    validation_metrics = _read_json(validation_metrics_path)
-    calibration_report = _read_json(calibration_report_path)
-    
-    # Calculate aggregate hit rate across folds
-    hit_rates = [f["hit_rate"] for f in validation_metrics if "hit_rate" in f]
-    mean_hit_rate = sum(hit_rates) / len(hit_rates) if hit_rates else 0.0
-    
-    brier_score = calibration_report.get("brier_score", 1.0)
-    
-    passed = True
-    reasons = []
-    
-    # Hardcoded threshold: hit rate > 53%
-    if mean_hit_rate <= 0.53:
-        passed = False
-        reasons.append(f"Hit rate {mean_hit_rate:.4f} <= 0.5300")
-        
-    # Hardcoded threshold: Brier score < 0.2529 (All_Features baseline)
-    if brier_score >= 0.2529:
-        passed = False
-        reasons.append(f"Brier score {brier_score:.4f} >= 0.2529")
-        
-    return {
-        "passed": passed,
-        "mean_hit_rate": mean_hit_rate,
-        "brier_score": brier_score,
-        "reasons_for_rejection": reasons
-    }
 
+    oof_path = artifact_dir / "oof_predictions.csv"
+    if not oof_path.exists():
+        result: dict[str, Any] = {
+            "passed": False, "checks": {}, "reasons": ["no out-of-fold predictions"],
+            "base_rate": None, "neutral_band": None,
+        }
+    else:
+        import pandas as pd
+
+        from training.promotion_gate import evaluate_gate
+
+        result = evaluate_gate(pd.read_csv(oof_path))
+    result["reasons_for_rejection"] = result["reasons"]
+    _write_json(artifact_dir / "gate_result.json", result)
+    return result
