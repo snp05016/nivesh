@@ -1,7 +1,7 @@
 """
 Health probes, the only place they are defined (REL-18).
 
-- /ping (main.py), /api/v1/ping, /health/live: process liveness, no dependencies.
+- /ping, /api/v1/ping, /health/live: process liveness, no dependencies.
 - /health, /health/ready: readiness, DB `SELECT 1`; 503 with no error text when down.
 - /healthz: admin-only dependency/config report; no third-party (yfinance) calls.
 """
@@ -11,7 +11,7 @@ import time
 
 import httpx
 from fastapi import APIRouter, Depends
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from sqlalchemy import text
 
 from core.config_guard import apns_configured, jwt_secret_problem
@@ -21,6 +21,18 @@ from database import get_session
 
 router = APIRouter(tags=["Health"])
 logger = get_logger("health")
+
+
+@router.get("/ping")
+def legacy_ping():
+    """Zero-dependency liveness probe for load balancers — no DB, no yfinance."""
+    return {"pong": True}
+
+
+@router.get("/favicon.ico", include_in_schema=False)
+def favicon():
+    """Return an empty response for favicon requests to prevent 404s."""
+    return Response(content=b"", media_type="image/x-icon")
 
 
 @router.get("/api/v1/ping")

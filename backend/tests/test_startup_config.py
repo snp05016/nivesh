@@ -67,7 +67,7 @@ def test_cors_preflight_random_origin_no_acao(client):
 def test_shutdown_reaps_workers_when_scheduler_stop_fails(monkeypatch):
     import asyncio
 
-    import main
+    from core import lifecycle
     from services import job_manager
 
     called = []
@@ -75,9 +75,9 @@ def test_shutdown_reaps_workers_when_scheduler_stop_fails(monkeypatch):
     def broken_stop():
         raise RuntimeError("scheduler already gone")
 
-    monkeypatch.setattr(main, "stop_scheduler", broken_stop)
+    monkeypatch.setattr(lifecycle, "stop_scheduler", broken_stop)
     monkeypatch.setattr(job_manager, "shutdown_all", lambda: called.append(True))
 
-    asyncio.run(main._on_shutdown())
+    asyncio.run(lifecycle.on_shutdown())
 
     assert called == [True]

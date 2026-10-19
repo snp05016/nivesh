@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 
 import pytest
 
-import main
+import routers.admin_dashboard as admin_router
 from database import get_session
 from models.db_models import AnalysisHistory  # pyright: ignore[reportMissingImports]
 
@@ -19,7 +19,7 @@ _BASE = datetime(2099, 1, 1)
 
 @pytest.fixture
 def as_admin(monkeypatch):
-    monkeypatch.setattr(main, "require_admin", lambda _authorization=None: 1)
+    monkeypatch.setattr(admin_router, "require_admin", lambda _authorization=None: 1)
 
 
 @pytest.fixture

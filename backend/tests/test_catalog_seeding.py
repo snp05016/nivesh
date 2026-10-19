@@ -11,7 +11,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 import config.settings
-import main
+from core import lifecycle
 from database import get_session
 from models.db_models import (
     Base,
@@ -79,7 +79,7 @@ def test_startup_seeding_gated_by_demo_mode(monkeypatch, demo_mode, expected):
         monkeypatch.setattr(module, attr, _fake)
     monkeypatch.setattr(config.settings, "DEMO_MODE", demo_mode)
 
-    main._seed_catalogs()
+    lifecycle._seed_catalogs()
 
     assert called == expected
 

@@ -6,8 +6,8 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import database
-import main
-import routers.alerts
+import core.lifecycle as lifecycle
+import services.alerts_service
 import services.harvest_worker as hw
 import services.harvester_db
 
@@ -17,15 +17,15 @@ def _run_startup(monkeypatch, leader: bool) -> MagicMock:
     calls.poller.side_effect = lambda: asyncio.sleep(0)
     calls.sweep.return_value = 0
     monkeypatch.setattr("core.logging_config.configure_logging", calls.configure_logging)
-    monkeypatch.setattr(main, "start_scheduler", lambda: leader)
-    monkeypatch.setattr(main, "init_db", calls.init_db)
-    monkeypatch.setattr(main, "_seed_catalogs", calls.seed_catalogs)
-    monkeypatch.setattr(main, "threading", SimpleNamespace(Thread=calls.Thread))
+    monkeypatch.setattr(lifecycle, "start_scheduler", lambda: leader)
+    monkeypatch.setattr(lifecycle, "init_db", calls.init_db)
+    monkeypatch.setattr(lifecycle, "_seed_catalogs", calls.seed_catalogs)
+    monkeypatch.setattr(lifecycle, "threading", SimpleNamespace(Thread=calls.Thread))
     monkeypatch.setattr(database, "sweep_stale_jobs", calls.sweep)
     monkeypatch.setattr(services.harvester_db, "init_harvester_db", calls.init_harvester_db)
     monkeypatch.setattr(hw, "_seed_harvester_sources", calls.seed_harvester_sources)
-    monkeypatch.setattr(routers.alerts, "_price_alert_poller", calls.poller)
-    asyncio.run(main._on_startup())
+    monkeypatch.setattr(services.alerts_service, "price_alert_poller", calls.poller)
+    asyncio.run(lifecycle.on_startup())
     return calls
 
 

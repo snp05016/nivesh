@@ -71,9 +71,9 @@ def test_benchmark_uses_holding_inception(client, monkeypatch):
 
 
 def test_admin_export_counts_only_holdings(client, monkeypatch):
-    import main
+    import routers.admin_dashboard as admin_router
 
-    monkeypatch.setattr(main, "require_admin", lambda _authorization=None: 1)
+    monkeypatch.setattr(admin_router, "require_admin", lambda _authorization=None: 1)
     uid, _, _ = _make_user_with_holding_and_watchlist()
 
     r = client.get("/dashboard-user-data", params={"user_id": uid})

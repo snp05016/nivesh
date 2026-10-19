@@ -1,4 +1,4 @@
-"""ARCH-05 regression: main.py reads the single dashboard state in core.dashboard_state.
+"""ARCH-05 regression: the admin dashboard reads the single dashboard state in core.dashboard_state.
 
 Previously main.py kept shadow copies (state dicts, DataHarvestingError) that
 nothing wrote, so the admin dashboard was blind and documented 503s became 500s.
@@ -8,18 +8,17 @@ import uuid
 import core.dashboard_state as dash
 import helpers
 import main
+import routers.admin_dashboard as admin_router
+import services.admin_dashboard_service as admin_svc
 
 
-def test_main_uses_core_dashboard_state_objects():
-    assert main._active_analyses is dash._active_analyses
-    assert main._completed_analyses is dash._completed_analyses
-    assert main._request_log is dash._request_log
-    assert main._token_stats is dash._token_stats
-    assert main._harvest_status is dash._harvest_status
-    assert main._harvest_logs is dash._dash_logs
-    assert main._dash_lock is dash._dash_lock
-    # The write helpers live only in core (re-exported by helpers)
-    for name in ("_dash_start_job", "_dash_end_job", "_dash_update_harvest", "_log_token_usage"):
+def test_dashboard_reads_core_dashboard_state():
+    # The admin payload builder reads the live module, never a copy (REL-15).
+    assert admin_svc._ds is dash
+    # main keeps no state of its own; the write helpers live only in core (re-exported by helpers)
+    for name in ("_active_analyses", "_completed_analyses", "_request_log", "_token_stats",
+                 "_harvest_status", "_dash_start_job", "_dash_end_job", "_dash_update_harvest",
+                 "_log_token_usage"):
         assert not hasattr(main, name), name
 
 
@@ -41,8 +40,8 @@ def test_market_scrape_failure_returns_503(client, monkeypatch):
 
 
 def test_dashboard_data_lists_job_started_via_helpers(client, monkeypatch):
-    monkeypatch.setattr(main, "require_admin", lambda *_a, **_k: 1)
-    monkeypatch.setattr(main, "build_ai_engine_monitor", lambda **_k: {})
+    monkeypatch.setattr(admin_router, "require_admin", lambda *_a, **_k: 1)
+    monkeypatch.setattr(admin_svc, "build_ai_engine_monitor", lambda **_k: {})
     job_id = f"arch05-{uuid.uuid4().hex[:8]}"
     helpers._dash_start_job(job_id, "TCS", "NSE", 1)
     try:

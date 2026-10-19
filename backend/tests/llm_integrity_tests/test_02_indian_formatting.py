@@ -11,7 +11,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 from _base import TestRunner
 
-from main import _ban_western_scale
+from helpers import _ban_western_scale
 from services.harvester_reformatter import strip_emoji
 
 def run():

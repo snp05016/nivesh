@@ -6,14 +6,14 @@ from types import SimpleNamespace
 import pytest
 
 import core.dashboard_state as ds
-import main
+import routers.admin_dashboard as admin_router
 
 
 @pytest.fixture
 def as_admin(monkeypatch):
     # dashboard_data / dashboard_user_data call require_admin(authorization) directly;
     # stub it so these tests do not depend on the ADMIN_TOKEN dev bypass.
-    monkeypatch.setattr(main, "require_admin", lambda _authorization=None: 1)
+    monkeypatch.setattr(admin_router, "require_admin", lambda _authorization=None: 1)
 
 
 def test_dashboard_data_reflects_core_harvest_status(client, as_admin):
