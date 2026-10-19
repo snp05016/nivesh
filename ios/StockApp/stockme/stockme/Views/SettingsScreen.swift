@@ -239,6 +239,10 @@ struct SettingsScreen: View {
 
     private var dataSection: some View {
         SettingsGroup(title: "DATA & PRIVACY", hindi: "डेटा और गोपनीयता") {
+            // A rights surface (DPDP s.11): shown to every signed-in user, never behind a flag.
+            if authManager.isLoggedIn {
+                NavRow(icon: "person.text.rectangle", color: Theme.securityGold, title: "Your Data", destination: PrivacyCenterView())
+            }
             NavRow(icon: "doc.text", color: Theme.securityGold, title: "Saved Reports", destination: ReportManagerView(reportManager: reportManager), badge: "\(reportManager.savedReports.count)")
             NavRow(icon: "hand.raised", color: Theme.securityGold, title: "Privacy Policy", destination: DisclosureDetailView(key: .privacyPolicy))
             NavRow(icon: "doc.plaintext", color: Theme.securityGold, title: "Terms of Use", destination: DisclosureDetailView(key: .termsOfUse))

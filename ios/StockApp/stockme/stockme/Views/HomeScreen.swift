@@ -74,7 +74,7 @@ struct HomeScreen: View {
                     ScrollView(.vertical, showsIndicators: false) {
                         // Lazy: off-screen sections are built when scrolled to (PERF-24).
                         LazyVStack(spacing: Theme.Spacing.card) {
-
+                            AnalyticsConsentCard()
 
                             ForEach(activeSectionOrder, id: \.self) { sectionId in
                                 renderSection(id: sectionId)

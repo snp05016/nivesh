@@ -203,7 +203,7 @@ def test_erase_user_nulls_extra_columns():
     uid, other = _user(), _user()
     with get_session() as s:
         s.add(ResearchReportRow(
-            report_uid=str(uuid4()), symbol="TCS", as_of_date=date(2026, 10, 1), engine_version="t",
+            report_uid=str(uuid4()), symbol="T" + uuid4().hex[:8], as_of_date=date(2026, 10, 1), engine_version="t",
             origin="on_demand", status="ok", in_universe=True, requested_by_user_id=uid, report_json={},
         ))
         s.add_all([LlmUsage(user_id=uid, feature="f", model="m"), LlmUsage(user_id=other, feature="f", model="m")])
