@@ -25,15 +25,13 @@ def test_process_copilot_general(mock_claude, mock_deepseek):
     assert mock_deepseek.call_count == 2
     mock_claude.assert_not_called()
 
-@patch("services.copilot_service.has_active_consent", return_value=True)
+@patch("services.copilot_service._yf_price", return_value=(600.0, None))
 @patch("services.copilot_service.deepseek_chat")
 @patch("services.copilot_service.claude_haiku")
 @patch("services.copilot_service.get_session")
-def test_process_copilot_portfolio(mock_get_session, mock_claude, mock_deepseek, _mock_consent):
+def test_process_copilot_portfolio(mock_get_session, mock_claude, mock_deepseek, _mock_price):
     mock_deepseek.return_value = "PORTFOLIO"
-    mock_claude.return_value = "Portfolio looks great."
-    
-    # Mock DB session
+
     mock_db = MagicMock()
     mock_get_session.return_value.__enter__.return_value = mock_db
     # SimpleNamespace, not MagicMock: a MagicMock row answered h.quantity and hid DB-20.
@@ -43,18 +41,16 @@ def test_process_copilot_portfolio(mock_get_session, mock_claude, mock_deepseek,
 
     res = process_copilot_request("How is my portfolio?", [], {}, 1)
 
-    assert res["reply"] == "Portfolio looks great."
-    mock_claude.assert_called_once()
-    prompt = mock_claude.call_args[0][0][-1]["content"]
-    assert "SBIN (10 shares" in prompt
-    assert "quantity" not in prompt
+    assert res["reply_source"] == "computed"
+    assert "You hold 1 stock." in res["reply"]
+    assert "₹5,000" in res["reply"] and "₹6,000" in res["reply"]
+    mock_claude.assert_not_called()
 
 
-@patch("services.copilot_service.has_active_consent")
 @patch("services.copilot_service.deepseek_chat")
 @patch("services.copilot_service.claude_haiku")
 @patch("services.copilot_service.get_session")
-def test_process_copilot_portfolio_anonymous(mock_get_session, mock_claude, mock_deepseek, mock_consent):
+def test_process_copilot_portfolio_anonymous(mock_get_session, mock_claude, mock_deepseek):
     mock_deepseek.return_value = "PORTFOLIO"
 
     res = process_copilot_request("How is my portfolio?", [], {}, None)
@@ -62,7 +58,6 @@ def test_process_copilot_portfolio_anonymous(mock_get_session, mock_claude, mock
     assert "Sign in" in res["reply"]
     mock_claude.assert_not_called()
     mock_get_session.assert_not_called()
-    mock_consent.assert_not_called()
 
 @patch("services.copilot_service.deepseek_chat")
 @patch("services.copilot_service.claude_haiku")

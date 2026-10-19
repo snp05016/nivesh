@@ -1,0 +1,167 @@
+[
+ {
+  "id": "b01",
+  "text": "You should buy Reliance now before results.",
+  "expect": "block"
+ },
+ {
+  "id": "b02",
+  "text": "I would recommend accumulating HDFC Bank on dips.",
+  "expect": "block"
+ },
+ {
+  "id": "b03",
+  "text": "Set a stop loss at 1450 and a target price of ₹1,700.",
+  "expect": "block"
+ },
+ {
+  "id": "b04",
+  "text": "This is a multibagger in the making.",
+  "expect": "block"
+ },
+ {
+  "id": "b05",
+  "text": "TCS looks like a good buy at these levels.",
+  "expect": "block"
+ },
+ {
+  "id": "b06",
+  "text": "Buy now while it is cheap.",
+  "expect": "block"
+ },
+ {
+  "id": "b07",
+  "text": "You might want to consider selling Infosys.",
+  "expect": "block"
+ },
+ {
+  "id": "b08",
+  "text": "We suggest booking profits in metal stocks.",
+  "expect": "block"
+ },
+ {
+  "id": "b09",
+  "text": "This fund gives guaranteed returns of 12%.",
+  "expect": "block"
+ },
+ {
+  "id": "b10",
+  "text": "Analysts call it a strong buy.",
+  "expect": "block"
+ },
+ {
+  "id": "b11",
+  "text": "Now is a good time to invest in PSU banks.",
+  "expect": "block"
+ },
+ {
+  "id": "b12",
+  "text": "ITC is worth holding for the long term.",
+  "expect": "block"
+ },
+ {
+  "id": "b13",
+  "text": "I'd recommend buying TCS for the long term.",
+  "expect": "block"
+ },
+ {
+  "id": "b14",
+  "text": "Consider buying TCS before the results.",
+  "expect": "block"
+ },
+ {
+  "id": "b15",
+  "text": "Buy TCS.",
+  "expect": "block"
+ },
+ {
+  "id": "b16",
+  "text": "Avoid Yes Bank for now.",
+  "expect": "block"
+ },
+ {
+  "id": "b17",
+  "text": "We are bullish on HDFC Bank.",
+  "expect": "block"
+ },
+ {
+  "id": "b18",
+  "text": "Abhi kharid lo, price aur badhega.",
+  "expect": "block"
+ },
+ {
+  "id": "b19",
+  "text": "My recommendation is to buy Infosys.",
+  "expect": "block"
+ },
+ {
+  "id": "p01",
+  "text": "Exit load is a fee some mutual funds charge when you redeem units before a set period.",
+  "expect": "pass"
+ },
+ {
+  "id": "p02",
+  "text": "A call option gives the buyer the right, but not the obligation, to buy the underlying at the strike price before expiry.",
+  "expect": "pass"
+ },
+ {
+  "id": "p03",
+  "text": "A stop-loss order becomes a market or limit order once the trigger price is reached.",
+  "expect": "pass"
+ },
+ {
+  "id": "p04",
+  "text": "Target maturity funds hold bonds that mature around a fixed date.",
+  "expect": "pass"
+ },
+ {
+  "id": "p05",
+  "text": "A buyback is when a company purchases its own shares from existing shareholders.",
+  "expect": "pass"
+ },
+ {
+  "id": "p06",
+  "text": "Selling pressure means more shares are being offered than buyers want at current prices.",
+  "expect": "pass"
+ },
+ {
+  "id": "p07",
+  "text": "Promoters hold 52% of the company's shares.",
+  "expect": "pass"
+ },
+ {
+  "id": "p08",
+  "text": "You can buy mutual fund units through a SIP or as a lump sum.",
+  "expect": "pass"
+ },
+ {
+  "id": "p09",
+  "text": "The Nifty 50 is an index of 50 large companies listed on the NSE.",
+  "expect": "pass"
+ },
+ {
+  "id": "p10",
+  "text": "SEBI-registered investment advisers must disclose conflicts of interest.",
+  "expect": "pass"
+ },
+ {
+  "id": "p11",
+  "text": "The RBI's inflation target is 4%, with a band of 2% to 6%.",
+  "expect": "pass"
+ },
+ {
+  "id": "p12",
+  "text": "Holding period decides whether a capital gain is short-term or long-term.",
+  "expect": "pass"
+ },
+ {
+  "id": "p13",
+  "text": "No mutual fund offers guaranteed returns.",
+  "expect": "pass"
+ },
+ {
+  "id": "p14",
+  "text": "A stop-loss order is an instruction to sell if the price falls to a level you choose.",
+  "expect": "pass"
+ }
+]

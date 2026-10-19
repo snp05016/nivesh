@@ -31,19 +31,18 @@ def portfolio_user():
 def test_portfolio_intent_uses_shares(monkeypatch, portfolio_user):
     from services import copilot_service
 
-    captured = []
     monkeypatch.setattr(copilot_service, "deepseek_chat", lambda messages: "PORTFOLIO")
-    # FINSEC-04 gate: holdings reach the LLM only with AI-processing consent.
-    monkeypatch.setattr(copilot_service, "has_active_consent", lambda *_a, **_k: True)
     monkeypatch.setattr(copilot_service, "claude_haiku",
-                        lambda messages: captured.append(messages) or "ok")
+                        lambda messages: pytest.fail("the portfolio answer is computed, no LLM"))
+    monkeypatch.setattr(copilot_service, "_yf_price", lambda _sym: (4000.0, None))
 
-    res = copilot_service.process_copilot_request("how is my portfolio", [], {}, portfolio_user)
+    res = copilot_service.process_copilot_request("how am I doing", [], {}, portfolio_user)
 
-    assert res["reply"] == "ok"
-    prompt = captured[0][-1]["content"]
-    assert "TCS (5 shares" in prompt
-    assert "INFY" not in prompt
+    assert res["reply_source"] == "computed"
+    assert "You hold 1 stock." in res["reply"]
+    assert "₹17,500" in res["reply"]      # 5 shares @ 3500
+    assert "₹20,000" in res["reply"]      # 5 shares @ 4000
+    assert "INFY" not in res["reply"]     # the watchlist row is excluded
 
 
 def test_deep_analysis_does_not_spawn(monkeypatch):

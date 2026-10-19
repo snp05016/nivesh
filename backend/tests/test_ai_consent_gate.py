@@ -93,14 +93,18 @@ def test_morning_summary_no_llm_without_consent(client, auth_headers, test_user_
 
 
 def test_copilot_portfolio_intent_without_consent(monkeypatch):
+    """The portfolio answer is computed on the server, so no holdings reach an LLM and consent
+    is not needed. Unauthenticated callers are asked to sign in."""
     import services.copilot_service as copilot
 
     uid = _user_with_holding()
     monkeypatch.setattr(copilot, "deepseek_chat", MagicMock(return_value="PORTFOLIO"))
     haiku = MagicMock(return_value="should not be reached")
     monkeypatch.setattr(copilot, "claude_haiku", haiku)
+    monkeypatch.setattr(copilot, "_yf_price", lambda _sym: (None, None))
 
-    for user_id in (uid, None):  # no consent on file / unauthenticated
-        res = copilot.process_copilot_request("How is my portfolio doing?", [], {}, user_id)
-        assert "AI processing" in res["reply"]
+    res = copilot.process_copilot_request("How is my portfolio doing?", [], {}, uid)
+    assert res["reply_source"] == "computed"
+    assert res["reply"].startswith("You hold 1 stock.")
+    assert "Sign in" in copilot.process_copilot_request("How is my portfolio doing?", [], {}, None)["reply"]
     haiku.assert_not_called()

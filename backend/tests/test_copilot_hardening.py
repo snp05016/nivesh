@@ -106,6 +106,7 @@ def test_errors_are_generic(monkeypatch):
         raise ValueError("secret detail")
 
     monkeypatch.setattr(copilot_router, "process_copilot_request", boom)
+    monkeypatch.setattr(copilot_router.llm_budget, "guard", lambda *_a, **_k: None)  # direct call, no ledger
     with pytest.raises(HTTPException) as exc:
         copilot_router.copilot_chat(CopilotRequest(user_message="hi"), BackgroundTasks(), user_id=5)
 

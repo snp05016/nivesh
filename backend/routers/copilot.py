@@ -7,7 +7,7 @@ from typing import List, Dict, Any, Literal, Optional
 from core.feature_flags import require_flag
 from core.security import require_auth
 from services import llm_budget
-from services.llm_budget import require_llm_budget
+from services import copilot_service
 from services.copilot_service import process_copilot_request
 
 logger = logging.getLogger(__name__)
@@ -41,12 +41,13 @@ class CopilotRequest(BaseModel):
 class CopilotResponse(BaseModel):
     reply: str
     context_cards: Optional[List[Dict[str, Any]]] = None
+    reply_source: Literal["ai", "computed"] = "ai"
 
 @router.post("/api/v1/copilot/chat", response_model=CopilotResponse)
 def copilot_chat(
     req: CopilotRequest,
     background_tasks: BackgroundTasks,
-    user_id: int = Depends(require_llm_budget("copilot"))
+    user_id: int = Depends(require_auth)
 ):
     """
     Handle chat request. For fast intent resolution, we run it directly.
@@ -61,6 +62,10 @@ we'll await the service call which handles the processing.
     Returns:
         Any: The response.
     """
+    # A portfolio question is answered by code (no LLM call), so it skips the budget guard and
+    # still works when the allowance is used up or AI is paused.
+    if not copilot_service.is_portfolio_question(req.user_message):
+        llm_budget.guard(user_id, "copilot")
     try:
         # Pass everything to the service, keeping the router clean.
         result = process_copilot_request(
