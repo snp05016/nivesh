@@ -146,7 +146,7 @@ def test_watchlists_created_for_db_missing_it(tmp_db):
 
 def test_named_indexes_and_constraints_match_models(tmp_db):
     """A DB built only by migrations must carry every named index/constraint of the models."""
-    from sqlalchemy import CheckConstraint, UniqueConstraint, create_engine, inspect
+    from sqlalchemy import CheckConstraint, Column, UniqueConstraint, create_engine, inspect
 
     assert _alembic(tmp_db, "upgrade", "head").returncode == 0
     from models.db_models import Base
@@ -154,7 +154,11 @@ def test_named_indexes_and_constraints_match_models(tmp_db):
     insp = inspect(create_engine(f"sqlite:///{tmp_db}"))
     problems = {}
     for name, table in Base.metadata.tables.items():
-        model_ix = {ix.name for ix in table.indexes if isinstance(ix.name, str)}
+        # SQLite cannot reflect expression indexes (e.g. coalesce(group_id, 0)); skip them.
+        model_ix = {
+            ix.name for ix in table.indexes
+            if isinstance(ix.name, str) and all(isinstance(e, Column) for e in ix.expressions)
+        }
         db_ix = {ix["name"] for ix in insp.get_indexes(name)}
         model_uq = {c.name for c in table.constraints if isinstance(c, UniqueConstraint) and isinstance(c.name, str)}
         db_uq = {c["name"] for c in insp.get_unique_constraints(name) if c["name"]}

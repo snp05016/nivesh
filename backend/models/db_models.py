@@ -3,7 +3,7 @@
 from datetime import datetime, timezone
 
 from sqlalchemy import (
-    Boolean, CheckConstraint, Column, Date, DateTime, Float, Integer, JSON, Numeric, String, Text,
+    BigInteger, Boolean, CheckConstraint, Column, Date, DateTime, Float, Integer, JSON, Numeric, String, Text,
     ForeignKey, Index, UniqueConstraint, text,
 )
 from sqlalchemy.orm import DeclarativeBase, deferred, relationship
@@ -930,6 +930,17 @@ class CorporateAction(Base):
     purpose = Column(String(200), nullable=False)
     dividend_amount = Column(Float, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    # Typed columns (data foundation). ex_date / purpose stay: CMKT-14 reads them.
+    action_type = Column(String(16), nullable=True)
+    ex_on = Column(Date, nullable=True)
+    ratio = Column(Numeric(12, 6), nullable=True)  # 2.0 = 1 share became 2
+    source = Column(String(16), nullable=True)
+    nse_confirmed = Column(Boolean, nullable=True)
+    updated_at = Column(DateTime, nullable=True, onupdate=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (
+        Index("uq_corporate_actions_ticker_type_ex", "ticker", "action_type", "ex_on", unique=True),
+    )
 
 class CompanyValuation(Base):
     """Records point-in-time valuation metrics for companies."""
@@ -1109,11 +1120,22 @@ class MutualFund(Base):
     is_direct_plan = Column(Boolean, nullable=True, default=True)
     is_growth_plan = Column(Boolean, nullable=True, default=True)
 
+    # Data foundation (AMFI harvester): scheme_type is AMFI's "Open Ended" / "Close Ended" /
+    # "Interval Fund"; track_nav opts a scheme into NAV history outside open Growth plans.
+    scheme_type = Column(String(16), nullable=True)
+    is_active = Column(Boolean, nullable=False, default=True, server_default="1")
+    track_nav = Column(Boolean, nullable=False, default=False, server_default="0")
+    nav_source = Column(String(16), nullable=True)
+
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(
         DateTime,
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    __table_args__ = (
+        Index("ix_mutual_funds_listing", "is_active", "scheme_type", "is_direct_plan", "is_growth_plan"),
     )
 
 
@@ -1922,3 +1944,135 @@ class SchedulerJobStatus(Base):
     last_error: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     last_result_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_utcnow)
+
+
+class Instrument(Base):
+    """Identity of a listed equity, mutual fund scheme or index (data foundation).
+
+    Renames and ISIN changes keep the id; the old value moves to InstrumentAlias.
+    """
+    __tablename__ = "instruments"
+
+    id              = Column(Integer, primary_key=True, autoincrement=True)
+    asset_class     = Column(String(8), nullable=False)  # EQ, MF, INDEX
+    symbol          = Column(String(30), nullable=True)
+    isin            = Column(String(12), nullable=True)
+    isin_alt        = Column(String(12), nullable=True)  # MF reinvestment ISIN
+    amfi_scheme_code = Column(String(20), nullable=True)
+    entity_id       = Column(String(24), nullable=True)  # the research engine's entity id
+    name            = Column(String(200), nullable=False)
+    series          = Column(String(4), nullable=True)
+    listing_date    = Column(Date, nullable=True)
+    status          = Column(String(10), nullable=False, default="active", server_default="active")
+    source          = Column(String(16), nullable=False)
+    last_seen_on    = Column(Date, nullable=True)
+    updated_at      = Column(DateTime, default=_utcnow, onupdate=_utcnow)
+
+    __table_args__ = (
+        CheckConstraint("asset_class IN ('EQ','MF','INDEX')", name="ck_instruments_asset_class"),
+        CheckConstraint("status IN ('active','inactive')", name="ck_instruments_status"),
+        UniqueConstraint("asset_class", "symbol", name="uq_instruments_class_symbol"),
+        UniqueConstraint("amfi_scheme_code", name="uq_instruments_amfi_code"),
+        UniqueConstraint("entity_id", name="uq_instruments_entity_id"),
+        Index("ix_instruments_isin", "isin"),
+        Index("ix_instruments_isin_alt", "isin_alt"),
+    )
+
+
+class InstrumentAlias(Base):
+    """A past or alternate symbol / ISIN of an Instrument."""
+    __tablename__ = "instrument_aliases"
+
+    id            = Column(Integer, primary_key=True, autoincrement=True)
+    instrument_id = Column(Integer, ForeignKey("instruments.id", ondelete="CASCADE"), nullable=False)
+    kind          = Column(String(8), nullable=False)  # isin, symbol
+    value         = Column(String(30), nullable=False)
+    valid_to      = Column(Date, nullable=True)
+    created_at    = Column(DateTime, default=_utcnow)
+
+    __table_args__ = (
+        CheckConstraint("kind IN ('isin','symbol')", name="ck_instrument_aliases_kind"),
+        UniqueConstraint("kind", "value", "instrument_id", name="uq_instrument_aliases_kind_value"),
+        Index("ix_instrument_aliases_lookup", "kind", "value"),
+    )
+
+
+class DailyPrice(Base):
+    """One end-of-day close (NSE bhavcopy EQ rows, Nifty 50, AMFI NAVs) per instrument and date."""
+    __tablename__ = "daily_prices"
+
+    instrument_id = Column(Integer, ForeignKey("instruments.id", ondelete="CASCADE"), primary_key=True)
+    trade_date    = Column(Date, primary_key=True)
+    open          = Column(Numeric(14, 4), nullable=True)
+    high          = Column(Numeric(14, 4), nullable=True)
+    low           = Column(Numeric(14, 4), nullable=True)
+    close         = Column(Numeric(14, 4), nullable=False)
+    prev_close    = Column(Numeric(14, 4), nullable=True)
+    volume        = Column(BigInteger, nullable=True)
+    turnover_inr  = Column(Numeric(20, 2), nullable=True)
+    trades        = Column(Integer, nullable=True)
+    source        = Column(String(16), nullable=False)
+    event         = Column(String(16), nullable=True)  # engine note: split, override, dividend, ca_unverified
+    quality_flags = Column(String(40), nullable=True)
+    ingested_at   = Column(DateTime, nullable=False, default=_utcnow)
+
+    __table_args__ = (
+        CheckConstraint("source IN ('nse_bhavcopy','amfi','yfinance')", name="ck_daily_prices_source"),
+        CheckConstraint("close > 0", name="ck_daily_prices_close_positive"),
+        Index("ix_daily_prices_trade_date", "trade_date"),
+    )
+
+
+class CorporateActionApplication(Base):
+    """A user's decision on one corporate action for one portfolio group (the only per-user data table)."""
+    __tablename__ = "corporate_action_applications"
+
+    id                  = Column(Integer, primary_key=True, autoincrement=True)
+    user_id             = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    group_id            = Column(Integer, ForeignKey("portfolio_groups.id", ondelete="CASCADE"), nullable=True)
+    corporate_action_id = Column(Integer, ForeignKey("corporate_actions.id", ondelete="CASCADE"), nullable=False)
+    status              = Column(String(12), nullable=False, default="pending", server_default="pending")
+    shares_before       = Column(Numeric(18, 6), nullable=True)
+    # No FK: undo deletes the SPLIT transaction this points at.
+    transaction_id      = Column(Integer, nullable=True)
+    decided_at          = Column(DateTime, nullable=True)
+    created_at          = Column(DateTime, nullable=False, default=_utcnow)
+
+    __table_args__ = (
+        CheckConstraint("status IN ('pending','applied','dismissed')", name="ck_ca_applications_status"),
+        # Expression index: Postgres treats NULL group ids as distinct, so coalesce them.
+        Index(
+            "uq_ca_applications_user_action_group",
+            "user_id", "corporate_action_id", text("coalesce(group_id, 0)"),
+            unique=True,
+        ),
+        Index("ix_ca_applications_user_status", "user_id", "status"),
+    )
+
+
+class ResultsDigest(Base):
+    """Three numbers and a filing link per symbol and quarter (no generated text)."""
+    __tablename__ = "results_digests"
+
+    id                 = Column(Integer, primary_key=True, autoincrement=True)
+    symbol             = Column(String(30), nullable=False)
+    period_end         = Column(Date, nullable=False)
+    filing_url         = Column(String(500), nullable=True)
+    filing_title       = Column(String(300), nullable=True)
+    announced_at       = Column(DateTime, nullable=True)
+    revenue_inr        = Column(Numeric(20, 2), nullable=True)
+    net_profit_inr     = Column(Numeric(20, 2), nullable=True)
+    eps                = Column(Numeric(12, 2), nullable=True)
+    revenue_yoy_pct    = Column(Float, nullable=True)
+    net_profit_yoy_pct = Column(Float, nullable=True)
+    eps_yoy_pct        = Column(Float, nullable=True)
+    numbers_source     = Column(String(24), nullable=True)
+    numbers_status     = Column(String(12), nullable=False, default="pending", server_default="pending")
+    numbers_fetched_at = Column(DateTime, nullable=True)
+    created_at         = Column(DateTime, nullable=False, default=_utcnow)
+    updated_at         = Column(DateTime, nullable=True, onupdate=_utcnow)
+
+    __table_args__ = (
+        CheckConstraint("numbers_status IN ('pending','ok','unavailable')", name="ck_results_digests_status"),
+        UniqueConstraint("symbol", "period_end", name="uq_results_digests_symbol_period"),
+    )
