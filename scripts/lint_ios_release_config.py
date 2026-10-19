@@ -75,7 +75,43 @@ def check_push_entitlement(info, sources):
     return problems
 
 
-CHECKS = [check_purpose_strings, check_push_entitlement]
+PRIVACY_MANIFEST = SOURCES / "PrivacyInfo.xcprivacy"  # synchronized folder group: bundled without a pbxproj entry
+USER_DEFAULTS_REASONS = {"CA92.1", "1C8F.1", "C56D.1", "AC6B.1"}  # Apple's approved UserDefaults reasons
+
+
+def check_privacy_manifest(info, sources):
+    """App Store Connect rejects uploads whose required-reason API use is undeclared
+    (ITMS-91053); UserDefaults is one of those APIs (IOSCORE-26)."""
+    rel = PRIVACY_MANIFEST.relative_to(ROOT)
+    if not PRIVACY_MANIFEST.is_file():
+        return [f"{rel} is missing"]
+    try:
+        with PRIVACY_MANIFEST.open("rb") as f:
+            manifest = plistlib.load(f)
+    except Exception as exc:
+        return [f"{rel} is not a valid plist: {exc}"]
+    problems = []
+    if manifest.get("NSPrivacyTracking") is not False:
+        problems.append(f"{rel}: NSPrivacyTracking must be false")
+    if any("UserDefaults" in text for _, text in sources):
+        reasons = {r for entry in manifest.get("NSPrivacyAccessedAPITypes", [])
+                   if entry.get("NSPrivacyAccessedAPIType") == "NSPrivacyAccessedAPICategoryUserDefaults"
+                   for r in entry.get("NSPrivacyAccessedAPITypeReasons", [])}
+        if not reasons & USER_DEFAULTS_REASONS:
+            problems.append(f"{rel}: the app uses UserDefaults but declares no "
+                            "NSPrivacyAccessedAPICategoryUserDefaults reason")
+    return problems
+
+
+def check_export_compliance(info, sources):
+    """Without ITSAppUsesNonExemptEncryption every upload stalls on the export-compliance
+    question in App Store Connect (IOSCORE-26)."""
+    if not isinstance(info.get("ITSAppUsesNonExemptEncryption"), bool):
+        return [f"{INFO_PLIST.relative_to(ROOT)} has no boolean ITSAppUsesNonExemptEncryption"]
+    return []
+
+
+CHECKS = [check_purpose_strings, check_push_entitlement, check_privacy_manifest, check_export_compliance]
 
 
 def main():
