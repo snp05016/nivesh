@@ -7,7 +7,7 @@ upgrade: adds the three nullable columns that are missing.
 downgrade: drops the ones that are present.
 
 Revision ID: 3b38ab41c39c
-Revises: a8fd0770d4d1
+Revises: c09c3ec5ab68
 Create Date: 2026-10-11
 """
 from typing import Sequence, Union
@@ -18,7 +18,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = "3b38ab41c39c"
-down_revision: Union[str, Sequence[str], None] = "a8fd0770d4d1"
+down_revision: Union[str, Sequence[str], None] = "c09c3ec5ab68"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
