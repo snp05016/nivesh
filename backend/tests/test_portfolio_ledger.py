@@ -138,8 +138,8 @@ class TestWACEngine:
 
         h = _holding(db_session, 1, "ITC.NS")
         assert h is not None
-        assert round(h.shares, 2) == 60.0
-        assert round(h.buy_price, 2) == 200.0
+        assert round(float(h.shares), 2) == 60.0
+        assert round(float(h.buy_price), 2) == 200.0
 
     def test_ledger_oversell_raises_error(self, db_session):
         """Selling more than held raises ValueError (short-selling forbidden)."""
@@ -173,7 +173,7 @@ class TestWACEngine:
         h_tcs = _holding(db_session, 1, "TCS")
         assert h_rel is None
         assert h_tcs is not None
-        assert round(h_tcs.shares, 2) == 5.0
+        assert round(float(h_tcs.shares), 2) == 5.0
 
 
 def session_query_all(session, ticker: str, user_id: int) -> list[Transaction]:
