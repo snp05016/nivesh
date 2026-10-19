@@ -46,6 +46,18 @@ def _new_user() -> tuple[int, dict]:
     return user_id, {"Authorization": f"Bearer {database.create_access_token(user_id)}"}
 
 
+@pytest.fixture(autouse=True)
+def _focus_flags_on(monkeypatch):
+    """I04: the forum and IPO hub are off by default; these tests exercise them."""
+    from services import feature_flags
+
+    monkeypatch.setenv("NIVESH_FLAG_FORUM", "true")
+    monkeypatch.setenv("NIVESH_FLAG_IPO_HUB", "true")
+    feature_flags._reset_cache()
+    yield
+    feature_flags._reset_cache()
+
+
 @pytest.fixture(scope="module")
 def catalogs():
     """GET handlers never seed (FAKE-06); seed the mock IPO and MF catalogs explicitly."""

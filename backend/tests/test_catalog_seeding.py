@@ -25,6 +25,7 @@ from models.db_models import (
     User,
 )
 from services import (
+    feature_flags,
     fixed_deposit_service,
     forum_service,
     ipo_service,
@@ -41,6 +42,16 @@ _GETS = (
     "/api/finance/loan-offers",
     "/api/fixed-deposits/schemes",
 )
+
+
+@pytest.fixture(autouse=True)
+def _focus_flags_on(monkeypatch):
+    """I04: the forum and IPO hub are off by default; these tests exercise them."""
+    monkeypatch.setenv("NIVESH_FLAG_FORUM", "true")
+    monkeypatch.setenv("NIVESH_FLAG_IPO_HUB", "true")
+    feature_flags._reset_cache()
+    yield
+    feature_flags._reset_cache()
 
 
 def _counts() -> dict:

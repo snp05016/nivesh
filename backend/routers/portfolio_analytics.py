@@ -33,7 +33,7 @@ from services.market_service import get_rbi_policy
 from services.llm_utils import deepseek_chat as _deepseek_chat
 from services.kyc_consent_service import AI_PROCESSING_CONSENT, has_active_consent
 from services import llm_budget
-from services.advisory_guard import strip_advisory_fields
+from services.advisory_guard import advisory_output_enabled, strip_advisory_fields
 from repositories.analysis_repo import latest_signals_by_ticker
 from services.portfolio_service import (
     _get_asm_gsm_lists, _risk_label, compute_sip, compute_pearson_correlation,
@@ -102,6 +102,8 @@ _MACRO_IMPACT_TTL = 7200  # 2 hours
 # ---------------------------------------------------------------------------
 @router.get("/portfolio/signal-warnings")
 def portfolio_signal_warnings(user_id: int, _caller: int = Depends(require_user_match)):
+    if not advisory_output_enabled():  # I03: signal-change stamps read as tips.
+        return {"warnings": []}
     warnings = []
     with get_session() as session:
         holdings = session.query(Portfolio).filter(Portfolio.user_id == user_id, Portfolio.group_name == "holdings").all()

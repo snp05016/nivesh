@@ -1,0 +1,37 @@
+{
+  "add_alert": {
+    "company_name": "Tata Consultancy Services",
+    "direction": "above",
+    "target_price": 3550.0,
+    "ticker": "TCS",
+    "user_id": 7
+  },
+  "add_holding": {
+    "buy_price": 3500.0,
+    "company_name": "Tata Consultancy Services",
+    "exchange": "NSE",
+    "group_name": "holdings",
+    "notes": "",
+    "purchase_date": "2026-01-15",
+    "shares": 10.0,
+    "ticker": "TCS",
+    "transaction_type": "BUY",
+    "user_id": 7
+  },
+  "device_register": {
+    "device_token": "a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4",
+    "platform": "ios",
+    "user_id": 7
+  },
+  "login": {
+    "password": "GoldenPath-2026",
+    "username": "golden_user"
+  },
+  "register": {
+    "accepted_policy_version": "2026-10-11.1",
+    "age_confirmed": true,
+    "display_name": "Golden User",
+    "password": "GoldenPath-2026",
+    "username": "golden_user"
+  }
+}

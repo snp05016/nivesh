@@ -122,7 +122,7 @@ struct SettingsScreen: View {
                             VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                                 Text(user.displayName)
                                     .font(Theme.engravedSerif(size: 20, weight: .semibold)).foregroundStyle(Theme.inkPrimary)
-                                Text("Account #\(String(user.userId))")
+                                Text("Member ID \(String(user.userId))")
                                     .font(Theme.serialNumberFont(size: 11)).foregroundStyle(Theme.inkTertiary)
                             }
                             Spacer()

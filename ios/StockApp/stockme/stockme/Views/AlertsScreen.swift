@@ -9,7 +9,11 @@ class AlertsViewModel: ObservableObject {
     @Published var showTriggeredBanner = false
     /// IOSCORE-06: a failed load is shown as an error, never as "NO ALERTS SET".
     @Published var loadError: String? = nil
+    /// Failed deletes; shown as a dialog so they are never silent.
     @Published var actionError: String? = nil
+    /// C9: true after the first successful fetch, never reset, so the first load shows a
+    /// skeleton instead of "No price alerts yet".
+    @Published private(set) var hasLoadedOnce = false
 
     /// Keeps the last loaded alerts when a refresh fails.
     func fetchAlerts(userId: Int) async {
@@ -17,6 +21,7 @@ class AlertsViewModel: ObservableObject {
         do {
             alerts = try await NetworkManager.shared.getAlerts(userId: userId)
             loadError = nil
+            hasLoadedOnce = true
         } catch {
             loadError = error.localizedDescription
             GlobalErrorDiagnoser.shared.trackNetworkError(error, endpoint: "/alerts/{user_id}")
@@ -50,9 +55,16 @@ struct AlertsScreen: View {
     @EnvironmentObject var authManager: AuthManager
     @StateObject private var viewModel = AlertsViewModel()
     @State private var showAddAlert = false
+    @ObservedObject private var connectivity = ConnectivityMonitor.shared
 
     var activeAlerts: [PriceAlert] { viewModel.alerts.filter { !$0.triggered } }
     var triggeredAlerts: [PriceAlert] { viewModel.alerts.filter { $0.triggered } }
+
+    private var alertsPhase: LoadPhase {
+        .resolve(isLoading: viewModel.isLoading, hasLoaded: viewModel.hasLoadedOnce,
+                 isEmpty: viewModel.alerts.isEmpty, error: viewModel.loadError,
+                 isOnline: connectivity.isOnline)
+    }
 
     var body: some View {
         Group {
@@ -74,34 +86,18 @@ struct AlertsScreen: View {
                     .padding(.top, Theme.Spacing.standard)
                     .padding(.bottom, Theme.screenPadding)
 
-                    if viewModel.isLoading {
-                        Spacer()
-                        ProgressView().tint(Theme.securityGold)
-                        Spacer()
-                    } else if viewModel.alerts.isEmpty, let loadError = viewModel.loadError {
-                        Spacer()
-                        BanknoteErrorCanvas(title: "Couldn't load your alerts", detail: loadError, retryAction: {
-                            if let user = authManager.currentUser { await viewModel.fetchAlerts(userId: user.userId) }
-                        })
-                        Spacer()
-                    } else if viewModel.alerts.isEmpty {
-                        // Empty state
-                        Spacer()
-                        VStack(spacing: Theme.Spacing.card) {
-                            Image(systemName: "bell.slash")
-                                .font(.largeTitle)
-                                .foregroundStyle(Theme.inkSecondary.opacity(0.3))
-                            Text("NO ALERTS SET")
-                                .font(Theme.officialStampFont(size: 10))
-                                .foregroundStyle(Theme.inkSecondary)
-                            Text("Set a target price from any stock's analysis to get notified.")
-                                .font(Theme.serialNumberFont(size: 13))
-                                .foregroundStyle(Theme.inkTertiary)
-                                .multilineTextAlignment(.center)
-                                .padding(.horizontal, 40)
+                    StateCard(
+                        title: "Price alerts",
+                        phase: alertsPhase,
+                        emptyMessage: "No price alerts yet. Create one and Nivesh will notify you when a stock crosses your price.",
+                        emptyActionTitle: "Create alert",
+                        emptyAction: { showAddAlert = true },
+                        onRetry: {
+                            if let user = authManager.currentUser {
+                                Task { await viewModel.fetchAlerts(userId: user.userId) }
+                            }
                         }
-                        Spacer()
-                    } else {
+                    ) {
                         ScrollView {
                             VStack(spacing: Theme.Spacing.large) {
                                 // Active alerts
@@ -150,6 +146,8 @@ struct AlertsScreen: View {
                             }
                         }
                     }
+                    .padding(.horizontal, alertsPhase == .loaded ? 0 : Theme.screenPadding)
+                    .frame(maxHeight: .infinity, alignment: alertsPhase == .loaded ? .top : .center)
                 }
 
                 // Triggered banner

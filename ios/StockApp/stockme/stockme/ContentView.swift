@@ -482,6 +482,7 @@ struct MarketsView: View {
             .navigationDestination(for: MarketSection.self) { section in
                 sectionDestination(section)
             }
+            .navigationDestination(for: LabRoute.self) { LabRouteDestination(route: $0) }
             .sheet(isPresented: $showScreener) {
                 SearchScreen()
                     .environmentObject(authManager)
@@ -558,6 +559,7 @@ struct MarketsView: View {
                         }
                     }
                 }
+                LabEntryCard()
             }
             .padding(.bottom, Theme.sectionSpacing)
         }

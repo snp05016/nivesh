@@ -101,7 +101,7 @@ class LocalReportManager: ObservableObject {
     /// Set while loadReports assigns, so a launch never rewrites the file.
     private var isLoading = false
 
-    static var defaultFileURL: URL {
+    nonisolated static var defaultFileURL: URL {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("saved_reports.json")
     }

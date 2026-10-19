@@ -1,6 +1,6 @@
 ---
 name: nivesh-deploy
-description: "Full server deploy + health check + endpoint audit + test suite. Use when user says 'deploy', 'redeploy', 'check server', 'verify everything', 'is everything working', 'nivesh deploy'. Runs exact-SHA checkout, systemd restart (nivesh.service), API health checks, endpoint audit, and pytest on the remote server. Returns ALL GOOD or FAILED with specifics."
+description: "Full server deploy + health check + endpoint audit + test suite. Use when user says 'deploy', 'redeploy', 'check server', 'verify everything', 'is everything working', 'nivesh deploy'. Runs the pinned deploy script (scripts/deploy_server.py: worktree rehearsal, backup gate, exact-SHA checkout, systemd restart, readiness wait), endpoint audit, and pytest on the remote server. Returns ALL GOOD or FAILED with specifics."
 ---
 
 # Nivesh Deploy & Verify Skill
@@ -17,44 +17,27 @@ Complete remote server deployment and verification pipeline. Executes in strict 
 - Only then sync local main: `git fetch origin && git checkout main && git pull --ff-only origin main`
 - Record full SHA: `SHA=$(git rev-parse HEAD)`
 
-### Step 1 — Server Sync (exact SHA)
+### Step 1 — Deploy the exact SHA
+- `$SHA` must be on origin: if local main is ahead of `origin/main`, push it first (`git push origin main`).
+- Then run the server's deploy script. It does the whole switch: tracked-files check, fetch, staged worktree, backup gate, migration rehearsal, checkout, `pip install -r requirements.txt`, `alembic upgrade head`, `sudo systemctl restart nivesh` and the wait for `/health/ready`. Do not run any of those steps by hand.
 ```bash
-ssh -o ConnectTimeout=5 saumyapatel@192.168.1.122 "
-  cd /home/saumyapatel/Desktop/nivesh &&
-  test -z \"\$(git status --porcelain)\" &&
-  git fetch origin &&
-  git checkout --detach $SHA &&
-  git rev-parse HEAD
-"
+ssh -o ConnectTimeout=5 saumyapatel@192.168.1.122 "cd /home/saumyapatel/Desktop/nivesh/backend && ../venv/bin/python scripts/deploy_server.py --sha $SHA"
 ```
-- `$SHA` is the full SHA recorded in Step 0. Never `git reset --hard origin/main`: it deploys whatever main points to now and wipes server-side changes.
-- If the server tree is dirty (the `test -z` fails) → ABORT "Server tree dirty" and report `git status` to the owner
-- Verify returned SHA matches local SHA
-- If SHA mismatch → ABORT "Server SHA mismatch"
+- Exit 0 → continue. Any other exit → ABORT "Deploy script exit N" with its stderr, and never retry automatically:
 
-### Step 2 — Restart under systemd
-systemd (`nivesh.service`) is the only supervisor of the production API. Never kill port 8000 (`fuser`/`pkill`) or start uvicorn with `nohup` or `--reload`: systemd would race the stray process for the port, and that process neither survives a reboot nor keeps its logs.
-```bash
-ssh -o ConnectTimeout=5 saumyapatel@192.168.1.122 "
-  sudo systemctl restart nivesh &&
-  sleep 5 &&
-  systemctl is-active --quiet nivesh &&
-  curl -fsS --max-time 5 http://localhost:8000/ping
-"
-```
-- Must exit 0 and return `{"pong":true}`
-- If not → ABORT "Server failed to start" and include `journalctl -u nivesh -n 50 --no-pager`
+| Exit | Report |
+|------|--------|
+| 2 | Precondition failed (server tracked files changed, fetch, unknown SHA). Nothing changed. |
+| 3 | Backup failed. Nothing changed. |
+| 4 | Migration rehearsal failed. Nothing changed. |
+| 5 | Checkout or pip failed. The script went back to the previous commit. |
+| 6 | Live migration failed. The script went back to the previous commit without restarting; report the backup file it printed. |
+| 7 | Not ready within 60 s. Report the rollback command it printed and `journalctl -u nivesh -n 50 --no-pager`. The owner runs the rollback. |
 
-### Step 3 — Health Checks
-```bash
-curl -fsS --max-time 5 https://api.nivesh.qzz.io/ping         # expect {"pong":true}
-curl -fsS --max-time 5 https://api.nivesh.qzz.io/health/live  # process liveness, expect 200
-curl -fsS --max-time 10 https://api.nivesh.qzz.io/health/ready # DB readiness, 503 if the DB is down
-```
-- All 3 must return 200 (`-f` makes curl exit non-zero on any 4xx/5xx)
-- If not → ABORT "Health check failed"
+- `--skip-rehearsal` only on the owner's explicit instruction, after exit 4 for a migration that needs a new dependency (docs/codebase/BACKUP_RESTORE.md, Deploying).
+- systemd (`nivesh.service`) is the only supervisor of the production API: never kill port 8000 or start uvicorn by hand.
 
-### Step 4 — Critical Endpoint Audit
+### Step 2 — Critical Endpoint Audit
 Test these endpoints and verify 200 responses:
 
 | Endpoint | Auth | Check |
@@ -79,7 +62,7 @@ Test these endpoints and verify 200 responses:
 - Admin rows: send `Authorization: Bearer $ADMIN_JWT`, the `access_token` from `POST /login` for an `is_admin` account (grant with `backend/scripts/manage_users.py set-admin <username>`; `/api/v1/predictions/performance` also needs that account on the pro tier). There is no static admin token: without a JWT from the owner, skip the Admin rows and report them as skipped.
 - Verification must never call LLM-backed or CPU-heavy routes (analysis, multi-agent debate, assistant chat, NL screener, strategy sweep, stress test, portfolio PDF). Add such a check only behind `ALLOW_PAID_ENDPOINTS=1`, and only for an explicit, owner-approved run.
 
-### Step 5 — Run Tests on Server
+### Step 3 — Run Tests on Server
 Run pytest from a throwaway worktree, never from the production checkout: the worktree has no `backend/.env`, so `load_dotenv(override=True)` in main.py cannot point the tests at the production database or keys.
 ```bash
 ssh -o ConnectTimeout=5 saumyapatel@192.168.1.122 "
@@ -102,7 +85,7 @@ ssh -o ConnectTimeout=5 saumyapatel@192.168.1.122 "
 - All tests must pass
 - If any fail → ABORT "Tests failed: N failures"
 
-### Step 6 — Check for 5xx in Logs
+### Step 4 — Check for 5xx in Logs
 ```bash
 ssh -o ConnectTimeout=5 saumyapatel@192.168.1.122 "
   journalctl -u nivesh --since '-10 min' --no-pager | grep -cE 'Traceback| 500 '
@@ -114,7 +97,7 @@ ssh -o ConnectTimeout=5 saumyapatel@192.168.1.122 "
 
 ## Success Output
 ```
-✅ ALL GOOD — Server: <SHA>, Health: ok, Endpoints: 15/15, Tests: PASSED
+✅ ALL GOOD — Server: <SHA>, Deploy: exit 0, Endpoints: 15/15, Tests: PASSED
 ```
 
 ## Failure Output

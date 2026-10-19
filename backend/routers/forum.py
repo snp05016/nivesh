@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from core.security import get_current_user_id, require_admin, require_auth
+from services import feature_flags
 from services.forum_service import (
     block_post_author,
     create_post,
@@ -27,7 +28,9 @@ from services.forum_service import (
     vote_post,
 )
 
-router = APIRouter(tags=["Forum"])
+# I04: hidden (404 FEATURE_DISABLED) until moderation is staffed and a grievance officer
+# is named. Prefixes come from main.py, which mounts /api/v1/forum and the /api/forum alias.
+router = APIRouter(tags=["Forum"], dependencies=[Depends(feature_flags.require_flag("forum"))])
 
 
 # ---------------------------------------------------------------------------

@@ -315,30 +315,6 @@ private struct TimeframeConflictCard: View {
     }
 }
 
-struct DashboardLoadingCard: View {
-    let label: String
-    var isLoading: Bool = true
-    var body: some View {
-        HStack {
-            if isLoading {
-                ProgressView().tint(Theme.securityGold)
-                Text("Loading \(label)…")
-                    .font(Theme.serialNumberFont(size: 12))
-                    .foregroundStyle(Theme.inkTertiary)
-            } else {
-                Text("\(label) unavailable")
-                    .font(Theme.serialNumberFont(size: 12))
-                    .foregroundStyle(Theme.inkTertiary)
-            }
-        }
-        .padding(Theme.Spacing.card)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.canvasDeep)
-        .cornerRadius(Theme.CornerRadius.medium)
-        .padding(.horizontal, Theme.screenPadding)
-    }
-}
-
 // MARK: - Market Pulse Dashboard Card
 
 struct MarketPulseDashCard: View {

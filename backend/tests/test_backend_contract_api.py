@@ -163,4 +163,5 @@ def test_watchlist_add_accepts_documented_zero_value_sentinel(client):
     )
 
     assert response.status_code == 200
-    assert response.json() == {"success": True, "ticker": "INFY"}
+    # added_price is additive (habit-watchlist): None when no quote is available (mocked yfinance).
+    assert response.json() == {"success": True, "ticker": "INFY", "added_price": None}

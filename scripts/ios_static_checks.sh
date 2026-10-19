@@ -36,14 +36,24 @@ fail_if_any swift_grep 'Button\([^()]*action: *[^(){}]*\) *\{ *HapticManager'
 fail_if_any swift_grep 'AuthManager\.shared\b|static +(let|var) +[A-Za-z_]+ *(: *AuthManager)? *= *AuthManager\('
 # Stacked haptics (closed #556, audit WIP-13): two HapticManager calls on one line, or on
 # consecutive non-blank lines unless the first line closes its closure with `}`.
+# Unit tests read HapticManager settings on consecutive lines and fire no haptics: skip them.
 haptic_dupes() {
-  find "$SRC" -name '*.swift' -print0 | xargs -0 awk '
+  find "$SRC" -name '*.swift' -not -path '*/stockmeTests/*' -print0 | xargs -0 awk '
     FNR == 1 { p = "" }
     { c = gsub(/HapticManager\./, "&")
       if (c >= 2 || (c == 1 && p ~ /HapticManager\./ && p !~ /\}[[:space:]]*$/)) print FILENAME ":" FNR
       if ($0 !~ /^[[:space:]]*$/) p = $0 }'
 }
 fail_if_any haptic_dupes
+
+# I11: one build number above 1 in every target. X-App-Build, the 426 gate (IOS_MIN_BUILD) and
+# iOS's UpdateRequired screen compare it. Raise it in every target for each TestFlight upload; never reuse or lower it.
+PBX=ios/StockApp/stockme/stockme.xcodeproj/project.pbxproj
+builds=$(grep -oE 'CURRENT_PROJECT_VERSION = [0-9]+;' "$PBX" | grep -oE '[0-9]+' | sort -u || true)
+if [ "$(printf '%s\n' "$builds" | grep -c .)" -ne 1 ] || [ "$builds" -le 1 ]; then
+  echo "FAIL: CURRENT_PROJECT_VERSION must be one value above 1 in every target (found: $(echo $builds))"
+  status=1
+fi
 
 if [ "$status" -ne 0 ]; then
   echo "ios_static_checks: FAILED"

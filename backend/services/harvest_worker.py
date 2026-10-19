@@ -363,6 +363,19 @@ def start_scheduler() -> bool:
     _scheduler.add_job(_run_sebi_harvest_bg,   "interval", minutes=120, id="sebi_harvest",   replace_existing=True, **_stagger(85))
     _scheduler.add_job(_run_youtube_expert_bg, "interval", minutes=120, id="youtube_expert_harvest", replace_existing=True, **_stagger(105))
 
+    # ── SEBI registry re-verification reminder — 09:30 IST daily (I27) ────────
+    # Raises from 75 days after REGISTRY_VERIFIED_ON (or when unset), so the failed
+    # job_runs row alerts the owner before badges switch off at 90 days.
+    from services import sebi_registry
+    _registry_job_id = "sebi_registry_check"
+    try:
+        from services.job_runs import tracked  # pyright: ignore[reportMissingImports]  # platform-jobruns
+        _registry_job = tracked(_registry_job_id, sebi_registry.check_registry_freshness)
+    except ImportError:  # platform-jobruns not deployed: APScheduler still logs the failure
+        _registry_job = sebi_registry.check_registry_freshness
+    _scheduler.add_job(_registry_job, "cron", hour=9, minute=30, timezone="Asia/Kolkata",
+                       id=_registry_job_id, replace_existing=True)  # 09:30 IST
+
     # ── RAG ingestion — incremental, leader-only (this scheduler holds the fcntl lock).
     # Replaces the old per-worker full re-embed at startup. First run 5 min after boot.
     def _run_rag_ingest():
@@ -403,7 +416,8 @@ def start_scheduler() -> bool:
         "yt-portfolio 1:15, snapshot 4:30 PM + retry 5:30 PM, pkscreener 4:45 PM, outcome-eval 2:00 AM) | "
         "new: (bhavcopy 7:00 PM, morning-brief-pregen 6:30 AM, prediction-outcomes 2:40 AM, "
         "corporate-actions 7:30 AM, "
-        "piotroski-weekly Sun 11 PM, error-digest 7:00 AM, db-backup 2:30 AM, retention 3:20 AM) | "
+        "piotroski-weekly Sun 11 PM, error-digest 7:00 AM, db-backup 2:30 AM, retention 3:20 AM, "
+        "sebi-registry-check 9:30 AM) | "
         "harvesters: (expert 120min, sebi 120min, yt-expert 120min) [all IST]"
     )
     return True

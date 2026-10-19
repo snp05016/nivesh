@@ -68,7 +68,7 @@ struct EarningsProgressView: View {
     static func aggregateSourceLabel(for health: YoYMarketHealth?) -> String {
         guard let health else { return "UNAVAILABLE" }
         switch health.source {
-        case "firecrawl": return "MONEYCONTROL AGGREGATE"
+        case "firecrawl": return "WEB SOURCES"
         case "yfinance_sample": return "LARGE-CAP SAMPLE · n=\(health.companiesReported)"
         case "fallback": return "UNAVAILABLE"
         default: return health.source.uppercased()

@@ -220,7 +220,6 @@
 | `GET` | `/nifty-history` | `nifty_history_endpoint` | `backend/routers/market.py:39` |
 | `POST` | `/notifications/morning-summary-push` | `notifications_morning_summary_push` | `backend/routers/user.py:95` |
 | `POST` | `/notifications/register-device` | `notifications_register_device` | `backend/routers/user.py:68` |
-| `POST` | `/notifications/test` | `notifications_test` | `backend/routers/user.py:85` |
 | `GET` | `/ping` | `ping` | `backend/main.py:455` |
 | `POST` | `/portfolio` | `portfolio_add_endpoint` | `backend/routers/portfolio.py:211` |
 | `POST` | `/portfolio/add` | `portfolio_add_endpoint` | `backend/routers/portfolio.py:212` |

@@ -843,15 +843,11 @@ class NetworkManager: ObservableObject {
 
     // MARK: - Earnings Calendar
 
-    func getEarningsCalendar() async -> [EarningsEvent] {
-        guard let url = URL(string: "\(baseURL)/earnings-calendar") else { return [] }
-        // CMKT-12: the backend lists the token user's holdings, so send the bearer.
-        var request = authRequest(url)
-        request.timeoutInterval = 30
-        guard let (data, resp) = try? await session.data(for: request),
-              let http = resp as? HTTPURLResponse, http.statusCode == 200 else { return [] }
+    func getEarningsCalendar() async throws -> [EarningsEvent] {
+        // CMKT-12: the backend lists the token user's holdings, so send the bearer (_fetchDecode does).
+        // C9: throws, so Home can tell a failed load from an empty calendar.
         struct Resp: Decodable { let events: [EarningsEvent] }
-        return (try? JSONDecoder().decode(Resp.self, from: data))?.events ?? []
+        return try await _fetchDecode(Resp.self, endpoint: "/earnings-calendar", timeout: 30).events
     }
 
     // MARK: - Macro Strip

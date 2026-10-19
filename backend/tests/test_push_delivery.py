@@ -2,7 +2,7 @@
 
 send_apns returns an explicit PushResult (never "success" when nothing was sent),
 reuses one HTTP/2 client per push and one provider JWT per 50 minutes, and the
-legacy /notifications/test route reports delivered=false instead of a fake success.
+user_service push helpers report delivered=false instead of a fake success.
 """
 import asyncio
 from contextlib import contextmanager
@@ -118,20 +118,15 @@ def test_one_client_per_push_and_cached_provider_token(db, monkeypatch, tmp_path
     assert len(mints) == 1  # provider JWT reused, not minted per push
 
 
-def test_notifications_test_reports_not_delivered(client, auth_headers, test_user_id, monkeypatch):
-    import database
-
-    with database.get_session() as s:
-        s.query(DeviceToken).filter_by(user_id=test_user_id).delete()
-        s.commit()
-    monkeypatch.setattr(user_service, "_yf_fetch_info", lambda _t: {})
+def test_user_service_push_reports_not_delivered(db, monkeypatch):
+    # The user-facing push routes (morning summary) report what actually happened.
+    for k in _APNS_ENV:
+        monkeypatch.setenv(k, "x")
     monkeypatch.setattr(user_service, "push_allowed", lambda _uid: True)
+    payload = {"title": "Daily Market Brief", "body": "b", "data": {"type": "morning_summary"}}
 
-    resp = client.post("/notifications/test", headers=auth_headers,
-                       json={"user_id": test_user_id, "ticker": "TCS", "exchange": "NSE"})
+    out = user_service._with_delivery(payload, user_service._deliver_apns(1, payload))
 
-    assert resp.status_code == 200
-    body = resp.json()
-    assert body["delivered"] is False
-    assert body["delivery_status"] == "no_tokens"
-    assert body["title"].startswith("TCS")  # iOS decodes title/body at the root
+    assert out["delivered"] is False
+    assert out["delivery_status"] == "no_tokens"
+    assert out["title"] == "Daily Market Brief"  # iOS decodes title/body at the root

@@ -140,7 +140,6 @@ Total: **96 unique endpoint paths** (89 actual API calls, 3 error tracking, 1 di
 | # | Method | Endpoint | Source | Type |
 |---|--------|----------|--------|------|
 | 57 | POST | `/notifications/register-device` | `NetworkManager.swift:995` | Actual |
-| 58 | POST | `/notifications/test` | `NetworkManager.swift:1013` | Actual |
 | 59 | POST | `/notifications/morning-summary-push` | `NetworkManager.swift:1026` | Actual |
 
 ## Options

@@ -69,6 +69,8 @@ class Portfolio(Base):
     group_id      = Column(Integer, ForeignKey("portfolio_groups.id"), nullable=True)
     # 'EQ' listed equity | 'MF' mutual fund (ticker is the ISIN); the latest ledger row's.
     asset_class   = Column(String(8), nullable=False, default="EQ", server_default="EQ")
+    # Watchlist rows only: the quote when the stock was added (NULL if unavailable).
+    added_price   = Column(Numeric(14, 4), nullable=True)
 
     user = relationship("User", back_populates="portfolio")
 
@@ -81,6 +83,7 @@ class Portfolio(Base):
         CheckConstraint("group_name = 'watchlist' OR shares > 0", name="ck_portfolio_shares_positive"),
         CheckConstraint("group_name = 'watchlist' OR buy_price > 0", name="ck_portfolio_buy_price_positive"),
         CheckConstraint("asset_class IN ('EQ','MF')", name="ck_portfolio_asset_class"),
+        CheckConstraint("added_price IS NULL OR added_price > 0", name="ck_portfolio_added_price_positive"),
     )
 
 
@@ -986,11 +989,18 @@ class YouTubeVideoSummary(Base):
 class UserPreference(Base):
     """User theme and notification preferences."""
     __tablename__ = "user_preferences"
+    __table_args__ = (
+        CheckConstraint(
+            "preferred_language IN ('en','hi')", name="ck_user_preferences_preferred_language"
+        ),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, unique=True, index=True)
     theme = Column(String(50), default="banknote_standard")
     alerts_enabled = Column(Boolean, default=True)
+    # Language of glossary explanations only (DPDP purpose limitation).
+    preferred_language = Column(String(10), nullable=False, default="en", server_default="en")
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(
         DateTime,
@@ -998,7 +1008,32 @@ class UserPreference(Base):
         onupdate=lambda: datetime.now(timezone.utc),
     )
 
+    # Habit cluster (notification prefs, quiet hours, daily brief, event scope).
+    push_categories = Column(JSON, nullable=True)  # {category: bool}; NULL means defaults
+    quiet_enabled = Column(Boolean, nullable=False, default=True, server_default="1")
+    quiet_start_min = Column(Integer, nullable=False, default=1320, server_default="1320")
+    quiet_end_min = Column(Integer, nullable=False, default=420, server_default="420")
+    quiet_days = Column(JSON, nullable=True)  # ISO weekdays 1-7; NULL means all seven
+    time_zone = Column(String(40), nullable=False, default="Asia/Kolkata", server_default="Asia/Kolkata")
+    brief_time_min = Column(Integer, nullable=False, default=510, server_default="510")
+    event_scope = Column(String(24), nullable=False, default="holdings", server_default="holdings")
+
     user = relationship("User", backref="preferences")
+
+    __table_args__ = (
+        CheckConstraint(
+            "quiet_start_min >= 0 AND quiet_start_min < 1440", name="ck_user_preferences_quiet_start",
+        ),
+        CheckConstraint(
+            "quiet_end_min >= 0 AND quiet_end_min < 1440", name="ck_user_preferences_quiet_end",
+        ),
+        CheckConstraint(
+            "brief_time_min >= 360 AND brief_time_min <= 645", name="ck_user_preferences_brief_time",
+        ),
+        CheckConstraint(
+            "event_scope IN ('holdings','holdings_and_watchlist')", name="ck_user_preferences_event_scope",
+        ),
+    )
 
 
 class UserSubscription(Base):
@@ -1059,8 +1094,27 @@ class InAppNotification(Base):
     is_read = Column(Boolean, default=False)
     action_url = Column(String(500), nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    # Delivery log (habit cluster): one row per notify() call, push or inbox.
+    category = Column(String(32), nullable=True)
+    channel = Column(String(16), nullable=False, default="inbox", server_default="inbox")
+    status = Column(String(20), nullable=False, default="delivered", server_default="delivered")
+    dedupe_key = Column(String(120), nullable=True)
+    error = Column(String(64), nullable=True)
+    attempts = Column(Integer, nullable=False, default=0, server_default="0")
+    sent_at = Column(DateTime, nullable=True)
+    opened_at = Column(DateTime, nullable=True)
 
     user = relationship("User", backref="notifications")
+
+    __table_args__ = (
+        Index("uq_in_app_notifications_dedupe_key", "dedupe_key", unique=True),  # NULLs may repeat
+        Index("ix_in_app_notifications_user_created", "user_id", "created_at"),
+        CheckConstraint(
+            "status IN ('pending','sent','inbox_only','suppressed_pref','suppressed_quiet',"
+            "'capped','failed','delivered')",
+            name="ck_in_app_notifications_status",
+        ),
+    )
 
 class Watchlist(Base):
     """Stores user's watchlist tickers."""
@@ -1921,4 +1975,86 @@ class SchedulerJobStatus(Base):
     last_finished_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     last_error: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     last_result_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_utcnow)
+
+
+class StockEvent(Base):
+    """A classified NSE corporate filing (Event Radar). Public NSE data only and no
+    user data, so it needs no ERASURE_POLICY entry. Retention is 180 days."""
+    __tablename__ = "stock_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    symbol: Mapped[str] = mapped_column(String(30), nullable=False)
+    event_type: Mapped[str] = mapped_column(String(24), nullable=False)
+    severity: Mapped[str] = mapped_column(String(8), nullable=False)
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    summary: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    company_name: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    source: Mapped[str] = mapped_column(String(24), nullable=False, default="nse_rss", server_default="nse_rss")
+    source_feed: Mapped[str] = mapped_column(String(40), nullable=False)
+    source_url: Mapped[str] = mapped_column(String(500), nullable=False)
+    event_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    published_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)  # naive UTC
+    dedupe_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_utcnow)
+
+    __table_args__ = (
+        UniqueConstraint("dedupe_key", name="uq_stock_events_dedupe_key"),
+        Index("ix_stock_events_symbol_published", "symbol", "published_at"),
+        Index("ix_stock_events_event_date", "event_date"),
+        CheckConstraint("event_type IN ('board_meeting','kmp_exit','pledge')", name="ck_stock_events_type"),
+        CheckConstraint("severity IN ('high','medium','low')", name="ck_stock_events_severity"),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Research Lab (docs/platform/api-contract.md). The ml-engine is stateless; these
+# rows are the only Lab state. All three are erased with the user (ERASURE_POLICY).
+# ---------------------------------------------------------------------------
+
+class LabSession(Base):
+    """A Time Machine session: the config plus its append-only action log.
+
+    clock/equity/finished are a cache of the last accepted replay for the list view;
+    the replay of (config, actions) on the ml-engine is the source of truth.
+    """
+    __tablename__ = "lab_sessions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    title: Mapped[str] = mapped_column(String(120), nullable=False)
+    scenario_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    config: Mapped[Any] = mapped_column(JSON, nullable=False, default=dict)
+    actions: Mapped[Any] = mapped_column(JSON, nullable=False, default=list)  # each may carry client_action_id
+    clock: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    equity: Mapped[Optional[Decimal]] = mapped_column(Numeric(14, 4), nullable=True)
+    finished: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_utcnow)
+
+    __table_args__ = (Index("ix_lab_sessions_user_id", "user_id"),)
+
+
+class LabExperiment(Base):
+    """One hypothesis run in the user's trials ledger (its count feeds trials_so_far)."""
+    __tablename__ = "lab_experiments"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    question: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    spec: Mapped[Any] = mapped_column(JSON, nullable=False, default=dict)
+    fingerprint: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    verdict: Mapped[str] = mapped_column(String(32), nullable=False)
+    report: Mapped[Any] = mapped_column(JSON, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_utcnow)
+
+    __table_args__ = (Index("ix_lab_experiments_user_id", "user_id"),)
+
+
+class LabLearnerProgress(Base):
+    """Lab School progress: the opaque learner state the ml-engine grader returns."""
+    __tablename__ = "lab_learner_progress"
+
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    state: Mapped[Any] = mapped_column(JSON, nullable=False, default=dict)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_utcnow)

@@ -14,10 +14,21 @@ from sqlalchemy import event
 import database
 from database import get_session
 from models.db_models import ForumBoard, ForumPoll, ForumPost, ForumThread  # pyright: ignore[reportMissingImports]
+from services import feature_flags
 from services.forum_service import get_thread_detail, list_threads, thread_counts_by_board
 
 _USERS = (990001, 990002)
 _BASE_TIME = datetime(2026, 1, 1, tzinfo=timezone.utc)
+
+
+@pytest.fixture(autouse=True)
+def _focus_flags_on(monkeypatch):
+    """I04: the forum and IPO hub are off by default; these tests exercise them."""
+    monkeypatch.setenv("NIVESH_FLAG_FORUM", "true")
+    monkeypatch.setenv("NIVESH_FLAG_IPO_HUB", "true")
+    feature_flags._reset_cache()
+    yield
+    feature_flags._reset_cache()
 
 
 @contextmanager

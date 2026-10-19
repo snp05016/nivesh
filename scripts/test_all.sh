@@ -490,7 +490,6 @@ fi
 if section "15. NOTIFICATIONS"; then
 test_http        "Register device → 401"                        "POST"   "/notifications/register-device" 401
 test_http        "Notification logs → 401"                      "GET"    "/notifications/1"               401
-test_http        "Test notification → 403 or 401"               "POST"   "/notifications/test"            403
 test_http        "Morning summary push → 401 or 403"            "POST"   "/notifications/morning-summary-push" 401
 test_http        "Notification check → 401"                     "GET"    "/alerts/check/1"                401
 fi

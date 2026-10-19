@@ -20,9 +20,20 @@ from core.security import require_admin
 from database import get_session
 from main import app
 from models.db_models import ForumPost, ForumReport
+from services import feature_flags
 from tests.conftest import REGISTER_CONSENT
 
 _ALLOW = {"action": "allow", "spam_score": 0, "sentiment": "neutral"}
+
+
+@pytest.fixture(autouse=True)
+def _focus_flags_on(monkeypatch):
+    """I04: the forum and IPO hub are off by default; these tests exercise them."""
+    monkeypatch.setenv("NIVESH_FLAG_FORUM", "true")
+    monkeypatch.setenv("NIVESH_FLAG_IPO_HUB", "true")
+    feature_flags._reset_cache()
+    yield
+    feature_flags._reset_cache()
 
 
 @pytest.fixture(autouse=True)

@@ -1,23 +1,26 @@
 import asyncio
 import time
 from datetime import datetime, timezone
+from decimal import Decimal
 from typing import Optional, List, Dict, Any
 import logging
 import json
 
 from helpers import (
-    get_session, User, Portfolio, AnalysisHistory, DeviceToken, AdvisorInsight,
-    _to_ns, _yf_price, _yf_fetch_info, _get_asm_gsm_lists
+    get_session, User, Portfolio, DeviceToken, AdvisorInsight,
+    _to_ns, _yf_price, _get_asm_gsm_lists
 )
 from database import MarketErrorLog
 from repositories.analysis_repo import latest_signals_by_ticker
 from services.yfinance_client import get_quotes
 from services.harvester_reformatter import strip_emoji
+from services.advisory_guard import first_advisory_term, neutralize_push
 from services.notifications_inbox import create_notification
 from services.preferences import push_allowed
 from services.alerts_service import PushResult, send_apns
 from services.sebi_registry import registration_for_channel
 from services import entitlement_service
+from services.market_calendar import IST
 
 _watchlist_price_cache: dict = {}
 _WATCHLIST_CACHE_TTL = 120
@@ -46,6 +49,13 @@ def add_to_watchlist(user_id: int, ticker: str, company_name: str) -> dict:
         count = session.query(Portfolio).filter_by(user_id=user_id, group_name="watchlist").count()
     # Outside the session: get_effective_tier may create the subscription row.
     entitlement_service.enforce_quota(user_id, "watchlist_size", count)
+    # I32: best-effort quote at add time (PERF-07 cached); NULL when unavailable.
+    try:
+        price, _ = _yf_price(_to_ns(ticker))
+    except Exception as e:
+        logging.info(f"[Watchlist] price at add unavailable for {ticker}: {e}")
+        price = None
+    added_price = Decimal(str(round(price, 4))) if price and price > 0 else None
     with get_session() as session:
         new_item = Portfolio(
             user_id=user_id,
@@ -54,11 +64,22 @@ def add_to_watchlist(user_id: int, ticker: str, company_name: str) -> dict:
             shares=0,
             buy_price=0,
             group_name="watchlist",
+            added_price=added_price,
         )
         session.add(new_item)
         session.commit()
     _watchlist_price_cache.pop(user_id, None)
-    return {"success": True, "ticker": ticker}
+    return {"success": True, "ticker": ticker,
+            "added_price": float(added_price) if added_price else None}
+
+
+def _ist_date_iso(dt: Optional[datetime]) -> Optional[str]:
+    """IST calendar date of a stored timestamp; naive values are UTC (SQLite drops tz)."""
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(IST).date().isoformat()
 
 def remove_from_watchlist(user_id: int, ticker: str) -> dict:
     ticker = ticker.upper()
@@ -86,10 +107,10 @@ def get_watchlist(user_id: int) -> Optional[dict]:
         items = session.query(Portfolio).filter_by(
             user_id=user_id, group_name="watchlist"
         ).all()
-        items_data = [(h.ticker, h.company_name) for h in items]
+        items_data: List[tuple] = [(h.ticker, h.company_name, h.added_price, h.created_at) for h in items]
 
     # One concurrent, cached quote fetch for the whole list (PERF-07).
-    ns_by_ticker = {t: _to_ns(t) for t, _ in items_data}
+    ns_by_ticker = {t: _to_ns(t) for t, *_ in items_data}
     quotes = get_quotes(list(ns_by_ticker.values()))
 
     try:
@@ -98,7 +119,7 @@ def get_watchlist(user_id: int) -> Optional[dict]:
         logging.warning(f"Caught exception: {e}")
         asm_gsm_data = {"ASM": set(), "GSM": set()}
 
-    tickers = [t for t, _ in items_data]
+    tickers = [t for t, *_ in items_data]
     latest: dict = {}
     try:
         with get_session() as session:
@@ -107,11 +128,17 @@ def get_watchlist(user_id: int) -> Optional[dict]:
         logging.error(f"Error occurred: {e}", exc_info=True)
 
     result = []
-    for ticker, company_name in items_data:
+    for ticker, company_name, added_raw, created_at in items_data:
         current_price, prev_close = quotes.get(ns_by_ticker[ticker], (None, None))
         day_change_pct = 0.0
         if current_price and prev_close and prev_close > 0:
             day_change_pct = round((current_price - prev_close) / prev_close * 100, 2)
+
+        # I32: never computed from a 0/None sentinel (SILENT-01).
+        added = float(added_raw) if added_raw is not None else None
+        since_added_pct = None
+        if added and added > 0 and current_price and current_price > 0:
+            since_added_pct = round((current_price - added) / added * 100, 2)
 
         sig = (latest.get(ticker) or [{}])[0]
         last_signal = sig.get("signal")
@@ -140,6 +167,9 @@ def get_watchlist(user_id: int) -> Optional[dict]:
             "last_signal": last_signal,
             "last_signal_date": last_signal_date,
             "asm_gsm_status": asm_gsm_status,
+            "added_price": added,
+            "added_at": _ist_date_iso(created_at),
+            "since_added_pct": since_added_pct,
         })
 
     # SILENT-11: a missing price is a transient failure; don't pin it for the TTL.
@@ -158,32 +188,6 @@ def _deliver_apns(user_id: int, payload: dict) -> PushResult:
 
 def _with_delivery(payload: dict, result: PushResult) -> dict:
     return {**payload, "delivered": result == PushResult.SENT, "delivery_status": result.value}
-
-def test_notification(user_id: int, ticker: str, exchange: str) -> dict:
-    ns_ticker = _to_ns(ticker)
-    info = _yf_fetch_info(ns_ticker)
-    price = info.get("currentPrice") or info.get("regularMarketPrice") or 0.0
-
-    signal_str = "UNKNOWN"
-    confidence = None
-    with get_session() as session:
-        row = session.query(AnalysisHistory).filter(
-            AnalysisHistory.ticker == ticker.upper()
-        ).order_by(AnalysisHistory.created_at.desc()).first()
-        if row:
-            signal_str = row.signal
-            confidence = row.confidence_pct
-
-    conf_str = f" | Confidence: {int(confidence)}%" if confidence else ""
-    price_str = f"₹{price:,.2f}" if price else "Price unavailable"
-
-    payload = {
-        "title": f"{ticker.upper()} — {signal_str}",
-        "body": f"{price_str}{conf_str}",
-        "data": {"ticker": ticker.upper(), "exchange": exchange},
-    }
-
-    return _with_delivery(payload, _deliver_apns(user_id, payload))
 
 def push_morning_summary(user_id: int) -> Optional[dict]:
     with get_session() as session:
@@ -213,16 +217,24 @@ def push_morning_summary(user_id: int) -> Optional[dict]:
         item = priority_items[0]
         first_action = f"\n- {strip_emoji(item.get('ticker', ''))}: {strip_emoji(item.get('action', ''))}"
 
-    body = f"Good morning, {display_name}! [{mood_label}] {strip_emoji(summary_data.get('summary', '')[:80])}{first_action}"
+    orig_body = body = f"Good morning, {display_name}! [{mood_label}] {strip_emoji(summary_data.get('summary', '')[:80])}{first_action}"
 
+    # I03: the first_action line can carry a daily action; neutralise once so the
+    # inbox row and the push carry the same text.
+    orig_title = f"Daily Market Brief — {mood.upper()}"
+    title, body, changed = neutralize_push(orig_title, body)
+    if changed:
+        logging.getLogger(__name__).warning("push_advisory_blocked", extra={
+            "category": "morning_brief",
+            "term": first_advisory_term(orig_title) or first_advisory_term(orig_body)})
     payload = {
-        "title": f"Daily Market Brief — {mood.upper()}",
+        "title": title,
         "body": body,
         "data": {"type": "morning_summary"},
     }
 
     create_notification(user_id, "morning_brief", payload["title"], body)
-    # Flat like /notifications/test: iOS decodes title/body at the root.
+    # Flat: iOS decodes title/body at the root.
     out = _with_delivery(payload, _deliver_apns(user_id, payload))
     return {**out, "success": out["delivered"]}
 

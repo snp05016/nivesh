@@ -56,11 +56,13 @@ struct PreferenceDTO: Codable {
     let userId: Int
     let theme: String
     let alertsEnabled: Bool
+    let preferredLanguage: String?
 
     enum CodingKeys: String, CodingKey {
         case theme
         case userId = "user_id"
         case alertsEnabled = "alerts_enabled"
+        case preferredLanguage = "preferred_language"
     }
 }
 

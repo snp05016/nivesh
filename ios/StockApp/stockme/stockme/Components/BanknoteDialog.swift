@@ -23,16 +23,16 @@ struct BanknoteDialogButton: Identifiable {
     let id = UUID()
     let title: String
     let role: Role
-    let action: () -> Void
+    let action: @MainActor () -> Void
 
-    init(_ title: String, role: Role = .normal, action: @escaping () -> Void = {}) {
+    init(_ title: String, role: Role = .normal, action: @escaping @MainActor () -> Void = {}) {
         self.title = title
         self.role = role
         self.action = action
     }
 
     /// Convenience cancel button.
-    static func cancel(_ title: String = "Cancel", action: @escaping () -> Void = { HapticManager.selection(); }) -> BanknoteDialogButton {
+    static func cancel(_ title: String = "Cancel", action: @escaping @MainActor () -> Void = { HapticManager.selection(); }) -> BanknoteDialogButton {
         BanknoteDialogButton(title, role: .cancel, action: action)
     }
 }

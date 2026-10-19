@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+
+{% block announce %}
+  <span class="nv-announce">
+    {% include ".icons/material/flask-outline.svg" %}
+    The <strong>Research Lab</strong> ships behind the <code>research_lab</code> flag (default off) pending legal review of NSE data terms.
+    <a href="{{ 'platform/data/#legal-position' | url }}">Why?</a>
+  </span>
+{% endblock %}

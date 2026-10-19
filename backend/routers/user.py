@@ -1,4 +1,3 @@
-import logging
 from fastapi import APIRouter, HTTPException, Header, Depends, Query
 from datetime import datetime, timezone
 import time
@@ -16,11 +15,6 @@ class DeviceTokenRegisterRequest(BaseModel):
     user_id: int
     device_token: str
     platform: str = "ios"
-
-class TestNotificationRequest(BaseModel):
-    user_id: int
-    ticker: str
-    exchange: str = "NSE"
 
 class MorningSummaryPushRequest(BaseModel):
     user_id: int
@@ -80,16 +74,6 @@ def notifications_register_device(req: DeviceTokenRegisterRequest, token_user: i
         raise HTTPException(status_code=409, detail="Device token already registered")
     except Exception as e:
         raise HTTPException(status_code=500, detail="Internal server error")
-
-
-@router.post("/notifications/test")
-def notifications_test(req: TestNotificationRequest, token_user: int = Depends(require_auth)):
-    assert_same_user(req.user_id, token_user)
-    try:
-        return user_service.test_notification(token_user, req.ticker, req.exchange)
-    except Exception:
-        logging.exception("[NOTIFICATIONS/TEST] failed for user %s", req.user_id)
-        raise HTTPException(status_code=503, detail="Could not build test notification")
 
 
 @router.post("/notifications/morning-summary-push")

@@ -29,67 +29,11 @@ enum Denomination {
     }
 }
 
-// MARK: - RBI Seal Background (replaces breaking numeral)
-
-struct RBISealBackground: View {
-    var opacity: Double = 0.04
-
-    var body: some View {
-        ZStack {
-            Circle()
-                .stroke(lineWidth: 1.5)
-                .frame(width: 180, height: 180)
-            Circle()
-                .stroke(lineWidth: 0.8)
-                .frame(width: 160, height: 160)
-
-            // Curved top text "RESERVE BANK OF INDIA"
-            ForEach(Array("RESERVE BANK OF INDIA".enumerated()), id: \.offset) { i, char in
-                let total = 20
-                let angle = Double(i - total / 2) * 9.5 - 90
-                Text(String(char))
-                    .font(Theme.serialNumberFont(size: 9))
-                    .rotationEffect(.degrees(angle + 90))
-                    .offset(y: -70)
-                    .rotationEffect(.degrees(angle))
-            }
-
-            // Centre ₹
-            Text("₹")
-                .font(Font.custom("Georgia-Bold", size: 52))
-                .offset(y: 4)
-
-            // Curved bottom text "SATYAMEVA JAYATE"
-            ForEach(Array("SATYAMEVA JAYATE".enumerated()), id: \.offset) { i, char in
-                let total = 16
-                let angle = Double(i - total / 2) * 11.0 + 90
-                Text(String(char))
-                    .font(Theme.serialNumberFont(size: 8))
-                    .rotationEffect(.degrees(angle - 90))
-                    .offset(y: 70)
-                    .rotationEffect(.degrees(angle))
-            }
-
-            // Cardinal dots
-            ForEach([0, 90, 180, 270], id: \.self) { angle in
-                Circle()
-                    .fill()
-                    .frame(width: 4, height: 4)
-                    .offset(y: -68)
-                    .rotationEffect(.degrees(Double(angle)))
-            }
-        }
-        .foregroundStyle(.primary)
-        .opacity(opacity)
-        .allowsHitTesting(false)
-    }
-}
-
 // MARK: - Micro-text Guilloche Strip
 
 struct MicroTextStrip: View {
     var body: some View {
-        let text = "NIVESH ₹ RBI भारत NIVESH ₹ RBI भारत NIVESH ₹ RBI भारत NIVESH ₹ RBI भारत NIVESH ₹ RBI भारत "
+        let text = "NIVESH ₹ भारत NIVESH ₹ भारत NIVESH ₹ भारत NIVESH ₹ भारत NIVESH ₹ भारत "
         Text(text + text)
             .font(Theme.serialNumberFont(size: 7))
             .foregroundStyle(.primary.opacity(0.10))

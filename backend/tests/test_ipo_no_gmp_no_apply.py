@@ -8,10 +8,21 @@ import pytest
 
 from database import get_session
 from models.db_models import IPOListing  # pyright: ignore[reportMissingImports]  (checker resolves `models` to ml-engine/models)
+from services import feature_flags
 from services.ipo_service import _MOCK_IPOS
 
 IPO_HUB_VIEW = (Path(__file__).resolve().parents[2] / "ios" / "StockApp" / "stockme" / "stockme"
                 / "Views" / "IPOHubView.swift")
+
+
+@pytest.fixture(autouse=True)
+def _focus_flags_on(monkeypatch):
+    """I04: the forum and IPO hub are off by default; these tests exercise them."""
+    monkeypatch.setenv("NIVESH_FLAG_FORUM", "true")
+    monkeypatch.setenv("NIVESH_FLAG_IPO_HUB", "true")
+    feature_flags._reset_cache()
+    yield
+    feature_flags._reset_cache()
 
 
 @pytest.fixture()

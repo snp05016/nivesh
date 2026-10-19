@@ -13,7 +13,6 @@ import helpers
 import main
 import routers.analysis as analysis_router
 import routers.earnings as earnings_router
-import routers.user as user_router
 
 
 def _boom(*_args, **_kwargs):
@@ -68,16 +67,6 @@ def test_earnings_progress_unavailable_503(client):
     # FAKE-08: no honest results-filing source, so the endpoint never invents progress.
     resp = client.get("/api/v1/earnings/progress")
     assert resp.status_code == 503
-
-
-def test_notifications_test_failure_503(client, monkeypatch):
-    from database import create_access_token
-    monkeypatch.setattr(user_router.user_service, "test_notification", _boom)
-    # 990001: seeded stub user (conftest); tokens need a real user (AUTH-13).
-    resp = client.post("/notifications/test", json={"user_id": 990001, "ticker": "TCS", "exchange": "NSE"},
-                       headers={"Authorization": f"Bearer {create_access_token(990001)}"})
-    assert resp.status_code == 503
-    assert "secret-path" not in resp.text
 
 
 def test_screener_failure_503(client, monkeypatch):
