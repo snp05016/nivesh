@@ -182,3 +182,19 @@ No API field anywhere is named `signal`, `rating`, `target*`, `upside*`, `downsi
 | 2 | May a stock-level frequency (cohort) be shown while unregistered? | No. `tier_only`; no cohort UI |
 | 3 | RA registration path, required for cohort display and any public track record. PaRRVA (past risk and return verification) is offered only to registered IAs and RAs [verify], so a verified track record is out of scope until registered | Unresolved; live numbers admin-only |
 | 4 | NSE end-of-day data licence or licensed vendor for the snapshot prices (section 9) | Stage 3 blocked until confirmed |
+
+## 12. Deferred: visible track record and My analyses (roadmap I21)
+
+Nothing is built for I21 now. The engine's gate stays as it is (SPEC 8.6, D37): live numbers appear only on the admin track-record endpoint, and `RESEARCH_TRACK_RECORD_PUBLIC` takes effect only with a valid `RESEARCH_SEBI_RA_REG_NO` (section 6). That engine flag is the only switch; there is no second one.
+
+Preconditions before any user-visible track record, in order:
+
+1. SEBI RA registration and the legal `RA_DISCLAIMER_TEXT` change (section 6).
+2. Live gate G7 passed for the horizon shown (SPEC 8.5).
+3. The displayed metric verified under SEBI's PaRRVA framework (confirm current eligibility and which metrics it verifies with counsel at that time).
+4. A legal-approved display sentence committed in code that states n, a confidence interval and the benchmark.
+5. Then `RESEARCH_TRACK_RECORD_PUBLIC=true`.
+
+Data rules: any track-record query filters on the production `procedure_id` and never mixes baseline and model rows. The figures are shown in the app only, never in marketing, share cards, push notifications or App Store copy.
+
+"My analyses" is Phase 3 and is built from engine report history. A per-user view log would be new personal data (DPDP purpose, erasure and export) and needs its own review.
