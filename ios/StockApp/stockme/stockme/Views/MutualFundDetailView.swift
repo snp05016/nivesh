@@ -18,20 +18,29 @@ struct MutualFundDetailView: View {
 
                 GuillocheDivider().padding(.horizontal, Theme.screenPadding)
 
-                MutualFundReturnsGrid(fund: vm.fund)
+                MutualFundReturnsGrid(fund: vm.fund, historyStart: vm.historyStart)
                     .padding(.horizontal, Theme.screenPadding)
 
                 MutualFundNAVHistorySection(vm: vm)
                     .padding(.horizontal, Theme.screenPadding)
 
+                if vm.fund.isinGrowth != nil || vm.fund.isinReinvest != nil {
+                    MutualFundISINSection(fund: vm.fund)
+                        .padding(.horizontal, Theme.screenPadding)
+                }
+
                 MutualFundSIPEntryPoint { showSIPCalculator = true }
                     .padding(.horizontal, Theme.screenPadding)
 
-                MutualFundRiskometerSection(fund: vm.fund)
-                    .padding(.horizontal, Theme.screenPadding)
+                if vm.fund.parsedRiskLevel != nil {
+                    MutualFundRiskometerSection(fund: vm.fund)
+                        .padding(.horizontal, Theme.screenPadding)
+                }
 
-                MutualFundFundManagerSection(fund: vm.fund)
-                    .padding(.horizontal, Theme.screenPadding)
+                if vm.fund.fundManager != nil {
+                    MutualFundFundManagerSection(fund: vm.fund)
+                        .padding(.horizontal, Theme.screenPadding)
+                }
             }
             .padding(.vertical, Theme.screenPadding)
         }
@@ -81,63 +90,169 @@ struct MutualFundDetailHeader: View {
                 Spacer()
             }
 
-            HStack(spacing: Theme.Spacing.card) {
-                VStack(alignment: .leading, spacing: Theme.Spacing.small) {
-                    Text("NAV")
-                        .font(Theme.officialStampFont(size: 11, relativeTo: .caption))
-                        .tracking(1.5)
-                        .foregroundColor(Theme.inkTertiary)
-                    Text(fund.navDisplay)
-                        .font(Theme.serialNumberFont(size: 22, relativeTo: .title2))
-                        .foregroundColor(Theme.inkPrimary)
-                    if let navDate = fund.navDate {
-                        Text("As of \(navDate)")
-                            .font(Theme.officialStampFont(size: 9, relativeTo: .caption2))
-                            .foregroundColor(Theme.inkTertiary)
-                    }
-                }
+            MutualFundNAVLine(fund: fund)
+                .padding(.top, Theme.Spacing.small)
 
-                Spacer()
-
-                VStack(alignment: .trailing, spacing: Theme.Spacing.small) {
-                    Text("PLAN")
-                        .font(Theme.officialStampFont(size: 11, relativeTo: .caption))
-                        .tracking(1.5)
-                        .foregroundColor(Theme.inkTertiary)
-                    Text(fund.planLabel)
-                        .font(Theme.serialNumberFont(size: 14, relativeTo: .subheadline))
-                        .foregroundColor(Theme.inkPrimary)
-                }
-            }
-            .padding(.top, Theme.Spacing.small)
+            MutualFundPlanChips(fund: fund)
         }
         .padding(.horizontal, Theme.screenPadding)
     }
 }
 
-// MARK: - Returns Grid (1Y / 3Y / 5Y + Expense Ratio + AUM)
+// MARK: - NAV line and plan chips
+
+struct MutualFundNAVLine: View {
+    let fund: MutualFundDTO
+
+    private var text: String {
+        guard fund.nav != nil else { return "NAV unavailable" }
+        let value = fund.isAMFISourced ? fund.navPreciseDisplay : fund.navDisplay
+        guard let date = fund.navDate else { return "NAV \(value)" }
+        let source = fund.isAMFISourced ? " · Source: AMFI" : ""
+        return "NAV \(value) as of \(MutualFundDateText.short(date))\(source)"
+    }
+
+    var body: some View {
+        Text(text)
+            .font(Theme.serialNumberFont(size: 16, relativeTo: .headline))
+            .foregroundColor(Theme.inkPrimary)
+    }
+}
+
+struct MutualFundPlanChips: View {
+    let fund: MutualFundDTO
+
+    var body: some View {
+        HStack(spacing: Theme.Spacing.medium) {
+            MutualFundInfoChip(label: (fund.isDirectPlan ?? true) ? "Direct" : "Regular")
+            MutualFundInfoChip(label: (fund.isGrowthPlan ?? true) ? "Growth" : "IDCW")
+        }
+    }
+}
+
+private struct MutualFundInfoChip: View {
+    let label: String
+
+    var body: some View {
+        Text(label.uppercased())
+            .font(Theme.officialStampFont(size: 10, relativeTo: .caption2))
+            .tracking(1.2)
+            .padding(.horizontal, Theme.Spacing.standard)
+            .padding(.vertical, Theme.Spacing.small)
+            .foregroundColor(Theme.inkSecondary)
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.CornerRadius.badge)
+                    .stroke(Theme.borderFine, lineWidth: 1)
+            )
+    }
+}
+
+// MARK: - Returns Grid (only figures the backend actually reports)
 
 struct MutualFundReturnsGrid: View {
     let fund: MutualFundDTO
+    let historyStart: String?
 
     private let columns = [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())]
 
+    private var hasReturns: Bool {
+        fund.returns1y != nil || fund.returns3y != nil || fund.returns5y != nil
+    }
+
     var body: some View {
-        LazyVGrid(columns: columns, spacing: Theme.Spacing.card) {
-            MutualFundFactTile(label: "1Y Return", value: fund.returns1y.map(IndianFormatter.delta) ?? "—", valueColor: colorFor(fund.returns1y))
-            MutualFundFactTile(label: "3Y CAGR", value: fund.returns3y.map(IndianFormatter.delta) ?? "—", valueColor: colorFor(fund.returns3y))
-            MutualFundFactTile(label: "5Y CAGR", value: fund.returns5y.map(IndianFormatter.delta) ?? "—", valueColor: colorFor(fund.returns5y))
-            MutualFundFactTile(label: "Expense Ratio", value: fund.expenseRatioDisplay)
-            MutualFundFactTile(label: "AUM", value: fund.aumDisplay)
-            MutualFundFactTile(label: "Scheme Code", value: fund.schemeCode ?? "—")
+        VStack(alignment: .leading, spacing: Theme.Spacing.card) {
+            LazyVGrid(columns: columns, spacing: Theme.Spacing.card) {
+                if let value = fund.returns1y {
+                    MutualFundFactTile(label: "1Y Change", value: IndianFormatter.delta(value), valueColor: colorFor(value))
+                }
+                if let value = fund.returns3y {
+                    MutualFundFactTile(label: "3Y CAGR", value: IndianFormatter.delta(value), valueColor: colorFor(value))
+                }
+                if let value = fund.returns5y {
+                    MutualFundFactTile(label: "5Y CAGR", value: IndianFormatter.delta(value), valueColor: colorFor(value))
+                }
+                if fund.expenseRatio != nil {
+                    MutualFundFactTile(label: "Expense Ratio", value: fund.expenseRatioDisplay)
+                }
+                if fund.aumCr != nil {
+                    MutualFundFactTile(label: "AUM", value: fund.aumDisplay)
+                }
+                MutualFundFactTile(label: "Scheme Code", value: fund.schemeCode ?? "—")
+            }
+            MutualFundReturnsCaption(hasReturns: hasReturns, historyStart: historyStart)
         }
         .padding(Theme.Spacing.card)
         .banknoteCard()
     }
 
-    private func colorFor(_ value: Double?) -> Color {
-        guard let value else { return Theme.inkPrimary }
-        return value >= 0 ? Theme.bullGreen : Theme.bearRed
+    private func colorFor(_ value: Double) -> Color {
+        value >= 0 ? Theme.bullGreen : Theme.bearRed
+    }
+}
+
+/// Explains why returns are absent: Nivesh records AMFI NAVs from launch and computes no returns yet.
+struct MutualFundReturnsCaption: View {
+    let hasReturns: Bool
+    let historyStart: String?
+
+    private var text: String {
+        if hasReturns {
+            return "Point-to-point change in NAV. Past performance does not indicate future returns."
+        }
+        if let historyStart {
+            return "Returns appear once Nivesh has recorded at least a year of NAVs for this fund (recording since \(MutualFundDateText.short(historyStart)))."
+        }
+        return "Nivesh hasn't recorded NAV history for this fund yet."
+    }
+
+    var body: some View {
+        Text(text)
+            .font(Theme.engravedSerif(size: 11, relativeTo: .caption))
+            .foregroundColor(Theme.inkTertiary)
+    }
+}
+
+// MARK: - ISINs
+
+struct MutualFundISINSection: View {
+    let fund: MutualFundDTO
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.card) {
+            Text("ISIN")
+                .font(Theme.engravedSerif(size: 18, weight: .semibold, relativeTo: .title3))
+                .foregroundColor(Theme.inkPrimary)
+
+            VStack(alignment: .leading, spacing: Theme.Spacing.standard) {
+                if let isin = fund.isinGrowth {
+                    MutualFundISINRow(label: "Growth / payout", isin: isin)
+                }
+                if let isin = fund.isinReinvest {
+                    MutualFundISINRow(label: "Reinvestment", isin: isin)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(Theme.Spacing.card)
+            .banknoteCard()
+        }
+    }
+}
+
+private struct MutualFundISINRow: View {
+    let label: String
+    let isin: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.small) {
+            Text(label.uppercased())
+                .font(Theme.officialStampFont(size: 9, relativeTo: .caption2))
+                .tracking(1.2)
+                .foregroundColor(Theme.inkTertiary)
+            Text(isin)
+                .font(Theme.serialNumberFont(size: 14, relativeTo: .subheadline))
+                .foregroundColor(Theme.inkPrimary)
+                .textSelection(.enabled)
+        }
     }
 }
 
@@ -174,7 +289,7 @@ struct MutualFundNAVHistorySection: View {
                 .foregroundColor(Theme.inkPrimary)
 
             VStack(spacing: Theme.Spacing.medium) {
-                MutualFundNAVChart(points: vm.navHistory, isLoading: vm.isLoadingNAV)
+                MutualFundNAVChart(points: vm.navHistory, isLoading: vm.isLoadingNAV, historyStart: vm.historyStart)
 
                 HStack(spacing: Theme.Spacing.medium) {
                     ForEach(MutualFundNAVRange.allCases) { range in
@@ -194,6 +309,14 @@ struct MutualFundNAVHistorySection: View {
 private struct MutualFundNAVChart: View {
     let points: [MutualFundNAVPoint]
     let isLoading: Bool
+    let historyStart: String?
+
+    private var emptyText: String {
+        if let historyStart {
+            return "Nivesh began recording this fund's NAV on \(MutualFundDateText.short(historyStart)). The chart fills in as AMFI publishes new NAVs."
+        }
+        return "NAV history isn't available for this fund yet."
+    }
 
     var body: some View {
         Group {
@@ -203,9 +326,10 @@ private struct MutualFundNAVChart: View {
                     .frame(height: 200, alignment: .center)
                     .frame(maxWidth: .infinity)
             } else if points.isEmpty {
-                Text("NAV history isn't available for this fund yet.")
+                Text(emptyText)
                     .font(Theme.engravedSerif(size: 12, relativeTo: .footnote))
                     .foregroundColor(Theme.inkTertiary)
+                    .multilineTextAlignment(.center)
                     .frame(height: 200, alignment: .center)
                     .frame(maxWidth: .infinity)
             } else {

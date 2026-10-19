@@ -65,6 +65,15 @@ struct MutualFundDTO: Codable, Identifiable, Equatable {
     /// (frozen illustrative figures, not a live AMFI feed). The UI must label it.
     let isSample: Bool?
 
+    // Data foundation (AMFI universe). All optional: older backends omit them.
+    let schemeType: String?
+    let navSource: String?
+    let isActive: Bool?
+    let isinGrowth: String?
+    let isinReinvest: String?
+    /// ISO date (yyyy-MM-dd) of the first NAV Nivesh recorded for this fund. Detail only.
+    let historyStart: String?
+
     enum CodingKeys: String, CodingKey {
         case id
         // Backend (MutualFundResponse) sends scheme_name/amc_name, not the
@@ -86,6 +95,12 @@ struct MutualFundDTO: Codable, Identifiable, Equatable {
         case isDirectPlan = "is_direct_plan"
         case isGrowthPlan = "is_growth_plan"
         case isSample = "is_sample"
+        case schemeType = "scheme_type"
+        case navSource = "nav_source"
+        case isActive = "is_active"
+        case isinGrowth = "isin_growth"
+        case isinReinvest = "isin_reinvest"
+        case historyStart = "history_start"
     }
 
     init(
@@ -106,7 +121,13 @@ struct MutualFundDTO: Codable, Identifiable, Equatable {
         fundManager: String? = nil,
         isDirectPlan: Bool? = nil,
         isGrowthPlan: Bool? = nil,
-        isSample: Bool? = nil
+        isSample: Bool? = nil,
+        schemeType: String? = nil,
+        navSource: String? = nil,
+        isActive: Bool? = nil,
+        isinGrowth: String? = nil,
+        isinReinvest: String? = nil,
+        historyStart: String? = nil
     ) {
         self.id = id
         self.fundName = fundName
@@ -126,6 +147,12 @@ struct MutualFundDTO: Codable, Identifiable, Equatable {
         self.isDirectPlan = isDirectPlan
         self.isGrowthPlan = isGrowthPlan
         self.isSample = isSample
+        self.schemeType = schemeType
+        self.navSource = navSource
+        self.isActive = isActive
+        self.isinGrowth = isinGrowth
+        self.isinReinvest = isinReinvest
+        self.historyStart = historyStart
     }
 
     // Decode defensively: allow the current minimal router payload (no MF
@@ -152,12 +179,27 @@ struct MutualFundDTO: Codable, Identifiable, Equatable {
         isDirectPlan = try c.decodeIfPresent(Bool.self, forKey: .isDirectPlan)
         isGrowthPlan = try c.decodeIfPresent(Bool.self, forKey: .isGrowthPlan)
         isSample = try c.decodeIfPresent(Bool.self, forKey: .isSample)
+        schemeType = try c.decodeIfPresent(String.self, forKey: .schemeType)
+        navSource = try c.decodeIfPresent(String.self, forKey: .navSource)
+        isActive = try c.decodeIfPresent(Bool.self, forKey: .isActive)
+        isinGrowth = try c.decodeIfPresent(String.self, forKey: .isinGrowth)
+        isinReinvest = try c.decodeIfPresent(String.self, forKey: .isinReinvest)
+        historyStart = try c.decodeIfPresent(String.self, forKey: .historyStart)
     }
 
     var navDisplay: String {
         guard let nav else { return "—" }
         return String(format: "₹%.2f", nav)
     }
+
+    /// Four-decimal NAV as AMFI publishes it, e.g. "₹123.4567".
+    var navPreciseDisplay: String {
+        guard let nav else { return "—" }
+        return String(format: "₹%.4f", nav)
+    }
+
+    /// True when this row's NAV comes straight from the AMFI file.
+    var isAMFISourced: Bool { navSource == "amfi" }
 
     var aumDisplay: String {
         guard let aumCr else { return "—" }
@@ -178,6 +220,118 @@ struct MutualFundDTO: Codable, Identifiable, Equatable {
         let plan = (isDirectPlan ?? true) ? "Direct" : "Regular"
         let option = (isGrowthPlan ?? true) ? "Growth" : "IDCW"
         return "\(plan) · \(option)"
+    }
+}
+
+// MARK: - Discovery query, filters and paging
+
+/// GET /api/mutual-funds/filters — categories with their sub-categories, and fund houses.
+struct MutualFundFilters: Codable, Equatable {
+    let categories: [String: [String]]
+    let amcs: [String]
+
+    var sortedCategories: [String] { categories.keys.sorted() }
+}
+
+enum MutualFundPlanFilter: String, CaseIterable, Identifiable {
+    case direct, regular, all
+
+    var id: String { rawValue }
+    var label: String {
+        switch self {
+        case .direct:  return "Direct"
+        case .regular: return "Regular"
+        case .all:     return "All plans"
+        }
+    }
+}
+
+enum MutualFundOptionFilter: String, CaseIterable, Identifiable {
+    case growth, idcw, all
+
+    var id: String { rawValue }
+    var label: String {
+        switch self {
+        case .growth: return "Growth"
+        case .idcw:   return "IDCW"
+        case .all:    return "All options"
+        }
+    }
+}
+
+/// One page request for the discovery list. Defaults match the backend's: Direct, Growth, 50 per page.
+struct MutualFundQuery: Equatable {
+    var search: String = ""
+    var plan: MutualFundPlanFilter = .direct
+    var option: MutualFundOptionFilter = .growth
+    var category: String? = nil
+    var subCategory: String? = nil
+    var amc: String? = nil
+    var limit: Int = 50
+    var offset: Int = 0
+
+    /// Always plan, option, limit and offset; the rest only when non-empty (search trimmed).
+    var queryItems: [URLQueryItem] {
+        var items = [
+            URLQueryItem(name: "plan", value: plan.rawValue),
+            URLQueryItem(name: "option", value: option.rawValue),
+            URLQueryItem(name: "limit", value: String(limit)),
+            URLQueryItem(name: "offset", value: String(offset)),
+        ]
+        let term = search.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !term.isEmpty { items.append(URLQueryItem(name: "search", value: term)) }
+        if let category, !category.isEmpty { items.append(URLQueryItem(name: "category", value: category)) }
+        if let subCategory, !subCategory.isEmpty { items.append(URLQueryItem(name: "sub_category", value: subCategory)) }
+        if let amc, !amc.isEmpty { items.append(URLQueryItem(name: "amc_name", value: amc)) }
+        return items
+    }
+
+    /// Query items with every reserved character (including '&', '+', '=') percent-encoded;
+    /// URLComponents leaves '&' and '+' in values untouched, which would split "L&T Mutual Fund".
+    var percentEncodedQueryItems: [URLQueryItem] {
+        var allowed = CharacterSet.urlQueryAllowed
+        allowed.remove(charactersIn: "&+=#;")
+        return queryItems.map { item in
+            URLQueryItem(name: item.name, value: item.value?.addingPercentEncoding(withAllowedCharacters: allowed))
+        }
+    }
+
+    func url(baseURL: String) -> URL? {
+        guard var comps = URLComponents(string: "\(baseURL)/api/mutual-funds/") else { return nil }
+        comps.percentEncodedQueryItems = percentEncodedQueryItems
+        return comps.url
+    }
+
+    /// X-Total-Count, or nil when the header is absent or not a number (an old backend sends one page only).
+    static func totalCount(from response: HTTPURLResponse) -> Int? {
+        guard let raw = response.value(forHTTPHeaderField: "X-Total-Count") else { return nil }
+        return Int(raw.trimmingCharacters(in: .whitespaces))
+    }
+
+    /// More pages exist only when the backend reported a total and we hold fewer rows than it.
+    static func canLoadMore(loaded: Int, total: Int?) -> Bool {
+        total.map { loaded < $0 } ?? false
+    }
+}
+
+/// "2026-10-09" -> "9 Oct 2026". Returns the input unchanged when it is not an ISO date.
+enum MutualFundDateText {
+    private static let iso: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "yyyy-MM-dd"
+        return f
+    }()
+    private static let display: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_IN")
+        f.dateFormat = "d MMM yyyy"
+        return f
+    }()
+
+    static func short(_ isoDate: String) -> String {
+        guard let date = iso.date(from: isoDate) else { return isoDate }
+        return display.string(from: date)
     }
 }
 

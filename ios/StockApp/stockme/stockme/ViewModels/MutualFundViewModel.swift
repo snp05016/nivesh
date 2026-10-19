@@ -1,101 +1,145 @@
 import SwiftUI
 import Combine
 
-/// Sort options for the mutual fund discovery list.
-enum MutualFundSortOption: String, CaseIterable, Identifiable {
-    case returns1y = "1Y Returns"
-    case returns3y = "3Y Returns"
-    case aum = "AUM"
-    case expenseRatio = "Expense Ratio"
-    case name = "Name"
-
-    var id: String { rawValue }
-}
-
-/// Drives MutualFundDiscoveryView — fetches the fund universe and applies
-/// search, category, AUM, returns, and risk (rating) filters client-side,
-/// mirroring IPOListViewModel's fetch/error/loading shape.
+/// Drives MutualFundDiscoveryView over the real AMFI universe. The server pages, filters and
+/// sorts (by name; there is no performance ranking); the view model only tracks the query,
+/// the rows loaded so far and the load states.
 @MainActor
 class MutualFundViewModel: ObservableObject {
-    @Published var searchQuery: String = ""
-    @Published var selectedCategory: String? = nil
-    @Published var selectedRiskLevel: MutualFundRiskLevel? = nil
-    @Published var minAumCr: Double = 0
-    @Published var minReturns1y: Double = -100
-    @Published var sortOption: MutualFundSortOption = .returns1y
+    @Published private(set) var query = MutualFundQuery()
+    @Published private(set) var funds: [MutualFundDTO] = []
+    @Published private(set) var totalCount: Int? = nil
+    @Published private(set) var filters: MutualFundFilters? = nil
+    @Published private(set) var isLoading: Bool = false
+    @Published private(set) var isLoadingMore: Bool = false
+    @Published private(set) var loadMoreFailed: Bool = false
+    @Published private(set) var errorMessage: String? = nil
+    @Published private(set) var isOffline: Bool = false
 
-    @Published var allFunds: [MutualFundDTO] = []
-    @Published var isLoading: Bool = false
-    @Published var errorMessage: String? = nil
+    private var generation = 0
+    private var searchTask: Task<Void, Never>? = nil
 
-    var filteredFunds: [MutualFundDTO] {
-        var result = allFunds
+    var canLoadMore: Bool { MutualFundQuery.canLoadMore(loaded: funds.count, total: totalCount) }
 
-        if let category = selectedCategory, !category.isEmpty {
-            result = result.filter { $0.category == category }
-        }
+    var hasActiveFilters: Bool { query != MutualFundQuery(limit: query.limit) }
 
-        if let riskLevel = selectedRiskLevel {
-            result = result.filter { $0.parsedRiskLevel == riskLevel }
-        }
-
-        if minAumCr > 0 {
-            result = result.filter { ($0.aumCr ?? 0) >= minAumCr }
-        }
-
-        if minReturns1y > -100 {
-            result = result.filter { ($0.returns1y ?? -Double.infinity) >= minReturns1y }
-        }
-
-        if !searchQuery.isEmpty {
-            result = result.filter {
-                $0.fundName.localizedCaseInsensitiveContains(searchQuery) ||
-                $0.amc.localizedCaseInsensitiveContains(searchQuery)
-            }
-        }
-
-        return sorted(result)
-    }
-
+    /// Categories from /filters, else the distinct categories of the rows loaded so far.
     var availableCategories: [String] {
-        Array(Set(allFunds.map { $0.category })).sorted()
+        if let filters { return filters.sortedCategories }
+        return Array(Set(funds.map { $0.category })).sorted()
     }
 
-    private func sorted(_ funds: [MutualFundDTO]) -> [MutualFundDTO] {
-        switch sortOption {
-        case .returns1y:
-            return funds.sorted { ($0.returns1y ?? -.infinity) > ($1.returns1y ?? -.infinity) }
-        case .returns3y:
-            return funds.sorted { ($0.returns3y ?? -.infinity) > ($1.returns3y ?? -.infinity) }
-        case .aum:
-            return funds.sorted { ($0.aumCr ?? 0) > ($1.aumCr ?? 0) }
-        case .expenseRatio:
-            return funds.sorted { ($0.expenseRatio ?? .infinity) < ($1.expenseRatio ?? .infinity) }
-        case .name:
-            return funds.sorted { $0.fundName < $1.fundName }
+    func subCategories(of category: String) -> [String] {
+        filters?.categories[category] ?? []
+    }
+
+    // MARK: Query changes
+
+    func setPlan(_ plan: MutualFundPlanFilter) {
+        guard plan != query.plan else { return }
+        query.plan = plan
+        Task { await reload() }
+    }
+
+    func setOption(_ option: MutualFundOptionFilter) {
+        guard option != query.option else { return }
+        query.option = option
+        Task { await reload() }
+    }
+
+    func setCategory(_ category: String?, subCategory: String? = nil) {
+        query.category = category
+        query.subCategory = subCategory
+        Task { await reload() }
+    }
+
+    func setAMC(_ amc: String?) {
+        query.amc = amc
+        Task { await reload() }
+    }
+
+    /// Search reloads 350 ms after the last keystroke; a newer keystroke cancels the pending reload.
+    func setSearch(_ text: String) {
+        guard text != query.search else { return }
+        query.search = text
+        searchTask?.cancel()
+        searchTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 350_000_000)
+            guard !Task.isCancelled else { return }
+            await self?.reload()
         }
     }
 
-    func fetchFunds() async {
+    func clearFilters() {
+        searchTask?.cancel()
+        query = MutualFundQuery(limit: query.limit)
+        Task { await reload() }
+    }
+
+    // MARK: Loading
+
+    /// First page for the current query. Rows from a different query are dropped on failure so
+    /// stale funds never sit under new filters.
+    func reload() async {
+        generation += 1
+        let mine = generation
+        query.offset = 0
         isLoading = true
+        isLoadingMore = false
+        loadMoreFailed = false
         errorMessage = nil
+        isOffline = false
         do {
-            allFunds = try await NetworkManager.shared.fetchMutualFunds()
-            if allFunds.isEmpty {
-                errorMessage = "Couldn't load mutual funds. Pull to retry."
-            }
+            let page = try await NetworkManager.shared.fetchMutualFunds(query: query)
+            guard mine == generation else { return }
+            funds = page.funds
+            totalCount = page.totalCount
         } catch {
-            errorMessage = "Couldn't load mutual funds. Pull to retry."
+            guard mine == generation, !Self.isCancellation(error) else { return }
+            funds = []
+            totalCount = nil
+            applyFailure(error)
         }
         isLoading = false
     }
 
-    func clearFilters() {
-        searchQuery = ""
-        selectedCategory = nil
-        selectedRiskLevel = nil
-        minAumCr = 0
-        minReturns1y = -100
+    /// Appends the next page at offset == rows held; a failure keeps the rows and shows a retry footer.
+    func loadMore() async {
+        guard canLoadMore, !isLoading, !isLoadingMore else { return }
+        let mine = generation
+        isLoadingMore = true
+        loadMoreFailed = false
+        var next = query
+        next.offset = funds.count
+        do {
+            let page = try await NetworkManager.shared.fetchMutualFunds(query: next)
+            guard mine == generation else { return }
+            let known = Set(funds.map { $0.id })
+            funds.append(contentsOf: page.funds.filter { !known.contains($0.id) })
+            totalCount = page.totalCount ?? totalCount
+        } catch {
+            guard mine == generation, !Self.isCancellation(error) else { return }
+            loadMoreFailed = true
+        }
+        isLoadingMore = false
+    }
+
+    /// Leaves `filters` nil on failure: the fund-house menu hides and categories come from loaded rows.
+    func loadFilters() async {
+        filters = try? await NetworkManager.shared.fetchMutualFundFilters()
+    }
+
+    private func applyFailure(_ error: Error) {
+        if case NetworkError.fetchFailed(_, let status, _) = error, status == -1 {
+            isOffline = true
+            errorMessage = "You're offline. Reconnect and try again."
+        } else {
+            errorMessage = "Couldn't load mutual funds."
+        }
+    }
+
+    private static func isCancellation(_ error: Error) -> Bool {
+        error is CancellationError || (error as? URLError)?.code == .cancelled
     }
 }
 
@@ -114,6 +158,9 @@ class MutualFundDetailViewModel: ObservableObject {
     /// the seed fund has no scheme_code, in which case detail/history
     /// calls are skipped and the seed data is shown as-is.
     private let schemeCode: String?
+
+    /// ISO date the backend first recorded a NAV for this fund, if it has.
+    var historyStart: String? { fund.historyStart }
 
     init(seed: MutualFundDTO) {
         self.fund = seed

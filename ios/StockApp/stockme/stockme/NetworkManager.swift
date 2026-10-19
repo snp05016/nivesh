@@ -517,17 +517,40 @@ class NetworkManager: ObservableObject {
         let target_price: Double?
     }
 
-    func fetchMutualFunds() async throws -> [MutualFundDTO] {
-        guard let url = URL(string: "\(baseURL)/api/mutual-funds/") else {
-            throw NetworkError.invalidURL
+    /// One page of the AMFI fund universe. `totalCount` is X-Total-Count, or nil from an old backend
+    /// that returns a single page; network failures throw `fetchFailed` with status -1.
+    func fetchMutualFunds(query: MutualFundQuery) async throws -> (funds: [MutualFundDTO], totalCount: Int?) {
+        let endpoint = "/api/mutual-funds/"
+        guard let url = query.url(baseURL: baseURL) else {
+            throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Invalid URL")
         }
-        let req = authRequest(url)
-        let (data, response) = try await dataWithRetry(for: req)
-        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
-            throw NetworkError.invalidResponse
+        var request = authRequest(url)
+        request.timeoutInterval = 20
+        let data: Data, response: URLResponse
+        do {
+            (data, response) = try await session.data(for: request)
+        } catch {
+            if error is CancellationError || (error as? URLError)?.code == .cancelled { throw error }
+            throw NetworkError.fetchFailed(endpoint: endpoint, status: -1, body: "Network error: \(error.localizedDescription)")
         }
-        do { return try JSONDecoder().decode([MutualFundDTO].self, from: data) }
-        catch { throw NetworkError.decodingError("/api/mutual-funds/: \(error)") }
+        guard let http = response as? HTTPURLResponse else {
+            throw NetworkError.fetchFailed(endpoint: endpoint, status: 0, body: "Not HTTP")
+        }
+        guard (200...299).contains(http.statusCode) else {
+            let bodyStr = String(data: data, encoding: .utf8)?.prefix(300) ?? "<binary>"
+            throw NetworkError.fetchFailed(endpoint: endpoint, status: http.statusCode, body: String(bodyStr))
+        }
+        do {
+            let funds = try JSONDecoder().decode([MutualFundDTO].self, from: data)
+            return (funds, MutualFundQuery.totalCount(from: http))
+        } catch {
+            throw NetworkError.decodingError("\(endpoint): \(error)")
+        }
+    }
+
+    /// Category/sub-category tree and fund-house list for the discovery pickers.
+    func fetchMutualFundFilters() async throws -> MutualFundFilters {
+        try await _fetchDecode(MutualFundFilters.self, endpoint: "/api/mutual-funds/filters", timeout: 20)
     }
 
     func getPortfolio(userId: Int) async throws -> [PortfolioHolding] {
@@ -1751,8 +1774,7 @@ extension NetworkManager {
 // MARK: - Mutual Fund Hub
 //
 // Endpoints match backend/routers/mutual_funds.py (prefix /api/mutual-funds).
-// GET / (list — see fetchMutualFunds() above for the original minimal-shape
-// caller), GET /{scheme_code} (detail), GET /{scheme_code}/nav-history?days=
+// GET / (paged list — see fetchMutualFunds(query:) above), GET /filters, GET /{scheme_code} (detail), GET /{scheme_code}/nav-history?days=
 // (NAV history for the chart). The backend paths key off `scheme_code`
 // (a string, e.g. "INF209K01157"), NOT the integer `id` — do not pass the
 // row id in the URL path. There is no /holdings or /sip-calculator endpoint;
