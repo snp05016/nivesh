@@ -515,6 +515,7 @@ class NetworkManager: ObservableObject {
         let notes: String?
         let purchase_date: String?
         let target_price: Double?
+        let asset_class: String?
     }
 
     func fetchMutualFunds() async throws -> [MutualFundDTO] {
@@ -530,9 +531,12 @@ class NetworkManager: ObservableObject {
         catch { throw NetworkError.decodingError("/api/mutual-funds/: \(error)") }
     }
 
-    func getPortfolio(userId: Int) async throws -> [PortfolioHolding] {
+    /// `includeFunds` asks the server for mutual-fund rows too (header X-Client-Features: asset_class);
+    /// only the Portfolio screen sets it, so Home and the widget stay stock-only like the backend.
+    func getPortfolio(userId: Int, includeFunds: Bool = false) async throws -> [PortfolioHolding] {
         guard let url = URL(string: "\(baseURL)/portfolio/\(userId)") else { throw NetworkError.invalidURL }
-        let req = authRequest(url)
+        var req = authRequest(url)
+        if includeFunds { req.setValue("asset_class", forHTTPHeaderField: "X-Client-Features") }
         let (data, response) = try await dataWithRetry(for: req)
         if (response as? HTTPURLResponse)?.statusCode == 401 { throw NetworkError.unauthorized }
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
@@ -558,10 +562,11 @@ class NetworkManager: ObservableObject {
                     notes: dto.notes,
                     targetPrice: dto.target_price,
                     priceStatus: dto.price_status ?? (dto.current_price == nil ? "unavailable" : "live"),
-                    priceAsOf: dto.price_as_of
+                    priceAsOf: dto.price_as_of,
+                    assetClass: dto.asset_class ?? "EQ"
                 )
             }
-            WidgetSnapshotStore.save(holdings: holdings)
+            WidgetSnapshotStore.save(holdings: holdings.filter { !$0.isMutualFund })
             return holdings
         } catch {
             print("Decoding error in getPortfolio: \(error)")

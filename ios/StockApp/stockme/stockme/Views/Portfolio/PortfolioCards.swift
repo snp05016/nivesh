@@ -208,10 +208,13 @@ struct HoldingNoteRow: View {
             Circle().fill(color).frame(width: 8, height: 8)
 
             VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
-                Text(holding.stock.ticker)
+                Text(holding.isMutualFund ? holding.stock.companyName : holding.stock.ticker)
                     .font(Theme.serialNumberFont(size: 14, relativeTo: .body).weight(.bold))
                     .foregroundStyle(Theme.inkPrimary)
-                Text("\(DecimalText.editable(holding.shares, maxFractionDigits: 4)) shares")
+                    .lineLimit(holding.isMutualFund ? 2 : 1)
+                Text(holding.isMutualFund
+                     ? "Mutual fund"
+                     : "\(DecimalText.editable(holding.shares, maxFractionDigits: 4)) shares")
                     .font(Theme.engravedSerif(size: 11, weight: .regular, relativeTo: .footnote))
                     .foregroundStyle(Theme.inkTertiary)
                 if let note = holding.notes, !note.isEmpty {

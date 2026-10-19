@@ -16,6 +16,10 @@ struct PortfolioHolding: Codable, Identifiable {
     /// "live" | "stale" | "unavailable" from GET /portfolio (set by NetworkManager, not decoded).
     var priceStatus: String = "live"
     var priceAsOf: String? = nil
+    /// "EQ" | "MF" from GET /portfolio (set by NetworkManager, not decoded). Fund tickers are ISINs.
+    var assetClass: String = "EQ"
+
+    var isMutualFund: Bool { assetClass == "MF" }
 
     /// False when the server had no quote: the holding is valued at cost, never at ₹0.
     var priceAvailable: Bool { priceStatus != "unavailable" }

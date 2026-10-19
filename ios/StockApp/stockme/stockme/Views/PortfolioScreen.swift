@@ -156,8 +156,8 @@ struct PortfolioScreen: View {
                             }
 
                             // Screen B — allocation donut
-                            if !viewModel.holdings.isEmpty {
-                                PortfolioAllocationDonutCard(holdings: viewModel.holdings)
+                            if !stockHoldings.isEmpty {
+                                PortfolioAllocationDonutCard(holdings: stockHoldings)
                                     .padding(.horizontal, Theme.screenPadding)
                             }
 
@@ -317,7 +317,8 @@ struct PortfolioScreen: View {
         }
         .navigationDestination(for: HoldingNavValue.self) { val in
             // C11: the free "My position" page; flag off keeps today's analysis screen.
-            if FeatureFlags.shared.isOn(.moneyHoldingDetail) {
+            // Funds always open it: they have no stock report to run.
+            if val.holding?.isMutualFund == true || FeatureFlags.shared.isOn(.moneyHoldingDetail) {
                 HoldingDetailView(ticker: val.ticker, seed: val.holding, portfolio: viewModel)
             } else {
                 AnalysisScreen(ticker: val.ticker, userNote: val.userNote, purchaseDateStr: val.purchaseDateStr, portfolioHolding: val.holding)
@@ -483,12 +484,15 @@ struct PortfolioScreen: View {
         }
         .sheet(isPresented: $showBriefSheet) {
             PortfolioBriefSheet(
-                portfolioValue: viewModel.totalValue,
-                pnl: viewModel.totalValue - viewModel.investedValue,
-                holdings: viewModel.holdings
+                portfolioValue: stockHoldings.reduce(0) { $0 + $1.currentValue },
+                pnl: stockHoldings.reduce(0) { $0 + $1.pnl },
+                holdings: stockHoldings
             )
         }
     }
+
+    /// Stock-only cards, charts and the AI brief never receive fund rows (ISIN tickers).
+    private var stockHoldings: [PortfolioHolding] { viewModel.holdings.filter { !$0.isMutualFund } }
 
     private var exportDialogButtons: [BanknoteDialogButton] {
         var buttons: [BanknoteDialogButton] = []

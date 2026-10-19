@@ -64,7 +64,7 @@ class PortfolioScreenViewModel: ObservableObject {
     func fetchData(userId: Int) async {
         isLoading = true
         do {
-            let data = try await NetworkManager.shared.getPortfolio(userId: userId)
+            let data = try await NetworkManager.shared.getPortfolio(userId: userId, includeFunds: true)
             holdings = data
             totalValue = holdings.reduce(0) { $0 + $1.currentValue }
             investedValue = holdings.reduce(0) { $0 + $1.investedValue }
