@@ -23,6 +23,7 @@ PREFIX = "/research/v1"
 DEFAULT_TIMEOUT = 10.0
 COMPUTE_TIMEOUT = 15.0
 READY_TIMEOUT = 2.0
+EOD_TIMEOUT = 30.0
 ITEMS_PAGE = 200
 
 
@@ -123,6 +124,16 @@ class MLEngineClient:
             nxt = body.get("next_offset")
             offset = int(nxt) if nxt is not None and int(nxt) > offset else None
         return items
+
+    def eod(self, market_date: date) -> Optional[dict[str, Any]]:
+        """GET /eod/{date} (30 s): ``{market_date, status, rows, index_closes}``, or None on 404 NOT_INGESTED."""
+        resp = self._request("GET", f"/eod/{market_date.isoformat()}", ok=(200, 404), timeout=EOD_TIMEOUT)
+        return None if resp.status_code == 404 else resp.body
+
+    def marketdata_sync(self, through: date) -> str:
+        """POST /marketdata/sync: 'started' (202) or 'busy' (409 ENGINE_BUSY). Used only while research mode is off."""
+        resp = self._request("POST", "/marketdata/sync", ok=(202, 409), json={"through": through.isoformat()})
+        return "started" if resp.status_code == 202 else "busy"
 
     def compute(self, symbol: str) -> EngineResponse:
         """POST /compute (15 s). 200 ``{report}``, 404 ``UNKNOWN_SYMBOL`` and
