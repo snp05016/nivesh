@@ -5,9 +5,10 @@ logic live in services/ipo_service.py (Controller-Service-Repository).
 """
 from typing import List, Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, model_validator
 
+from services import feature_flags
 from services.ipo_service import (
     SAMPLE_SYMBOLS,
     VALID_STATUSES,
@@ -17,7 +18,9 @@ from services.ipo_service import (
     list_ipos,
 )
 
-router = APIRouter(tags=["IPO"])
+# I02/I04: hidden (404 FEATURE_DISABLED) until a real IPO data source exists. Prefixes come
+# from main.py, which mounts /api/v1/ipo and the /api/ipo alias.
+router = APIRouter(tags=["IPO"], dependencies=[Depends(feature_flags.require_flag("ipo_hub"))])
 
 
 class IPOResponse(BaseModel):

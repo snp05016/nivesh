@@ -12,10 +12,21 @@ import pytest
 from fastapi.routing import APIRoute
 
 from main import app
+from services import feature_flags
 
 _LEGACY = set(json.loads((Path(__file__).parent / "fixtures" / "legacy_unversioned_routes.json").read_text()))
 # Legacy alias prefixes mounted in main.py; delete together with the aliases.
 _ALIASES = {"ipo", "mutual-funds", "forum", "finance", "kyc", "me", "fixed-deposits"}
+
+
+@pytest.fixture(autouse=True)
+def _focus_flags_on(monkeypatch):
+    """I04: the forum and IPO hub are off by default; these tests exercise them."""
+    monkeypatch.setenv("NIVESH_FLAG_FORUM", "true")
+    monkeypatch.setenv("NIVESH_FLAG_IPO_HUB", "true")
+    feature_flags._reset_cache()
+    yield
+    feature_flags._reset_cache()
 
 
 def _alias_name(path):

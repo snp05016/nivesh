@@ -13,6 +13,7 @@ from fastapi.routing import APIRoute
 
 from core.security import require_admin, require_auth
 from main import app
+from services import feature_flags
 from tests.test_route_auth_inventory import KNOWN_GAPS, PUBLIC_ROUTES
 
 _PATH_PARAM = re.compile(r"\{[^}]+\}")
@@ -31,6 +32,17 @@ def _collect_routes():
 
 
 _ROUTES = _collect_routes()
+
+
+@pytest.fixture(autouse=True)
+def _focus_flags_on(monkeypatch):
+    """I04: the forum and IPO hub are off by default and their flag gate answers 404 before
+    auth runs, so turn them on here to prove the auth checks behind the gate."""
+    monkeypatch.setenv("NIVESH_FLAG_FORUM", "true")
+    monkeypatch.setenv("NIVESH_FLAG_IPO_HUB", "true")
+    feature_flags._reset_cache()
+    yield
+    feature_flags._reset_cache()
 
 
 def _has_auth_dependency(dependant) -> bool:
