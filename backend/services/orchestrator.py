@@ -679,7 +679,7 @@ def reformat_with_deepseek(
                 }) + "\n"
             )
     except Exception as _dlq_write_err:
-        logging.info(f"[DLQ] Failed to write dead-letter entry: {_dlq_write_err}")
+        logging.warning(f"[reformat] Failed to write dead-letter entry: {_dlq_write_err}")
 
     logging.getLogger("orchestrator").warning(
         f"[reformat_fallback] {full_ticker}: DeepSeek reformat failed ({_ds_err}), falling back to Claude Sonnet"
@@ -861,7 +861,7 @@ def _sanitize_nan_inf(obj):
     return obj
 
 
-def _normalize_response(result: dict, scan_type: str = "standard", quant_payload: dict = None) -> dict:
+def _normalize_response(result: dict, scan_type: str = "standard", quant_payload: dict | None = None) -> dict:
     """Sanitize AI analysis response to ensure all iOS-required fields exist with correct types.
     Handles null values, missing fields, type mismatches, NaN/Inf->null, and float->int coercion.
     When scan_type == "extreme", additionally guarantees the extreme superset blocks exist
@@ -1093,7 +1093,7 @@ def _normalize_response(result: dict, scan_type: str = "standard", quant_payload
             "market_regime", "Unknown"
         )
         result["calibrated_confidence"] = quant_payload.get(
-            "calibrated_confidence", 0.0
+            "calibrated_confidence"  # SILENT-16: missing is None, never a measured 0%
         )
         result["confidence_math_breakdown"] = quant_payload.get(
             "confidence_math_breakdown", {}
@@ -1465,6 +1465,38 @@ def _venn_abers_input(quant_payload) -> float | None:
     return raw if 0 < raw <= 1 else None
 
 
+_QUANT_KEYS = (
+    "market_regime", "calibrated_confidence", "confidence_math_breakdown",
+    "conformal_target_upper_3m", "conformal_target_lower_3m", "quantitative_drivers", "tail_risk_flags",
+)
+
+
+def _quant_payload_from_report(report: dict) -> dict | None:
+    """SILENT-16: re-inject only the quant keys a stored report holds a real value for. A report saved
+    after a QuantEngine failure has none (get_analysis_for_date still adds an empty
+    confidence_math_breakdown); defaulting them (0.0 / 'Unknown' / {}) would show fake quant data."""
+    payload = {k: report[k] for k in _QUANT_KEYS if report.get(k) not in (None, {}, [], "")}
+    return payload or None
+
+
+def _quant_prompt_block(quant_payload) -> str:
+    """SILENT-16: the quant block for the agent prompt; an explicit UNAVAILABLE note when the
+    engine failed, never a zeroed payload the LLM would quote as measured."""
+    if not isinstance(quant_payload, dict):
+        return (
+            "\n\nQUANTITATIVE ENGINE OUTPUT: UNAVAILABLE (the engine failed in this run). "
+            "Do not state price targets, calibrated confidence, market regime or quantitative drivers "
+            "from it; say they are unavailable.\n"
+        )
+    return (
+        "\n\nRULE-BASED QUANT HEURISTICS (not a trained model; a null value means the input was unavailable):\n"
+        f"{_json_dumps(quant_payload, sort_keys=True)}\n"
+        "Quote these only as rule-based estimates; if a value is null say it is unavailable; "
+        "do not invent replacements. "
+        "Fields listed as unavailable in data_quality are unknown; do not state or infer them.\n"
+    )
+
+
 def _run_calibration_pipeline(ticker: str, final_state: dict, raw_output: str, quant_payload: dict | None = None) -> str:
     """Phase 9: Confidence Calibration Pipeline with 8 parallel tasks.
     Prepends calibration_block to raw_output. Returns raw_output unchanged on error.
@@ -1543,6 +1575,7 @@ def _run_calibration_pipeline(ticker: str, final_state: dict, raw_output: str, q
             _cal_tasks["venn_abers"] = lambda: _run_engine_with_session(
                 VennAbersEngine, base_symbol, {"raw_confidence": va_raw}, _cal_get_session)
         _cal_results: dict = {}
+        _cal_failed: list[str] = []
         with ThreadPoolExecutor(max_workers=8) as _cal_executor:
             _cal_futures = {_cal_executor.submit(fn): name for name, fn in _cal_tasks.items()}
             for _fut in as_completed(_cal_futures):
@@ -1550,8 +1583,9 @@ def _run_calibration_pipeline(ticker: str, final_state: dict, raw_output: str, q
                 try:
                     _cal_results[_cal_name] = _fut.result()
                 except Exception as _cal_task_err:
-                    logging.info(f"[CALIBRATION] Task '{_cal_name}' failed: {_cal_task_err}")
-                    _cal_results[_cal_name] = {}
+                    logging.warning(f"[CALIBRATION] Task '{_cal_name}' failed: {_cal_task_err}", exc_info=True)
+                    _cal_results[_cal_name] = {}  # read with .get below; the failure is recorded here
+                    _cal_failed.append(_cal_name)
 
         agreement_data    = _cal_results.get("agreement", {})
         delivery_data     = _cal_results.get("delivery", {})
@@ -1619,6 +1653,9 @@ def _run_calibration_pipeline(ticker: str, final_state: dict, raw_output: str, q
             )
 
         final_state["_signal_agreement"] = agreement_data.get("agreement_ratio")
+        # SILENT-16: a failed task leaves its pillar missing; say so instead of passing silently.
+        final_state["_calibration_status"] = "degraded" if _cal_failed else "ok"
+        final_state["_calibration_failed_tasks"] = sorted(_cal_failed)
 
         def _nf(v, default=0):
             """Return default if v is None, else v. Prevents None.__format__ errors."""
@@ -1663,7 +1700,9 @@ Bounds 3M: {_nf((conformal_data.get('short_term_3m') or {}).get('lower'), 'N/A')
 """
         return calibration_block + "\n\n" + raw_output
     except Exception as _cal_err:
-        logging.info(f"[CALIBRATION] Pipeline failed: {_cal_err}")
+        logging.warning(f"[CALIBRATION] Pipeline failed for {ticker}: {_cal_err}", exc_info=True)
+        if isinstance(final_state, dict):
+            final_state["_calibration_status"] = "failed"
         return raw_output
 
 
@@ -1871,15 +1910,7 @@ def analyze(
             logging.info(
                 f"[CACHE HIT] Returning existing analysis for {full_ticker} on {analysis_date}"
             )
-            _quant_from_cache = {
-                "market_regime": cached_today.get("market_regime", "Unknown"),
-                "calibrated_confidence": cached_today.get("calibrated_confidence", 0.0),
-                "confidence_math_breakdown": cached_today.get("confidence_math_breakdown", {}),
-                "conformal_target_upper_3m": cached_today.get("conformal_target_upper_3m"),
-                "conformal_target_lower_3m": cached_today.get("conformal_target_lower_3m"),
-                "quantitative_drivers": cached_today.get("quantitative_drivers", {}),
-                "tail_risk_flags": cached_today.get("tail_risk_flags", {}),
-            }
+            _quant_from_cache = _quant_payload_from_report(cached_today)
             cached_today = _normalize_response(cached_today, quant_payload=_quant_from_cache)
             cached_today["ticker"] = ticker.upper()
             cached_today["exchange"] = exchange
@@ -2016,15 +2047,7 @@ def analyze(
                             new_analysis["reused_from"] = last_date_str
                             new_analysis["checked_at"] = analysis_date
 
-                            _quant_from_smart_cache = {
-                                "market_regime": new_analysis.get("market_regime", "Unknown"),
-                                "calibrated_confidence": new_analysis.get("calibrated_confidence", 0.0),
-                                "confidence_math_breakdown": new_analysis.get("confidence_math_breakdown", {}),
-                                "conformal_target_upper_3m": new_analysis.get("conformal_target_upper_3m"),
-                                "conformal_target_lower_3m": new_analysis.get("conformal_target_lower_3m"),
-                                "quantitative_drivers": new_analysis.get("quantitative_drivers", {}),
-                                "tail_risk_flags": new_analysis.get("tail_risk_flags", {}),
-                            }
+                            _quant_from_smart_cache = _quant_payload_from_report(new_analysis)
                             new_analysis = _normalize_response(new_analysis, quant_payload=_quant_from_smart_cache)
                             new_analysis["ticker"] = ticker.upper()
                             new_analysis["exchange"] = exchange
@@ -2137,6 +2160,10 @@ def analyze(
     except Exception as _e:
         pass
 
+    # SILENT-16: every best-effort stage reports ok|degraded|failed instead of a silent default.
+    pipeline_status = {"quant": "ok", "calibration": "ok", "ml": "ok",
+                       "persistence": "ok" if shared else "skipped"}
+
     # ── ML Hybrid Pipeline: Quantitative Engine (teacher-student flow) ───
     # Runs deterministic math BEFORE LangGraph agents.
     # Results injected into the agent state AND final normalization.
@@ -2151,19 +2178,10 @@ def analyze(
             quant_engine.run_full_pipeline()
         )
         _quant_loop.close()
-    except Exception as e:
-        logging.info(f"[Orchestrator] QuantEngine failed for {ticker}: {e}")
-        quant_payload = {
-            "market_regime": "Data Unavailable",
-            "calibrated_confidence": None,
-            "confidence_math_breakdown": {},
-            "conformal_target_upper_3m": None,
-            "conformal_target_lower_3m": None,
-            "quantitative_drivers": {},
-            "tail_risk_flags": {},
-            "method": "rule_based_heuristic",
-            "data_quality": {"fundamentals": "unavailable", "market": "unavailable"},
-        }
+    except Exception:
+        logging.warning(f"[Orchestrator] QuantEngine failed for {ticker}", exc_info=True)
+        quant_payload = None  # missing pillar, not a zeroed measurement
+        pipeline_status["quant"] = "failed"
 
     emitter.emit("agents", "Multi-Agent Engine",
                  "Running governance, market, news & fundamentals analysts + bull/bear debate",
@@ -2172,13 +2190,7 @@ def analyze(
                                                      debate_rounds=debate_rounds, language=language)
     emitter.emit("synthesis", "Research & Portfolio Managers",
                  "Weighing the dialectical debate (bear 1.5x) into a final call", pct=60)
-    raw_output += (
-        "\n\nRULE-BASED QUANT HEURISTICS (not a trained model; a null value means the input was unavailable):\n"
-        f"{_json_dumps(quant_payload, sort_keys=True)}\n"
-        "Quote these only as rule-based estimates; if a value is null say it is unavailable; "
-        "do not invent replacements. "
-        "Fields listed as unavailable in data_quality are unknown; do not state or infer them.\n"
-    )
+    raw_output += _quant_prompt_block(quant_payload)
     raw_output += f"\n\nADDITIONAL DATA (MANDATORY TO INCLUDE IN fundamentals_snapshot):\nPromoter Pledging: {pledging_data}\n"
 
     # LLM-07: risk_tolerance is no longer written into the prompt. The report is the shared
@@ -2192,6 +2204,12 @@ def analyze(
         deep_scan_used = False
 
     raw_output = _run_calibration_pipeline(ticker, final_state, raw_output, quant_payload)
+    if isinstance(final_state, dict):
+        pipeline_status["calibration"] = final_state.get("_calibration_status", "ok")
+        if final_state.get("_ml_direction") is None:
+            pipeline_status["ml"] = "degraded"
+    else:
+        pipeline_status["calibration"] = pipeline_status["ml"] = "failed"
 
     # Wait for background prefetch to complete (started at top of analyze())
     _prefetch_done.wait(timeout=30)
@@ -2216,8 +2234,9 @@ def analyze(
                 "Piotroski F-score, financial trends, and peer comparisons to write the extreme_thesis. "
                 "Base your bear and bull deep dives explicitly on these numbers.\n"
             )
-        except Exception as _enrich_err:
-            logging.info(f"[EXTREME] enrichment failed for {ticker}: {_enrich_err}")
+        except Exception:
+            logging.warning(f"[EXTREME] enrichment failed for {ticker}", exc_info=True)
+            pipeline_status["enrichers"] = "failed"
 
     emitter.emit("format", "Reformatter",
                  "Structuring the report into the final schema", pct=80)
@@ -2320,14 +2339,19 @@ def analyze(
     if scan_type == "extreme" and extreme_bundles:
         result.update(extreme_bundles)
 
+    result["pipeline_status"] = pipeline_status
+    result["degraded"] = any(v in ("degraded", "failed") for v in pipeline_status.values())
+
     try:
         result, _advisor_rows_dicts = _save_and_fetch_advisors(
             result, raw_output, user_id, ticker, exchange, scan_type, persist=shared
         )
-    except Exception as e:
-        logging.info(
-            f"[WARN] save_analysis failed for {ticker}, returning result anyway: {e}"
-        )
+    except Exception:
+        if shared:
+            # SILENT-16: fail the job; an unsaved report would be silently re-run (and re-paid).
+            logging.error(f"[Orchestrator] save_analysis failed for {ticker}; failing the job", exc_info=True)
+            raise
+        logging.warning(f"[Orchestrator] advisor fetch failed for {ticker}", exc_info=True)
         _advisor_rows_dicts = []
     result["advisor_matrix"] = _advisor_rows_dicts
 

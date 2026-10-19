@@ -147,6 +147,9 @@ def _fuse_final_confidence(
         "ml": n_ml,
     }
     used = [p for p in _PILLARS if values[p] is not None and base[p] > 0]
+    # SILENT-16: a weighted pillar with no input is reported as missing, never imputed.
+    # ML counts only when its input itself is absent (a HOLD call excludes it by design).
+    missing = [p for p in _PILLARS if base[p] > 0 and (c_ml if p == "ml" else values[p]) is None]
     total = sum(base[p] for p in used)
     weights = {p: (base[p] / total if p in used else 0.0) for p in _PILLARS}
 
@@ -168,6 +171,8 @@ def _fuse_final_confidence(
         "weights_version": weights_version,
         "confidence_kind": CONFIDENCE_KIND,
         "pillars_used": used,
+        "missing_pillars": missing,
+        "degraded": bool(missing) or total <= 0,
         "weights": {p: round(weights[p], 4) for p in _PILLARS},
         "formula": " + ".join(f"{weights[p]:.4f}*{p}" for p in used) or "no inputs",
     }

@@ -470,19 +470,19 @@ def _run_youtube_expert_bg():
 
 
 def _seed_harvester_sources():
-    from services.harvester_db import get_session as h_get_session, record_source_health
+    from services.harvester_db import get_session as h_get_session, seed_source_row
     SOURCE_ROSTER = [
+        # CNBC-TV18 / Moneycontrol columns are no longer scraped (REG-14), so no row for them.
         "NSE Corporate Announcements", "CRISIL Ratings", "ICRA Ratings",
-        "CARE Ratings", "India Ratings & Research", "CNBC-TV18 Expert View",
-        "Moneycontrol Expert Columns", "SEBI RIA Registry",
+        "CARE Ratings", "India Ratings & Research", "SEBI RIA Registry",
         "AMFI Mutual Fund Data", "YouTube Finance Channels",
     ]
     try:
         with h_get_session() as s:
             for name in SOURCE_ROSTER:
-                record_source_health(s, name, success=True, items=0)
-    except Exception as _e:
-        pass
+                seed_source_row(s, name)  # SILENT-18: unknown until a collector reports
+    except Exception:
+        logger.warning("[harvester] seeding source_health rows failed", exc_info=True)
 
 
 def stop_scheduler():

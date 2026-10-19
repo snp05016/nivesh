@@ -21,6 +21,7 @@ Public API:
   SessionLocal                       — raw session factory (for manual use).
   upsert_card(session, card)         — insert if external_id is new; True if inserted.
   record_source_health(...)          — upsert a SourceHealth row.
+  seed_source_row(session, name)     — create a 'never run' row if missing.
 """
 
 from __future__ import annotations
@@ -326,6 +327,25 @@ def record_source_health(
         row.last_failure = now
         row.is_healthy = False
         row.error_message = (error or "unknown error")[:500]
+
+
+def seed_source_row(session, source_name: str) -> None:
+    """Create a 'never run' SourceHealth row if none exists; never touches existing rows.
+
+    SILENT-18: startup seeding must not flip a recorded failure back to healthy.
+    """
+    if not source_name:
+        return
+    exists = (
+        session.query(SourceHealth.id)
+        .filter(SourceHealth.source_name == source_name)
+        .first()
+    )
+    if not exists:
+        session.add(SourceHealth(
+            source_name=source_name[:120], is_healthy=False,
+            error_message="never run", items_scraped=0,
+        ))
 
 
 def _parse_dt(raw: str) -> datetime | None:

@@ -50,6 +50,8 @@ def test_analyze_cache_miss_runs_without_nameerror(orchestrator, monkeypatch):
     monkeypatch.setattr(orchestrator, "run_trading_agents", lambda *a, **k: ("RAW", [], {}))
     monkeypatch.setattr(orchestrator, "_run_calibration_pipeline", lambda ticker, final_state, raw, *_a: raw)
     monkeypatch.setattr(orchestrator, "reformat_with_deepseek", lambda *a, **k: {"signal": "HOLD", "confidence_pct": 50})
+    # SILENT-16: a failed save now fails the job; this test is about NameErrors, not the DB.
+    monkeypatch.setattr(orchestrator, "_save_and_fetch_advisors", lambda result, *a, **k: (result, []))
 
     class _FailingQuantEngine:  # its except handler logs as well
         def __init__(self, ticker):

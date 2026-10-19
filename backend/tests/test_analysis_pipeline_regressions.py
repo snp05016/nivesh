@@ -127,6 +127,8 @@ def test_quant_payload_is_passed_to_reformatter(monkeypatch):
 
     monkeypatch.setattr(orchestrator, "reformat_with_deepseek", _fake_reformat)
     monkeypatch.setattr("services.quant_engine.QuantitativeEngine", _FakeQuantEngine)
+    # SILENT-16: a failed save now fails the job; user 992102 has no users row.
+    monkeypatch.setattr(orchestrator, "_save_and_fetch_advisors", lambda result, *a, **k: (result, []))
 
     result = orchestrator.analyze("PIPEQ", "NSE", user_id=992102, scan_type="standard")
 

@@ -186,6 +186,10 @@ async def harvest_news(lookback_hours: int = 26):
             feed = feedparser.parse(resp.content)
             entries = [e for e in feed.entries[:20] if e.get("link", "")]  # Max 20 per feed
             if not entries:
+                # SILENT-18: a dead or malformed feed must be visible, not a silent zero.
+                logger.warning("[news] feed %s (%s) yielded no entries: bozo=%s %s",
+                               feed_config["source"], feed_config["url"],
+                               getattr(feed, "bozo", 0), getattr(feed, "bozo_exception", ""))
                 continue
 
             # Skip URLs already in DB (unique constraint on article_url)

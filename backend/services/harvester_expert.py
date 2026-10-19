@@ -348,8 +348,8 @@ def _scrape_all_rating_agencies() -> list[dict]:
 def _scrape_sebi_ria_registry() -> list[dict]:
     """
     Emit ONE reference card about the SEBI Registered Investment Advisor
-    registry. Even if the page fetch fails we still emit the metadata card —
-    it describes source availability, not fabricated market data.
+    registry, built from the fetched page. No card when the fetch fails
+    (SILENT-18: no boilerplate posing as harvested content).
     """
     source_type = "SEBI_RIA_NOTE"
     source_name = "SEBI RIA Registry"
@@ -365,21 +365,15 @@ def _scrape_sebi_ria_registry() -> list[dict]:
     except Exception as exc:
         logger.warning("SEBI RIA registry fetch failed: %s", exc)
 
-    if page_snippet:
-        raw_text = (
-            "SEBI Registered Investment Advisor (RIA) Registry — "
-            "official registry of SEBI-licensed, fiduciary-duty investment advisors "
-            "who are legally accountable for advice given to retail investors. "
-            f"Page content excerpt: {page_snippet}"
-        )
-    else:
-        raw_text = (
-            "SEBI Registered Investment Advisor (RIA) Registry — "
-            "official registry maintained by SEBI of licensed RIAs who operate "
-            "under a fiduciary duty and are legally accountable for investment advice. "
-            "Registry URL: https://www.sebi.gov.in/sebiweb/other/OtherAction.do"
-            "?doRecognisedFpi=yes&intmId=13 (fetch unavailable at harvest time)."
-        )
+    if not page_snippet:
+        logger.warning("SEBI RIA Registry: fetch failed or empty, no card")
+        return []
+    raw_text = (
+        "SEBI Registered Investment Advisor (RIA) Registry — "
+        "official registry of SEBI-licensed, fiduciary-duty investment advisors "
+        "who are legally accountable for advice given to retail investors. "
+        f"Page content excerpt: {page_snippet}"
+    )
 
     card = _make_card(
         source_type=source_type,
@@ -389,7 +383,7 @@ def _scrape_sebi_ria_registry() -> list[dict]:
         raw_text=raw_text,
         tickers=[],
     )
-    logger.info("SEBI RIA Registry: 1 card (fetch_ok=%s)", bool(page_snippet))
+    logger.info("SEBI RIA Registry: 1 card")
     return [card]
 
 
@@ -399,8 +393,8 @@ def _scrape_sebi_ria_registry() -> list[dict]:
 
 def _scrape_amfi_nav_data() -> list[dict]:
     """
-    Emit ONE reference card summarising AMFI NAV data availability.
-    Emitted even on fetch failure.
+    Emit ONE reference card summarising the fetched AMFI NAV data.
+    No card when the fetch fails (SILENT-18).
     """
     source_type = "AMFI_DATA"
     source_name = "AMFI Mutual Fund Data"
@@ -423,23 +417,16 @@ def _scrape_amfi_nav_data() -> list[dict]:
     except Exception as exc:
         logger.warning("AMFI NAV fetch failed: %s", exc)
 
-    if summary_detail:
-        raw_text = (
-            "AMFI (Association of Mutual Funds in India) publishes daily mutual-fund "
-            "NAV data for all schemes registered in India. This is a key macro data "
-            "source for tracking AUM flows, redemptions, and fund-manager positioning "
-            "across equity, debt, and hybrid categories. "
-            + summary_detail
-        )
-    else:
-        raw_text = (
-            "AMFI (Association of Mutual Funds in India) publishes daily NAV data "
-            "for all registered mutual-fund schemes in India via NAVAll.txt. "
-            "Data is used to track aggregate AUM, FII/DII flows, equity MF inflows, "
-            "and debt fund trends — all material macro signals for Indian equity markets. "
-            "Data URL: https://www.amfiindia.com/spages/NAVAll.txt "
-            "(fetch unavailable at harvest time)."
-        )
+    if not summary_detail:
+        logger.warning("AMFI MF Data: fetch failed or empty, no card")
+        return []
+    raw_text = (
+        "AMFI (Association of Mutual Funds in India) publishes daily mutual-fund "
+        "NAV data for all schemes registered in India. This is a key macro data "
+        "source for tracking AUM flows, redemptions, and fund-manager positioning "
+        "across equity, debt, and hybrid categories. "
+        + summary_detail
+    )
 
     card = _make_card(
         source_type=source_type,
@@ -449,7 +436,7 @@ def _scrape_amfi_nav_data() -> list[dict]:
         raw_text=raw_text,
         tickers=[],
     )
-    logger.info("AMFI MF Data: 1 card (detail_ok=%s)", bool(summary_detail))
+    logger.info("AMFI MF Data: 1 card")
     return [card]
 
 
@@ -458,6 +445,26 @@ def _scrape_amfi_nav_data() -> list[dict]:
 # ═══════════════════════════════════════════════════════════════════════════
 
 _MIN_CREDIBILITY = 5
+_SEBI_SOURCE_NAME = "SEBI RIA Registry"
+_AMFI_SOURCE_NAME = "AMFI Mutual Fund Data"
+_RATING_SOURCE_NAMES = [f["source_name"] for f in _RATING_FEEDS]
+# Every source_name this module produces; each gets a SourceHealth outcome per run.
+_EXPECTED_SOURCES = [*_RATING_SOURCE_NAMES, _SEBI_SOURCE_NAME, _AMFI_SOURCE_NAME]
+
+
+def _record_expert_health(all_cards: list[dict], errors: dict[str, str]) -> None:
+    """SILENT-18: record a real outcome for every expected source (0 cards = failure)."""
+    try:
+        from services.harvester_db import get_session as h_get_session, record_source_health
+        with h_get_session() as s:
+            for name in _EXPECTED_SOURCES:
+                count = sum(1 for c in all_cards if c.get("source_name") == name)
+                record_source_health(
+                    s, name, success=count > 0, items=count,
+                    error=None if count else errors.get(name, "no items harvested (fetch failed or empty)"),
+                )
+    except Exception:
+        logger.warning("Recording expert source health failed", exc_info=True)
 
 
 def scrape_all_expert_sources() -> list[dict]:
@@ -467,18 +474,21 @@ def scrape_all_expert_sources() -> list[dict]:
     """
     all_cards: list[dict] = []
 
+    errors: dict[str, str] = {}
+
     sources = [
-        ("credit_rating_agencies", _scrape_all_rating_agencies),
-        ("sebi_ria_registry", _scrape_sebi_ria_registry),
-        ("amfi_nav_data", _scrape_amfi_nav_data),
+        ("credit_rating_agencies", _scrape_all_rating_agencies, _RATING_SOURCE_NAMES),
+        ("sebi_ria_registry", _scrape_sebi_ria_registry, [_SEBI_SOURCE_NAME]),
+        ("amfi_nav_data", _scrape_amfi_nav_data, [_AMFI_SOURCE_NAME]),
     ]
 
-    for name, scrape_fn in sources:
+    for name, scrape_fn, source_names in sources:
         try:
             cards = scrape_fn()
             all_cards.extend(cards)
         except Exception as exc:
             logger.warning("Source '%s' raised unexpectedly: %s", name, exc)
+            errors.update({sn: str(exc)[:500] or type(exc).__name__ for sn in source_names})
             try:
                 from services.error_telemetry import log_diagnostic_error
                 log_diagnostic_error(
@@ -487,8 +497,10 @@ def scrape_all_expert_sources() -> list[dict]:
                     context={"source_name": name},
                     exception={"type": type(exc).__name__, "message": str(exc)},
                 )
-            except Exception as _e:
-                pass
+            except Exception:
+                logger.warning("Harvest failure telemetry write failed", exc_info=True)
+
+    _record_expert_health(all_cards, errors)
 
     # Final credibility filter.
     filtered = [c for c in all_cards if c.get("credibility_score", 0) >= _MIN_CREDIBILITY]
