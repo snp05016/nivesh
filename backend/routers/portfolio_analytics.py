@@ -7,6 +7,7 @@ main.py must include this router BEFORE routers.portfolio, so GET /portfolio/ben
 /portfolio/signal-warnings are not captured by GET /portfolio/{user_id}.
 """
 import logging
+import hashlib
 import json
 import time
 import math
@@ -25,6 +26,7 @@ from helpers import (
     format_indian_currency,
 )
 from database import latest_per_ticker
+from core.timeutil import ist_today
 from services.yfinance_client import get_quotes, yf_history
 from concurrent.futures import ThreadPoolExecutor
 import os
@@ -622,11 +624,20 @@ def portfolio_red_flags_endpoint(user_id: int, _caller: int = Depends(require_us
                         "Write exactly 3 sentences summarizing the biggest risks. "
                         "Be specific about tickers and risk types. Plain English."
                     )
-                    summary = _deepseek_chat(
-                        [{"role": "user", "content": prompt}],
-                        max_tokens=200,
-                        log_endpoint="red_flags_summary",
-                    ).strip()
+                    # LLM-19: one paid summary per user, flag set and IST day.
+                    cache_key = f"{user_id}:{hashlib.sha1(flags_text.encode()).hexdigest()[:12]}:{ist_today().isoformat()}"
+                    cached_summary = _dcache_get("red_flags_summary", cache_key)
+                    if cached_summary:
+                        summary = cached_summary
+                    else:
+                        llm_summary = _deepseek_chat(
+                            [{"role": "user", "content": prompt}],
+                            max_tokens=400,
+                            log_endpoint="red_flags_summary",
+                        ).strip()
+                        if llm_summary:
+                            summary = llm_summary
+                            _dcache_set("red_flags_summary", cache_key, summary, ttl=24 * 3600)
             except Exception as e:
                 logging.info(f"[RED-FLAGS] Summary call failed: {e}")
 
@@ -706,7 +717,7 @@ def macro_impact_endpoint(user_id: int, _caller: int = Depends(require_user_matc
                 llm_budget.guard(user_id, "macro_impact")  # over budget -> "assessment unavailable"
                 raw_text = _deepseek_chat(
                     [{"role": "user", "content": prompt}],
-                    max_tokens=1500,
+                    max_tokens=3000,
                     temperature=0,
                     log_endpoint="macro_impact",
                 )

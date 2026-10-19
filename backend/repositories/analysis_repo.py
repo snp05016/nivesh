@@ -12,6 +12,22 @@ from core.timeutil import ist_today
 from models.db_models import AnalysisHistory, SignalEvent
 
 
+def report_entry_price(report: dict) -> Optional[float]:
+    """The entry price of a stored report: the live quote at generation time, else None.
+
+    Only current_price_inr stamped current_price_source == "live_quote" (LLM-04) is a
+    market price; older reports carry an LLM-written number and are never scored or
+    quoted as the price at analysis time (LLM-14). The one accessor for every reader.
+    """
+    if not isinstance(report, dict) or report.get("current_price_source") != "live_quote":
+        return None
+    try:
+        price = float(report.get("current_price_inr") or 0)
+    except (TypeError, ValueError):
+        return None
+    return price if price > 0 else None
+
+
 def save_analysis(session: Session, user_id: Optional[int], ticker: str, result: dict, raw_output: Optional[str] = None, scan_type: str = "standard") -> dict:
     """Save analysis to the database and track signal changes.
 

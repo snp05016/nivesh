@@ -76,7 +76,7 @@ class SummaryProvider(ABC):
 class DeepSeekProvider(SummaryProvider):
     """Calls DeepSeek via the project's canonical llm_utils.deepseek_chat."""
 
-    _MAX_CHUNK_TOKENS: int = 500  # output tokens per chunk
+    _MAX_CHUNK_TOKENS: int = 1000  # output tokens per chunk (sent as-is since LLM-17)
     _MAX_CHUNKS: int = 20
 
     async def summarize_chunks(self, chunks: List[str]) -> dict:
@@ -113,7 +113,7 @@ class DeepSeekProvider(SummaryProvider):
             raise RuntimeError("all DeepSeek chunk calls failed")
 
         if len(partials) == 1:
-            return _sanitize(partials[0])
+            return await asyncio.to_thread(_sanitize, partials[0])  # ticker check reads the DB
 
         return await asyncio.to_thread(_merge_partials, partials, deepseek_chat)
 
@@ -282,6 +282,9 @@ def _sanitize(d: dict) -> dict:
         base["confidence"] = float(base.get("confidence", 0.0))
     except (TypeError, ValueError):
         base["confidence"] = 0.0
+    # LLM-21: only symbols that exist in the instrument universe reach the user.
+    from services.instrument_universe import validate_tickers
+    base["tickers_mentioned"] = validate_tickers(str(t) for t in base["tickers_mentioned"])[0]
     return base
 
 
@@ -293,7 +296,7 @@ def _merge_partials(partials: List[dict], deepseek_chat) -> dict:
         {"role": "user", "content": merged_json},
     ]
     try:
-        raw = deepseek_chat(messages, max_tokens=600, temperature=0.1, log_endpoint="youtube_summary_merge")
+        raw = deepseek_chat(messages, max_tokens=1500, temperature=0.1, log_endpoint="youtube_summary_merge")
         return _sanitize(_safe_json(raw))
     except Exception as exc:
         logger.warning("Merge call failed (%s); using first partial as fallback", exc)
@@ -311,4 +314,4 @@ def _merge_partials(partials: List[dict], deepseek_chat) -> dict:
         # Majority sentiment
         sentiments = [p.get("sentiment", "neutral") for p in partials]
         merged["sentiment"] = max(set(sentiments), key=sentiments.count)
-        return merged
+        return _sanitize(merged)

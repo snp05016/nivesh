@@ -338,7 +338,7 @@ def _extract_stance_llm(advisor_name: str, ticker: str, snippet: str) -> dict | 
     ]
 
     try:
-        raw_text = _deepseek_chat(messages, max_tokens=200, temperature=0.1)
+        raw_text = _deepseek_chat(messages, max_tokens=400, temperature=0.1)
     except Exception as exc:
         logger.warning("DeepSeek stance call failed for %s/%s: %s", advisor_name, ticker, exc)
         return None

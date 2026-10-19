@@ -281,6 +281,16 @@ def _clear_shared_cache():
 
 
 @pytest.fixture(autouse=True)
+def _reset_deepseek_client():
+    """get_deepseek_client is a process-wide singleton (LLM-17); tests that fake
+    openai.OpenAI must not see a client cached by an earlier test, nor leak theirs."""
+    from services.llm_utils import get_deepseek_client
+    get_deepseek_client.cache_clear()
+    yield
+    get_deepseek_client.cache_clear()
+
+
+@pytest.fixture(autouse=True)
 def _reset_yf_guards(monkeypatch):
     """Isolate the shared yfinance breaker and token bucket per test (REL-14).
 

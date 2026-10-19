@@ -11,6 +11,7 @@ Usage:
     from services.llm_utils import deepseek_chat, claude_messages, DEEPSEEK_MODEL
 """
 
+import functools
 import json
 import os
 import re
@@ -54,37 +55,44 @@ def contains_devanagari(text: object) -> bool:
 # DeepSeek client
 # ═════════════════════════════════════════════════════════════════════════════
 
+@functools.lru_cache(maxsize=1)
 def get_deepseek_client() -> "_openai_lib.OpenAI":
-    """Return a lazily-constructed DeepSeek OpenAI-compatible client."""
+    """Return the shared DeepSeek OpenAI-compatible client (built once, connections reused).
+
+    The SDK's own retries (max_retries) cover 408/409/429/5xx and connection errors;
+    callers never add a retry loop on top (LLM-17).
+    """
     api_key = os.environ.get("DEEPSEEK_API_KEY", "")
     return _openai_lib.OpenAI(
         api_key=api_key,
         base_url="https://api.deepseek.com/v1",
         timeout=60.0,
+        max_retries=2,
     )
 
 
 # ═════════════════════════════════════════════════════════════════════════════
-# DeepSeek chat — with reasoning_content fallback & exponential backoff
+# DeepSeek chat — one SDK call, caller's token budget honoured
 # ═════════════════════════════════════════════════════════════════════════════
 
 def deepseek_chat(
     messages: list[dict],
     *,
-    max_tokens: int = 512,
+    max_tokens: int = 1024,
     temperature: float = 0.3,
     log_endpoint: str | None = None,
     model: str | None = None,
 ) -> str:
-    """Call DeepSeek V4 Flash/Pro via OpenAI-compatible API.
+    """Call DeepSeek via the OpenAI-compatible API and return the answer text.
 
-    V4 Flash/Pro are thinking models — reasoning_content consumes max_tokens
-    before content is generated.  We inflate the requested max_tokens to
-    leave room for internal reasoning, then return content (or
-    reasoning_content as fallback).
+    DEEPSEEK_MODEL (deepseek-chat) is a non-thinking model: the request uses the
+    caller's max_tokens (clamped to 16..8192). DEEPSEEK_REASONER_MODEL spends
+    output tokens on reasoning_content first, so it gets max_tokens + 8000
+    headroom (capped at 16000) and no temperature.
 
-    When model is DEEPSEEK_REASONER_MODEL, reserves extra headroom for reasoning tokens.
-    Retries up to 3 times with exponential backoff (2 s, 4 s, 8 s).
+    One SDK call; the client's max_retries handles transient errors, everything
+    else (400/401/422, budget) raises straight to the caller. Returns '' when the
+    model produced no content: reasoning_content is never returned as the answer.
     """
     from helpers import _log_token_usage  # local import avoids circular deps
     from services import llm_budget
@@ -94,57 +102,34 @@ def deepseek_chat(
     llm_budget.assert_global_budget()
 
     selected_model = model or DEEPSEEK_MODEL
-    is_pro = selected_model == DEEPSEEK_REASONER_MODEL
-    client = get_deepseek_client()
-    last_exc: Exception | None = None
-    # Reasoner (is_pro) needs headroom for reasoning_content, but the old `max_tokens * 8`
-    # inflated extreme calls to 64K-128K tokens — a primary cause of 15-20 min runaways.
-    # Cap the reasoner headroom; leave the non-pro `* 5` path UNCHANGED (5 external callers
-    # depend on it: portfolio red-flags/macro/trade-journal, advisor harvester, morning briefs).
-    if is_pro:
+    is_reasoner = selected_model == DEEPSEEK_REASONER_MODEL
+    if is_reasoner:
         effective_max = min(max_tokens + 8000, 16000)
     else:
-        effective_max = max(max_tokens * 5, 512)
+        effective_max = max(16, min(max_tokens, 8192))
 
-    for attempt in range(3):
-        try:
-            kwargs: dict = dict(
-                model=selected_model,
-                messages=messages,
-                max_tokens=effective_max,
-                temperature=temperature,
-            )
-            if is_pro:
-                kwargs.pop("temperature", None) # deepseek-reasoner does not support temperature
+    kwargs: dict = dict(
+        model=selected_model,
+        messages=messages,
+        max_tokens=effective_max,
+    )
+    if not is_reasoner:
+        kwargs["temperature"] = temperature  # deepseek-reasoner does not support temperature
 
-            response = client.chat.completions.create(**kwargs)
+    response = get_deepseek_client().chat.completions.create(**kwargs)
 
-            # Every call is logged and metered (LLM-09, ARCH-03, LLM-02); unlabelled callers still show up in spend.
-            if getattr(response, "usage", None) is not None:
-                _log_token_usage(log_endpoint or llm_budget.current_feature() or "deepseek_unlabelled",
-                                 response.usage, selected_model)
+    # Every call is logged and metered (LLM-09, ARCH-03, LLM-02); unlabelled callers still show up in spend.
+    if getattr(response, "usage", None) is not None:
+        _log_token_usage(log_endpoint or llm_budget.current_feature() or "deepseek_unlabelled",
+                         response.usage, selected_model)
 
-            choice = response.choices[0]
-            content = choice.message.content or ""
-
-            # If content empty (all tokens consumed by reasoning), fall back
-            if not content.strip():
-                reasoning = getattr(choice.message, "reasoning_content", None) or ""
-                if reasoning.strip():
-                    content = reasoning
-            # Strip unparsed <think>/</think> tags (DeepSeek V4 Flash artifact)
-            content = _THINK_TAG_RE.sub("", content).strip()
-            return content
-
-        except Exception as exc:
-            last_exc = exc
-            logging.info(f"[DeepSeek] Attempt {attempt + 1}/3 failed: {exc}")
-            if attempt < 2:
-                _time.sleep(2.0 * (2 ** attempt))
-
-    raise RuntimeError(
-        f"DeepSeek call failed after 3 retries: {last_exc}"
-    ) from last_exc
+    choice = response.choices[0]
+    content = choice.message.content or ""
+    if not content.strip():
+        logging.info(f"[DeepSeek] empty content (finish_reason={getattr(choice, 'finish_reason', None)})")
+        return ""
+    # Strip unparsed <think>/</think> tags
+    return _THINK_TAG_RE.sub("", content).strip()
 
 
 _FENCED_JSON_RE = re.compile(r"```(?:json)?\s*([\[{].*?[\]}])\s*```", re.DOTALL)

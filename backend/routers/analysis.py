@@ -4,6 +4,7 @@ Analysis endpoints router.
 Handles quick-info, analyze, batch analysis, technical signals, home feed, screener, etc.
 """
 import os
+import hashlib
 import json
 import time as _time
 import time
@@ -40,6 +41,8 @@ router = APIRouter(tags=["Analysis"])
 # Constants
 # ---------------------------------------------------------------------------
 from services.llm_utils import deepseek_chat, SONNET_MODEL, DEEPSEEK_MODEL
+from services.disk_cache import get as _dcache_get, set as _dcache_set
+from core.timeutil import ist_today
 _deepseek_chat = deepseek_chat  # backward-compat alias
 from services.kyc_consent_service import AI_PROCESSING_CONSENT, has_active_consent
 from services import llm_budget
@@ -1411,12 +1414,21 @@ def daily_action_endpoint(user_id: int, _caller: int = Depends(require_user_matc
                     "In exactly one sentence of max 20 words, what is the single most important "
                     "thing this investor should do today? Be specific — name the ticker."
                 )
-                action = _deepseek_chat(
-                    [{"role": "user", "content": prompt}],
-                    max_tokens=256,
-                    temperature=0,
-                    log_endpoint="daily_action",
-                ).strip().rstrip(".")
+                # LLM-19: one paid call per user, IST day and portfolio context, not per screen open.
+                cache_key = f"{user_id}:{ist_today().isoformat()}:{hashlib.sha1(prompt.encode()).hexdigest()[:12]}"
+                cached_action = _dcache_get("daily_action", cache_key)
+                if cached_action:
+                    action = cached_action
+                else:
+                    llm_action = _deepseek_chat(
+                        [{"role": "user", "content": prompt}],
+                        max_tokens=256,
+                        temperature=0,
+                        log_endpoint="daily_action",
+                    ).strip().rstrip(".")
+                    if llm_action:
+                        action = llm_action
+                        _dcache_set("daily_action", cache_key, action, ttl=6 * 3600)
             except Exception as e:
                 logging.warning(f"[DAILY-ACTION] DeepSeek failed, serving the static action: {e}")
 

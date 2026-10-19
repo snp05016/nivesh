@@ -3,7 +3,7 @@ AI Orchestration Service — extracted from main.py to resolve the God-Node anti
 
 Contains the full 8-stage AI analysis pipeline:
 - analyze() — main entry point for stock analysis
-- reformat_with_claude() — Claude Sonnet → DeepSeek V4 Flash reformatter
+- reformat_with_claude() — Claude Sonnet fallback reformatter (one call)
 - run_trading_agents() — LangGraph-based multi-agent propagation
 - Supporting graph setup, normalization, and JSON extraction utilities.
 
@@ -98,6 +98,7 @@ from database import (
     NewsArticle,
     PKScreenerSignal,
 )
+from repositories.analysis_repo import report_entry_price
 
 from prompts import INDIAN_MARKET_SYSTEM_PROMPT, NEWS_ANALYST_PERSONA, EXTREME_ADDENDUM
 
@@ -242,7 +243,7 @@ def search_filings(query: str, ticker: str) -> str:
 # ═════════════════════════════════════════════════════════════════════════════
 
 
-def create_optimized_analyst_node(llm, persona: str, report_key: str, tools: list):
+def create_optimized_analyst_node(llm, persona: str, report_key: str, tools: list, tool_loop_cap: int = 2):
     """Create an analyst node function for the state graph.
 
     Args:
@@ -250,6 +251,9 @@ def create_optimized_analyst_node(llm, persona: str, report_key: str, tools: lis
         persona (str): The persona instructions for the analyst.
         report_key (str): The state key to store the resulting report.
         tools (list): List of tools the analyst can use.
+        tool_loop_cap (int): Tool-call rounds allowed before the analyst must write its
+            report (LLM-18). The Msg Clear node empties messages between analysts, so
+            the count is per analyst.
 
     Returns:
         function: The node function that processes the state.
@@ -275,6 +279,12 @@ def create_optimized_analyst_node(llm, persona: str, report_key: str, tools: lis
         ]
 
         volatile_context = f"The current trading date is {current_date}. {instrument_context}"
+        tool_rounds = sum(1 for m in state["messages"] if getattr(m, "tool_calls", None))
+        budget_spent = tool_rounds >= tool_loop_cap
+        if budget_spent:
+            volatile_context += (
+                "\nTool budget exhausted: write your final report now from the data you have."
+            )
 
         messages = [
             SystemMessage(content=system_blocks),
@@ -283,7 +293,9 @@ def create_optimized_analyst_node(llm, persona: str, report_key: str, tools: lis
         ]
 
         prompt = ChatPromptTemplate.from_messages(messages)
-        chain = prompt | llm.bind_tools(tools)
+        # Without bound tools the model cannot emit tool_calls, so the conditional edge
+        # routes to Msg Clear instead of looping until the recursion limit.
+        chain = prompt | (llm if budget_spent else llm.bind_tools(tools))
 
         result = chain.invoke(state["messages"])
         report = result.content if not result.tool_calls else ""
@@ -302,6 +314,8 @@ def create_optimized_analyst_node(llm, persona: str, report_key: str, tools: lis
 
 
 class OptimizedGraphSetup(GraphSetup):
+    tool_loop_cap: int = 2  # analyst tool rounds; set from config["analyst_tool_loop_cap"] (LLM-18)
+
     def setup_graph(self, selected_analysts=["governance", "market", "news", "fundamentals"]):
         from tradingagents.agents.utils.agent_utils import (
             get_stock_data,
@@ -319,36 +333,42 @@ class OptimizedGraphSetup(GraphSetup):
             selected_analysts, concurrency_limit=self.analyst_concurrency_limit
         )
 
+        tool_loop_cap = self.tool_loop_cap
         analyst_factories = {
             "governance": lambda: create_optimized_analyst_node(
                 self.quick_thinking_llm,
                 GOVERNANCE_ANALYST_PERSONA,
                 "governance",
                 [get_news, get_insider_transactions, search_filings],
+                tool_loop_cap,
             ),
             "market": lambda: create_optimized_analyst_node(
                 self.quick_thinking_llm,
                 MARKET_ANALYST_PERSONA,
                 "market",
                 [get_stock_data, get_indicators],
+                tool_loop_cap,
             ),
             "news": lambda: create_optimized_analyst_node(
                 self.quick_thinking_llm,
                 NEWS_ANALYST_PERSONA,
                 "news",
                 [get_news, get_global_news, get_insider_transactions, search_filings],
+                tool_loop_cap,
             ),
             "fundamentals": lambda: create_optimized_analyst_node(
                 self.quick_thinking_llm,
                 FUNDAMENTALS_ANALYST_PERSONA,
                 "fundamentals",
                 [get_fundamentals, get_balance_sheet, get_cashflow, get_income_statement],
+                tool_loop_cap,
             ),
             "social": lambda: create_optimized_analyst_node(
                 self.quick_thinking_llm,
                 "You are a sentiment analyst.",
                 "sentiment",
                 [get_news],
+                tool_loop_cap,
             ),
         }
 
@@ -449,6 +469,7 @@ class OptimizedTradingAgentsGraph(TradingAgentsGraph):
             self.conditional_logic,
             analyst_concurrency_limit=self.config.get("analyst_concurrency_limit", 1),
         )
+        self.graph_setup.tool_loop_cap = self.config.get("analyst_tool_loop_cap", 2)
         self.workflow = self.graph_setup.setup_graph(
             kwargs.get("selected_analysts", ["governance", "market", "news", "fundamentals"])
         )
@@ -486,7 +507,7 @@ def build_ta_config(scan_type: str = "standard", debate_rounds: int | None = Non
         config["quick_think_provider"] = "deepseek"
         config["max_debate_rounds"] = 1
         config["max_risk_discuss_rounds"] = 1
-        config["max_tokens"] = 1000              # cost reduction: 1000×5=5000 effective
+        config["max_tokens"] = 2000              # passed straight to the chat model (no inflation); 1000 truncated reports
         config["recursion_limit"] = 80           # standard: tighter budget than extreme (still safe)
         config["max_recur_limit"] = 80
         config["analyst_tool_loop_cap"] = 2      # cap agent↔tool loop iterations (prevents timeout)
@@ -498,7 +519,7 @@ def build_ta_config(scan_type: str = "standard", debate_rounds: int | None = Non
         config["max_debate_rounds"] = debate_rounds
 
     if language in _REPORT_LANGUAGES:
-        config["response_language"] = _REPORT_LANGUAGES[language]
+        config["output_language"] = _REPORT_LANGUAGES[language]  # the key the vendored agents read
     return config
 
 
@@ -608,10 +629,12 @@ def reformat_with_deepseek(
     # LLM-04: the whole input (live data, agent reports, quant blocks), never a tail slice.
     reformatter_input = raw_output[:_REFORMAT_INPUT_CAP]
 
-    # Task 47: Robust error handling with exponential backoff and dead-letter logging
+    # LLM-17: one DeepSeek call (the SDK retries transient errors); one more only when the
+    # answer did not parse. API errors go straight to the Claude fallback, no sleeps.
     _dlq_log = Path("logs/deepseek_failures.jsonl")
 
-    for attempt in range(3):
+    _ds_err: Exception | None = None
+    for attempt in range(2):
         try:
             system_prompt = INDIAN_MARKET_SYSTEM_PROMPT
             if is_extreme:
@@ -623,10 +646,14 @@ def reformat_with_deepseek(
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": f"Reformat the following analysis for {full_ticker} ({exchange}) into the prescribed JSON format.\n\n{reformatter_input}"},
                 ],
-                max_tokens=2000 if is_extreme else 1000,
+                max_tokens=8000 if is_extreme else 4000,
                 temperature=0,
                 log_endpoint="reformat_deepseek",
             )
+        except Exception as _api_err:
+            _ds_err = _api_err
+            break
+        try:
             if not ds_raw:
                 raise ValueError("Empty DeepSeek response")
             result = _extract_json_from_text(ds_raw)
@@ -636,29 +663,26 @@ def reformat_with_deepseek(
                     parsed = _normalize_response(parsed)
                     parsed["reformat_model"] = "deepseek-flash"
                     return parsed
-            # Parse succeeded but no signal — treat as soft failure, retry
             raise ValueError(f"Parsed JSON missing 'signal' field (attempt {attempt + 1})")
-        except Exception as _ds_err:
-            if attempt == 2:
-                # Dead-letter: log failure for later inspection / replay
-                try:
-                    _dlq_log.parent.mkdir(parents=True, exist_ok=True)
-                    with open(_dlq_log, "a") as _dlq_f:
-                        _dlq_f.write(
-                            _json_dumps({
-                                "ticker": full_ticker,
-                                "error": str(_ds_err),
-                                "ts": time.time(),
-                            }) + "\n"
-                        )
-                except Exception as _dlq_write_err:
-                    logging.info(f"[DLQ] Failed to write dead-letter entry: {_dlq_write_err}")
-                break
-            time.sleep(2 ** attempt)  # 1s, 2s before final attempt
+        except Exception as _parse_err:  # any malformed answer (bad JSON, wrong shape) -> retry, then Claude
+            _ds_err = _parse_err
 
-    # All attempts exhausted — fall back to Claude Sonnet (expensive, reliable)
+    # Dead-letter: log failure for later inspection / replay
+    try:
+        _dlq_log.parent.mkdir(parents=True, exist_ok=True)
+        with open(_dlq_log, "a") as _dlq_f:
+            _dlq_f.write(
+                _json_dumps({
+                    "ticker": full_ticker,
+                    "error": str(_ds_err),
+                    "ts": time.time(),
+                }) + "\n"
+            )
+    except Exception as _dlq_write_err:
+        logging.info(f"[DLQ] Failed to write dead-letter entry: {_dlq_write_err}")
+
     logging.getLogger("orchestrator").warning(
-        f"[reformat_fallback] {full_ticker}: DeepSeek reformat failed after 3 attempts, falling back to Claude Sonnet"
+        f"[reformat_fallback] {full_ticker}: DeepSeek reformat failed ({_ds_err}), falling back to Claude Sonnet"
     )
     return reformat_with_claude(raw_output, full_ticker, exchange, prior_analyses, scan_type)
 
@@ -670,12 +694,10 @@ def reformat_with_claude(
     prior_analyses: list[dict] | None = None,
     scan_type: str = "standard",
 ) -> dict:
-    """Reformat raw AI output into structured JSON.
-    Tries Claude Sonnet first, falls back to DeepSeek V4 Flash if Claude fails,
-    then applies _normalize_response to guarantee iOS-safe output.
+    """Reformat raw AI output into structured JSON with one Claude Sonnet call
+    (the Anthropic SDK retries transient errors). DeepSeek already failed before this
+    is called, so on failure it returns the flagged minimal fallback (LLM-17).
     """
-    import time
-
     # Deterministic serialization for breakpoint 2
     serialized_history = ""
     if prior_analyses:
@@ -693,14 +715,6 @@ def reformat_with_claude(
 
     is_extreme = scan_type == "extreme"
     reformat_max_tokens = 8000 if is_extreme else 4000
-
-    system_prompt = INDIAN_MARKET_SYSTEM_PROMPT
-    if is_extreme:
-        system_prompt += EXTREME_ADDENDUM
-    if serialized_history:
-        system_prompt += (
-            f"\n\nPREVIOUS HISTORICAL ANALYSES (CONTEXT):\n{serialized_history}"
-        )
 
     user_message = (
         f"Below is the raw trading analysis for {full_ticker} ({exchange}).\n\n"
@@ -724,7 +738,6 @@ def reformat_with_claude(
 
     # ── Phase 1: Claude Sonnet ────────────────────────────────────────────
     claude_api_key = os.getenv("ANTHROPIC_API_KEY")
-    claude_succeeded = False
     if claude_api_key:
         llm_budget.assert_global_budget()  # LlmBudgetExceeded: no Sonnet spend past the daily cap
         claude_client = get_anthropic_client()
@@ -751,61 +764,23 @@ def reformat_with_claude(
                 }
             )
 
-        for attempt in range(3):
-            try:
-                response = claude_client.messages.create(
-                    model=SONNET_MODEL,
-                    max_tokens=reformat_max_tokens,
-                    system=system_array,
-                    messages=[{"role": "user", "content": user_message}],
-                    **sampling_kwargs(SONNET_MODEL),  # 5.x models reject temperature
-                )
-                _log_token_usage("reformat", response.usage, SONNET_MODEL)
-                raw_json = _extract_json_from_text(response.content[0].text)
-                parsed = _json_loads(raw_json)
-                validated = _validate_parsed(parsed)
-                if validated is not None:
-                    return validated
-                logging.info(
-                    f"[WARN] Claude returned partial JSON, falling through to DeepSeek"
-                )
-                break
-            except Exception as e:
-                err_msg = str(e).lower()
-                is_cache_eviction = any(kw in err_msg for kw in (
-                    "cache_expired", "ephemeral", "prompt_cache",
-                    "cache_not_found", "evicted",
-                ))
-                logging.info(f"[Anthropic] Reformat attempt {attempt + 1} failed: {e}")
-                if attempt < 2:
-                    # Fix 2.35: cache eviction errors get extended backoff
-                    # to stay under the 1200s gateway timeout while cache repopulates
-                    backoff = 4.0 * (2 ** attempt) if is_cache_eviction else 1.0 * (2 ** attempt)
-                    if is_cache_eviction:
-                        logging.info("[Anthropic] Cache eviction detected — extended backoff")
-                    time.sleep(backoff)
-
-    # ── Phase 2: DeepSeek V4 Flash fallback ──────────────────────────────
-    if os.getenv("DEEPSEEK_API_KEY"):
-        logging.info(f"[DeepSeek] Reformatting {full_ticker} via DeepSeek V4 Flash...")
-        ds_messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_message},
-        ]
         try:
-            ds_raw = _deepseek_chat(
-                ds_messages,
+            response = claude_client.messages.create(
+                model=SONNET_MODEL,
                 max_tokens=reformat_max_tokens,
-                temperature=0,
-                log_endpoint="reformat_deepseek",
+                system=system_array,
+                messages=[{"role": "user", "content": user_message}],
+                **sampling_kwargs(SONNET_MODEL),  # 5.x models reject temperature
             )
-            raw_json = _extract_json_from_text(ds_raw)
-            parsed = json.loads(raw_json)
+            _log_token_usage("reformat", response.usage, SONNET_MODEL)
+            raw_json = _extract_json_from_text(response.content[0].text)
+            parsed = _json_loads(raw_json)
             validated = _validate_parsed(parsed)
             if validated is not None:
                 return validated
+            logging.info("[WARN] Claude returned partial JSON, using the minimal fallback")
         except Exception as e:
-            logging.info(f"[DeepSeek] Reformating failed: {e}")
+            logging.info(f"[Anthropic] Reformat failed: {e}")
 
     # ── Phase 3: Ultimate fallback ────────────────────────────────────────
     logging.info(f"[FALLBACK] Returning normalized minimal analysis for {full_ticker}")
@@ -1746,8 +1721,7 @@ def _log_prediction(
                 scan_type=scan_type,
                 regime_id=result.get("market_regime", "Unknown"),
                 # LLM-04: the market quote at generation time, never an LLM number.
-                entry_price=(result.get("current_price_inr")
-                             if result.get("current_price_source") == "live_quote" else None),
+                entry_price=report_entry_price(result),
                 target_price=(result.get("target_prices") or {}).get("medium_term_12m"),
                 ml_direction=fs.get("_ml_direction"),
                 ml_p_up=fs.get("_ml_p_up"),

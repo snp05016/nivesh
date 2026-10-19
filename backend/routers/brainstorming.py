@@ -28,5 +28,8 @@ def brainstorming_endpoint(req: BrainstormingRequest, user_id: int = Depends(req
         return BrainstormingResponse(
             ideas=result.get("ideas", [])
         )
-    except Exception as e:
+    except ValueError:
+        # The model answered but nothing usable survived validation (LLM-21): retryable, not a 500.
+        raise HTTPException(status_code=502, detail="Could not generate ideas, please retry")
+    except Exception:
         raise HTTPException(status_code=500, detail="Internal server error")

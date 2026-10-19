@@ -370,7 +370,7 @@ async def pregen_morning_briefs_all_users() -> dict:
             # `await _deepseek_chat(prompt)` raised, so no brief was ever pre-generated).
             raw = await asyncio.to_thread(
                 _deepseek_chat, [{"role": "user", "content": prompt}],
-                max_tokens=600, log_endpoint="morning_brief_pregen",
+                max_tokens=1200, log_endpoint="morning_brief_pregen",
             )
 
             brief = None

@@ -1,4 +1,4 @@
-"""Task 2 — engine is bounded; reasoner token inflation capped; non-pro path preserved."""
+"""Task 2 — engine is bounded; reasoner token headroom capped; deepseek-chat gets the caller's budget (LLM-17)."""
 
 
 def test_extreme_config_is_bounded(monkeypatch):
@@ -20,7 +20,7 @@ def test_standard_config_unchanged(monkeypatch):
     c = build_ta_config("standard")
     assert c["max_debate_rounds"] == 1
     assert c["max_risk_discuss_rounds"] == 1
-    assert c["max_tokens"] == 1000
+    assert c["max_tokens"] == 2000  # LLM-18: sent straight to the chat model, 1000 truncated reports
 
 
 class _Msg:
@@ -58,11 +58,11 @@ def test_reasoner_effective_max_capped(monkeypatch):
     assert captured["max_tokens"] == 16000
 
 
-def test_non_pro_path_preserved(monkeypatch):
-    """The 5x inflation for non-reasoner calls must stay intact (5 external callers)."""
+def test_non_pro_path_uses_caller_budget(monkeypatch):
+    """LLM-17: deepseek-chat is not a thinking model, so max_tokens is passed through (no 5x)."""
     import services.llm_utils as lu
     captured = {}
     monkeypatch.setattr(lu, "get_deepseek_client", lambda: _fake_client(captured))
     lu.deepseek_chat([{"role": "user", "content": "hi"}],
                      max_tokens=512, model="deepseek-chat")
-    assert captured["max_tokens"] == 512 * 5
+    assert captured["max_tokens"] == 512

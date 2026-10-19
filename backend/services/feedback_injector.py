@@ -28,6 +28,7 @@ def get_feedback_block(ticker: str, db_session=None) -> str:
     """
     try:
         from database import AnalysisHistory, get_session
+        from repositories.analysis_repo import report_entry_price
         import json
         import gzip
 
@@ -61,8 +62,10 @@ def get_feedback_block(ticker: str, db_session=None) -> str:
         tp              = report.get("target_prices") or {}
         prev_target_3m  = tp.get("short_term_3m") or report.get("target_3m")
         prev_target_12m = tp.get("medium_term_12m") or report.get("target_12m")
-        prev_price      = report.get("current_price") or report.get("price")
+        prev_price      = report_entry_price(report)  # LLM-14: live quote only, never an LLM number
         prev_date       = last_analysis.created_at
+        if prev_date is not None and prev_date.tzinfo is None:
+            prev_date = prev_date.replace(tzinfo=timezone.utc)  # naive DB value: aware-minus-naive raised, emptying the block
 
         current_price = None
         try:

@@ -25,6 +25,7 @@ import hashlib
 import json
 import os
 import re
+from services.instrument_universe import validate_tickers
 from services.llm_utils import deepseek_chat
 
 MIN_CREDIBILITY = 5
@@ -231,7 +232,7 @@ def reformat_single(
                 {"role": "system", "content": _SYSTEM_PROMPT},
                 {"role": "user", "content": user_prompt},
             ],
-            max_tokens=700,
+            max_tokens=2800,  # LLM-17: no longer inflated inside deepseek_chat
             temperature=0.2,
             log_endpoint="harvester_reformat",
         )
@@ -265,7 +266,8 @@ def reformat_single(
     if sentiment not in ("BULLISH", "BEARISH", "NEUTRAL"):
         sentiment = "NEUTRAL"
 
-    tickers = [t.upper().strip() for t in _as_list(parsed.get("tickers")) if t.strip()]
+    # LLM-21: drop symbols that are not in the instrument universe (renamed, foreign, invented).
+    tickers = validate_tickers(_as_list(parsed.get("tickers")))[0]
 
     summary = strip_emoji(str(parsed.get("reformatted_summary", ""))).strip()
     if not summary:

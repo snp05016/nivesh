@@ -3,6 +3,7 @@
 Split out of routers/portfolio.py (ARCH-14); paths, handler names and tags are unchanged.
 """
 import logging
+import hashlib
 import json
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Header
@@ -10,6 +11,7 @@ from core.security import require_user_match, assert_same_user
 from helpers import (
     get_session, User, TradeJournal, TradeJournalAddRequest,
     TradeJournalUpdateRequest, _extract_json_from_text, require_auth,
+    _dcache_get, _dcache_set,
 )
 import os
 from services.llm_utils import deepseek_chat as _deepseek_chat
@@ -206,20 +208,28 @@ def trade_journal_stats_endpoint(user_id: int, _caller: int = Depends(require_us
         try:
             all_reasons = " | ".join(e["reason_text"] for e in entries_data if e["reason_text"])
             if all_reasons and os.getenv("DEEPSEEK_API_KEY") and has_active_consent(user_id, AI_PROCESSING_CONSENT):
-                llm_budget.guard(user_id, "trade_journal_stats")  # over budget -> no patterns
-                prompt = (
-                    f'Find 2 patterns in these trade journal reasons: {all_reasons[:2000]}. '
-                    'Return JSON: [{"pattern": str}]'
-                )
-                raw_text = _deepseek_chat(
-                    [{"role": "user", "content": prompt}],
-                    max_tokens=150,
-                    log_endpoint="trade_journal_stats",
-                )
-                raw = _extract_json_from_text(raw_text)
-                patterns = json.loads(raw)
-                if not isinstance(patterns, list):
-                    patterns = []
+                # LLM-19: patterns only change when the journal's reasons do.
+                cache_key = f"{user_id}:{hashlib.sha1(all_reasons.encode()).hexdigest()[:12]}"
+                cached_patterns = _dcache_get("tj_patterns", cache_key)
+                if isinstance(cached_patterns, list):
+                    patterns = cached_patterns
+                else:
+                    llm_budget.guard(user_id, "trade_journal_stats")  # over budget -> no patterns
+                    prompt = (
+                        f'Find 2 patterns in these trade journal reasons: {all_reasons[:2000]}. '
+                        'Return JSON: [{"pattern": str}]'
+                    )
+                    raw_text = _deepseek_chat(
+                        [{"role": "user", "content": prompt}],
+                        max_tokens=300,
+                        log_endpoint="trade_journal_stats",
+                    )
+                    raw = _extract_json_from_text(raw_text)
+                    patterns = json.loads(raw)
+                    if not isinstance(patterns, list):
+                        patterns = []
+                    if patterns:
+                        _dcache_set("tj_patterns", cache_key, patterns, ttl=7 * 24 * 3600)
         except Exception as _pe:
             logging.info(f"[TJ-STATS] Pattern AI call failed: {_pe}")
             patterns = []
