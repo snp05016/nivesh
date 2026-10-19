@@ -41,9 +41,9 @@ import pandas as pd
 import pyarrow.parquet as pq
 from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException, Query
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
-from . import config, live, outcomes, pipeline, registry
+from . import config, live, outcomes, pipeline, registry, series
 from .contract import SCHEMA_VERSION, LiveMetricsRequest, OutcomeRequestItem, RunCounts, RunStatus
 from .marketdata import store, universe
 from .report import as_timestamp
@@ -55,6 +55,8 @@ log = logging.getLogger("research.api")
 RUN_RETENTION = timedelta(days=7)
 MAX_EXTRA_SYMBOLS = 500
 MAX_OUTCOME_ITEMS = 5000
+MAX_SERIES_ITEMS = 2000
+_Date = date  # HighItem has a field named ``date``
 MAX_ITEMS_PAGE = 200
 MAX_READY_SESSIONS_OLD = 5
 # Outcome scoring needs the same lookback as the nightly window: PIT membership is
@@ -279,6 +281,41 @@ class OutcomesRequest(_Body):
     items: Annotated[list[OutcomeRequestItem], Field(max_length=MAX_OUTCOME_ITEMS)]
 
 
+class WindowItem(_Body):
+    key: Annotated[str, Field(min_length=1, max_length=64)]
+    symbol: Annotated[str, Field(min_length=1, max_length=32)] | None = None
+    isin: Annotated[str, Field(min_length=1, max_length=16)] | None = None
+    start: date
+    sessions: Annotated[int, Field(ge=1, le=252)]
+
+    @model_validator(mode="after")
+    def _one_identifier(self) -> "WindowItem":
+        if (self.symbol is None) == (self.isin is None):
+            raise ValueError("exactly one of symbol or isin")
+        return self
+
+
+class WindowRequest(_Body):
+    items: Annotated[list[WindowItem], Field(max_length=MAX_SERIES_ITEMS)]
+
+
+class HighItem(_Body):
+    key: Annotated[str, Field(min_length=1, max_length=64)]
+    symbol: Annotated[str, Field(min_length=1, max_length=32)] | None = None
+    isin: Annotated[str, Field(min_length=1, max_length=16)] | None = None
+    date: _Date
+
+    @model_validator(mode="after")
+    def _one_identifier(self) -> "HighItem":
+        if (self.symbol is None) == (self.isin is None):
+            raise ValueError("exactly one of symbol or isin")
+        return self
+
+
+class HighRequest(_Body):
+    items: Annotated[list[HighItem], Field(max_length=MAX_SERIES_ITEMS)]
+
+
 # ── router ──────────────────────────────────────────────────────────────────
 
 
@@ -427,6 +464,20 @@ def score(body: OutcomesRequest) -> dict[str, Any]:
     index = store.load_index("NIFTY50", data_dir=root)
     results = outcomes.score_outcomes(body.items, panel, universe.membership(panel), index, data_dir=root)
     return {"results": [json.loads(r.model_dump_json()) for r in results], "last_session": last}
+
+
+@router.post("/series/window-returns")
+def series_window_returns(body: WindowRequest) -> dict[str, Any]:
+    """``{results, last_session}``: stock and Nifty 50 return over ``sessions`` from ``start`` (same rule as /outcomes)."""
+    items = [i.model_dump() for i in body.items]
+    return series.window_returns(items, source=_source(), data_dir=_data_dir(), today=_ist_today())
+
+
+@router.post("/series/raw-high")
+def series_raw_high(body: HighRequest) -> dict[str, Any]:
+    """``{results}``: raw (unadjusted) high and close of the last traded session on or before ``date``."""
+    items = [i.model_dump() for i in body.items]
+    return series.raw_highs(items, source=_source(), data_dir=_data_dir())
 
 
 @router.post("/live-metrics")

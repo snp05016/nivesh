@@ -23,6 +23,7 @@ PREFIX = "/research/v1"
 DEFAULT_TIMEOUT = 10.0
 COMPUTE_TIMEOUT = 15.0
 READY_TIMEOUT = 2.0
+SERIES_TIMEOUT = 8.0
 ITEMS_PAGE = 200
 
 
@@ -132,6 +133,14 @@ class MLEngineClient:
     def outcomes(self, items: list[dict[str, Any]]) -> dict[str, Any]:
         """POST /outcomes (<= 5,000 items) -> ``{results, last_session}``."""
         return self._request("POST", "/outcomes", ok=(200,), json={"items": items}).body
+
+    def series_window_returns(self, items: list[dict[str, Any]]) -> dict[str, Any]:
+        """POST /series/window-returns (<= 2,000 items, 8 s) -> ``{results, last_session}``."""
+        return self._request("POST", "/series/window-returns", ok=(200,), timeout=SERIES_TIMEOUT, json={"items": items}).body
+
+    def series_raw_highs(self, items: list[dict[str, Any]]) -> dict[str, Any]:
+        """POST /series/raw-high (<= 2,000 items, 8 s) -> ``{results}``."""
+        return self._request("POST", "/series/raw-high", ok=(200,), timeout=SERIES_TIMEOUT, json={"items": items}).body
 
     def live_metrics(self, request: dict[str, Any]) -> dict[str, Any]:
         """POST /live-metrics: LiveMetricsRequest -> LiveMetricsResponse."""

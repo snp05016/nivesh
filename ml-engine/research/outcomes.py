@@ -30,7 +30,7 @@ from .labels import STALE_EXIT_SESSIONS, make_labels
 from .marketdata import store
 from .report import as_timestamp
 
-__all__ = ["score_outcomes"]
+__all__ = ["realized_window", "score_outcomes"]
 
 SCORER_VERSION = config.OUTCOMES["scorer_version"]
 ENTRY_TOLERANCE = config.OUTCOMES["entry_price_tolerance"]
@@ -68,6 +68,50 @@ def _index_return(index: pd.Series | None, t: pd.Timestamp, end: pd.Timestamp) -
     return float((b.iloc[-1] / a.iloc[-1] - 1.0) * 100.0)
 
 
+def realized_window(
+    rows: pd.DataFrame,
+    index: pd.Series | None,
+    t: pd.Timestamp,
+    h: int,
+    cal: pd.DatetimeIndex,
+    entry_close: float | None = None,
+) -> dict[str, Any]:
+    """The per-item rule of ``score_outcomes`` for one entity, start session ``t`` and horizon ``h``.
+
+    ``rows`` are the entity's panel rows (any order; may be empty), ``cal`` the session
+    calendar. Returns ``status`` (pending | void | matured) and ``void_reason``; a matured
+    window adds ``ret`` (simple px_idx return), ``end`` (the h-th true session),
+    ``exit_date``, ``stale_exit`` and ``nifty50_return_pct``. ``entry_close`` None skips the
+    stored-close check (series callers have no recorded entry price).
+    """
+    k = int(cal.get_indexer([t])[0])
+    if k < 0 or k + h > len(cal) - 1:
+        return {"status": "pending", "void_reason": None}
+    rows = rows.sort_values("date")
+    entry = rows.loc[rows["date"] == t]
+    if entry.empty:
+        return {"status": "void", "void_reason": "entry_price_mismatch"}
+    if entry_close is not None:
+        close_t = float(entry["close"].iloc[0])
+        if abs(entry_close - close_t) / entry_close > ENTRY_TOLERANCE:
+            return {"status": "void", "void_reason": "entry_price_mismatch"}
+    px_t = float(entry["px_idx"].iloc[0])
+    if "suspect" in str(entry["quality_flags"].iloc[0]) or not np.isfinite(px_t) or px_t <= 0:
+        return {"status": "void", "void_reason": "suspect_price"}
+    end = as_timestamp(cal[k + h])
+    later = rows.loc[(rows["date"] >= t) & (rows["date"] <= end)]
+    later = later.loc[later["px_idx"].to_numpy(dtype=float) > 0]
+    later = later.loc[~later["quality_flags"].astype(str).str.contains("suspect", regex=False)]
+    exit_date = as_timestamp(later["date"].iloc[-1])
+    return {
+        "status": "matured", "void_reason": None,
+        "ret": float(later["px_idx"].iloc[-1]) / px_t - 1.0,
+        "end": end, "exit_date": exit_date,
+        "stale_exit": bool(k + h - int(cal.get_loc(exit_date)) > STALE_EXIT_SESSIONS),
+        "nifty50_return_pct": _index_return(index, t, end),
+    }
+
+
 def score_outcomes(
     items: Iterable[OutcomeRequestItem | Mapping[str, Any]],
     panel: pd.DataFrame,
@@ -85,7 +129,6 @@ def score_outcomes(
     if not reqs:
         return []
     cal = store.sessions(panel)
-    pos_of = {ts: k for k, ts in enumerate(cal)}
     horizons = tuple(sorted({r.horizon_days for r in reqs}))
     first = as_timestamp(min(r.as_of for r in reqs))
     # Labels from the earliest as-of on (the exit lies on or after t, so nothing earlier matters).
@@ -104,37 +147,23 @@ def score_outcomes(
     for item in reqs:
         h = item.horizon_days
         t = as_timestamp(item.as_of)
-        k = pos_of.get(t)
-        if k is None or k + h > len(cal) - 1:
+        eid = _entity(item, panel, entities)
+        rows = panel.iloc[by_entity[eid]] if eid in by_entity else panel.iloc[0:0]
+        win = realized_window(rows, index, t, h, cal, entry_close=item.entry_close)
+        if win["status"] == "pending":
             out.append(_result(item, "pending"))
             continue
-        eid = _entity(item, panel, entities)
-        rows = panel.iloc[by_entity[eid]].sort_values("date") if eid in by_entity else panel.iloc[0:0]
-        entry = rows.loc[rows["date"] == t]
-        if entry.empty:
-            out.append(_result(item, "void", void_reason="entry_price_mismatch"))
+        if win["status"] == "void":
+            out.append(_result(item, "void", void_reason=win["void_reason"]))
             continue
-        close_t = float(entry["close"].iloc[0])
-        if abs(item.entry_close - close_t) / item.entry_close > ENTRY_TOLERANCE:
-            out.append(_result(item, "void", void_reason="entry_price_mismatch"))
-            continue
-        px_t = float(entry["px_idx"].iloc[0])
-        if "suspect" in str(entry["quality_flags"].iloc[0]) or not np.isfinite(px_t) or px_t <= 0:
-            out.append(_result(item, "void", void_reason="suspect_price"))
-            continue
-        end = as_timestamp(cal[k + h])
-        later = rows.loc[(rows["date"] >= t) & (rows["date"] <= end)]
-        later = later.loc[later["px_idx"].to_numpy(dtype=float) > 0]
-        later = later.loc[~later["quality_flags"].astype(str).str.contains("suspect", regex=False)]
-        exit_date = as_timestamp(later["date"].iloc[-1])
-        ret = float(later["px_idx"].iloc[-1]) / px_t - 1.0
+        ret = win["ret"]
         med = medians.get(h, pd.Series(dtype=float)).get(t)
         out.append(_result(
             item, "matured",
             realized_return_pct=ret * 100.0,
             realized_excess_pp=None if med is None or not np.isfinite(med) else (ret - float(med)) * 100.0,
             realized_top_half=None if med is None or not np.isfinite(med) else bool(ret > float(med)),
-            nifty50_return_pct=_index_return(index, t, end),
-            stale_exit=bool(k + h - pos_of[exit_date] > STALE_EXIT_SESSIONS),
+            nifty50_return_pct=win["nifty50_return_pct"],
+            stale_exit=win["stale_exit"],
         ))
     return out
