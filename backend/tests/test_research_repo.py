@@ -23,7 +23,6 @@ from models.db_models import (  # pyright: ignore[reportMissingImports]  (checke
     ResearchReportRow,
     StockUniverse,
     User,
-    Watchlist,
 )
 from repositories import research_repo as repo
 
@@ -359,8 +358,8 @@ def test_extra_symbols_normalise_and_return_symbols_only(session):
         Portfolio(user_id=u2, ticker="RELIANCE.NS", company_name="RIL", shares=0, buy_price=0, group_name="watchlist"),
         Portfolio(user_id=u3, ticker="INFY.BO", company_name="Infosys", shares=2, buy_price=10, group_name="holdings"),
         Portfolio(user_id=u3, ticker="tcs", company_name="TCS", shares=0, buy_price=0, group_name="watchlist"),
-        Watchlist(user_id=u2, ticker="TCS.NS"),
-        Watchlist(user_id=u1, ticker="bad ticker!"),
+        Portfolio(user_id=u2, ticker="TCS.NS", company_name="TCS", shares=0, buy_price=0, group_name="watchlist"),
+        Portfolio(user_id=u1, ticker="bad ticker!", company_name="X", shares=0, buy_price=0, group_name="watchlist"),
     ])
     session.commit()
 

@@ -33,7 +33,6 @@ from models.db_models import (  # pyright: ignore[reportMissingImports]  (checke
     ResearchReportRow,
     ResearchRun,
     StockUniverse,
-    Watchlist,
 )
 
 FALLBACK_REASON = "prices_fallback_yfinance"
@@ -552,7 +551,6 @@ def extra_symbols(session: Session, cap: int = 500) -> list[str]:
     Symbols only: no user ids leave this function (FINSEC-04)."""
     holders: dict[str, set[int]] = {}
     pairs = list(session.query(Portfolio.user_id, Portfolio.ticker).all())
-    pairs += list(session.query(Watchlist.user_id, Watchlist.ticker).all())
     for user_id, ticker in pairs:
         sym = normalize_symbol(ticker)
         if _SYMBOL_RE.match(sym):
