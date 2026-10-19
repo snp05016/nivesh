@@ -8,6 +8,7 @@ from typing import Optional
 from helpers import WatchlistAddRequest, WatchlistRemoveRequest, upsert_device_token
 from core.security import require_admin, require_auth, require_user_match, assert_same_user
 import services.user_service as user_service
+from services.audit_service import audit_now
 from services.entitlement_service import QuotaExceeded
 
 router = APIRouter(tags=["User"])
@@ -28,7 +29,8 @@ class MorningSummaryPushRequest(BaseModel):
 
 @router.get("/users")
 def list_users(authorization: str = Header(None)):
-    require_admin(authorization)
+    admin_id = require_admin(authorization)
+    audit_now(admin_id, "admin_listed_users", {})  # fails closed
     return user_service.get_all_users()
 
 
@@ -126,4 +128,5 @@ def get_error_telemetry(token: int = Depends(require_admin)):
     """
     Admin endpoint to get recent error logs.
     """
+    audit_now(token, "admin_viewed_error_telemetry", {})  # fails closed
     return user_service.fetch_error_telemetry()

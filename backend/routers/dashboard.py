@@ -9,6 +9,7 @@ from helpers import (
     _harvest_status, _token_stats, _request_log, require_admin
 )
 from services import job_runs
+from services.audit_service import audit_now
 from services.ai_engine_monitor import build_ai_engine_monitor, get_ai_engine_job_detail
 
 router = APIRouter(tags=["Dashboard"])
@@ -99,7 +100,10 @@ def ai_engine_dashboard(
     Returns:
         Any: The response.
     """
-    require_admin(authorization)
+    admin_id = require_admin(authorization)
+    # The console polls this list every 10 s: one audit row per admin and filter set per 15 minutes.
+    audit_now(admin_id, "admin_listed_jobs", {"filters": {"mode": mode, "ticker": ticker, "limit": limit}},
+              min_interval_s=900)
     return build_ai_engine_monitor(mode=mode, ticker=ticker, limit=limit)
 
 
@@ -115,7 +119,8 @@ def ai_engine_job_detail(job_id: str, authorization: str = Header(None)):
     Returns:
         Any: The response.
     """
-    require_admin(authorization)
+    admin_id = require_admin(authorization)
+    audit_now(admin_id, "admin_viewed_job", {"job_id": job_id})
     detail = get_ai_engine_job_detail(job_id)
     if detail is None:
         raise HTTPException(status_code=404, detail="AI engine job not found")

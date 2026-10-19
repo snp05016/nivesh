@@ -12,6 +12,7 @@ from fastapi.responses import FileResponse
 
 from core.security import require_admin
 from services import admin_dashboard_service as svc
+from services.audit_service import audit_now
 
 router = APIRouter()
 logger = logging.getLogger("nivesh.main")
@@ -43,7 +44,8 @@ def dashboard_data(authorization: str = Header(None)):
 @router.get("/dashboard-data/analysis/{analysis_id}")
 def dashboard_analysis_detail(analysis_id: int, authorization: str = Header(None)):
     """raw_output/full_json for one archive row, fetched when the admin expands it."""
-    require_admin(authorization)
+    admin_id = require_admin(authorization)
+    audit_now(admin_id, "admin_viewed_analysis", {"analysis_id": analysis_id})  # fails closed
     detail = svc.get_analysis_detail(analysis_id)
     if detail is None:
         raise HTTPException(status_code=404, detail="Analysis not found")
@@ -53,7 +55,8 @@ def dashboard_analysis_detail(analysis_id: int, authorization: str = Header(None
 @router.get("/dashboard-user-data")
 def dashboard_user_data(user_id: int, authorization: str = Header(None)):
     """One user's details, holdings, alerts, journal and recent analyses for the admin dashboard."""
-    require_admin(authorization)
+    admin_id = require_admin(authorization)
+    audit_now(admin_id, "admin_viewed_user", {"target_user_id": user_id})  # fails closed
     try:
         return svc.build_user_data(user_id)
     except LookupError:
