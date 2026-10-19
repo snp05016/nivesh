@@ -151,8 +151,12 @@ def test_portfolio_holding_crud_and_duplicate_prevention(client):
         "buy_price": 1500.25,
     }
 
-    created = client.post("/portfolio/add", json=payload, headers=headers)
-    duplicate = client.post("/portfolio/add", json=payload, headers=headers)
+    # A repeat add is a second BUY on the ledger; duplicates are prevented by
+    # the client's Idempotency-Key, so a retried request must not double the lot.
+    retry_headers = {**headers, "Idempotency-Key": f"crud-{uuid.uuid4().hex[:8]}"}
+    created = client.post("/portfolio/add", json=payload, headers=retry_headers)
+    duplicate = client.post("/portfolio/add", json=payload, headers=retry_headers)
+    listed = client.get(f"/portfolio/{user_id}", headers=headers)
     updated = client.put(
         "/portfolio/update",
         json={"user_id": user_id, "ticker": "INFY", "shares": 4, "buy_price": 1600},
@@ -172,7 +176,10 @@ def test_portfolio_holding_crud_and_duplicate_prevention(client):
 
     assert created.status_code == 200, created.text
     assert created.json()["ticker"] == "INFY"
-    assert duplicate.status_code == 409
+    assert duplicate.status_code == 200, duplicate.text
+    assert listed.status_code == 200, listed.text
+    [infy] = [row for row in listed.json()["holdings"] if row["ticker"] == "INFY"]
+    assert infy["shares"] == 3
     assert updated.status_code == 200
     assert noted.status_code == 200
     assert removed.status_code == 200

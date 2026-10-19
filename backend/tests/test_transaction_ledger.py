@@ -463,8 +463,7 @@ def auth(api_client):
     assert r.status_code in (200, 201, 400)
 
     r = api_client.post("/login", json={"username": username, "password": pw})
-    if r.status_code != 200:
-        pytest.skip("Auth endpoints unavailable in this environment")
+    assert r.status_code == 200, r.text
 
     data = r.json()
     token = data.get("access_token") or data.get("token")

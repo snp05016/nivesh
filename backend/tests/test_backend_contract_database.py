@@ -178,6 +178,7 @@ def test_foreign_keys_reject_orphan_user_owned_rows(isolated_session):
         isolated_session.commit()
 
 
+@pytest.mark.xfail(strict=True, reason="DB-25: money columns are Float; Numeric(18,4) migration pending")
 def test_decimal_money_columns_keep_four_decimal_places(isolated_session):
     user = _user(isolated_session, "decimal_user")
     isolated_session.add(

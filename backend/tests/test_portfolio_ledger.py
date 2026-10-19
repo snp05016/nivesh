@@ -463,8 +463,7 @@ def auth_user(test_client):
     assert r.status_code in (200, 201, 400)  # 400 if already exists
 
     r = test_client.post("/login", json={"username": username, "password": pw})
-    if r.status_code != 200:
-        pytest.skip("Auth endpoint unavailable in this test environment")
+    assert r.status_code == 200, r.text
 
     token = r.json().get("access_token") or r.json().get("token")
     assert token, "login returned no token"

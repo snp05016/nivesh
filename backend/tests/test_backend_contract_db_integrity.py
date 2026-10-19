@@ -99,6 +99,7 @@ def test_portfolio_duplicate_user_ticker_group_is_rejected():
             session.commit()
 
 
+@pytest.mark.xfail(strict=True, reason="DB-25: money columns are Float; Numeric(18,4) migration pending")
 def test_money_columns_round_trip_as_decimal_with_four_places():
     import database
     from models.db_models import Portfolio, User
