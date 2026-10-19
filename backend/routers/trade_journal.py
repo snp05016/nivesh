@@ -4,12 +4,13 @@ Split out of routers/portfolio.py (ARCH-14); paths, handler names and tags are u
 """
 import logging
 from datetime import datetime, timezone
-from fastapi import APIRouter, Depends, HTTPException, Header
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Header
 from core.security import require_user_match, assert_same_user
 from helpers import (
     get_session, User, TradeJournal, TradeJournalAddRequest,
     TradeJournalUpdateRequest, require_auth,
 )
+from services import money_journal_scoring
 from services.portfolio_service import compute_trade_journal_stats
 
 router = APIRouter(tags=["Portfolio"])
@@ -166,7 +167,9 @@ def trade_journal_delete_endpoint(entry_id: int, user_id: int, _caller: int = De
 # 22. GET /trade-journal/{user_id}/stats
 # ---------------------------------------------------------------------------
 @router.get("/trade-journal/{user_id}/stats")
-def trade_journal_stats_endpoint(user_id: int, _caller: int = Depends(require_user_match)):
+def trade_journal_stats_endpoint(
+    user_id: int, background_tasks: BackgroundTasks, _caller: int = Depends(require_user_match),
+):
     """
     Compute analytics over all journal entries for a user. The bearer must be
     the path user (GH-630: 401 without a token, 403 for another user's id).
@@ -184,6 +187,14 @@ def trade_journal_stats_endpoint(user_id: int, _caller: int = Depends(require_us
             if not user:
                 raise HTTPException(status_code=404, detail=f"User {user_id} not found")
             entries = session.query(TradeJournal).filter_by(user_id=user_id).all()
+            try:
+                available, reason = money_journal_scoring.market_status(user_id, entries)
+                market = money_journal_scoring.market_block(entries, available, reason)
+                if money_journal_scoring.should_score(entries):
+                    background_tasks.add_task(money_journal_scoring.score_pending, user_id)
+            except Exception:
+                logging.exception("trade-journal market block failed")
+                market = money_journal_scoring.market_block([], False, "engine_unreachable")
             entries_data = []
             for e in entries:
                 entries_data.append({
@@ -200,6 +211,7 @@ def trade_journal_stats_endpoint(user_id: int, _caller: int = Depends(require_us
             "user_id": user_id,
             **stats,
             "patterns": [],
+            "market": market,
         }
     except HTTPException:
         raise
