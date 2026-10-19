@@ -40,8 +40,10 @@ Order ids are `o1, o2, …` in placement order. An order placed at `clock` can f
    "benchmark_return","excess_return","turnover_x","costs_inr","cost_drag","trades","hit_rate","profit_factor","avg_hold_days","sessions","score"},
  "watchlist": [{"symbol","listed","date","close","volume","chg_1d","chg_20d","stale"}],
  "provenance": {"source": "store|local_csv", "warnings": ["..."], "benchmark", "rows", "window"},
- "benchmark": "^NSEI|null"}
+ "benchmark": "^NSEI|null",
+ "news": [{"date","symbol|null","title","source","url"}]}
 ```
+`news` holds only items published on or before `clock` (curated, sourced scenario timelines), newest first.
 Order `status`: `OPEN | PARTIAL | FILLED | CANCELLED | EXPIRED | PARTIAL_EXPIRED | REJECTED`.
 Invalid action → **422** `{"detail": "action N: <reason safe to show>"}`.
 
@@ -58,6 +60,7 @@ Invalid action → **422** `{"detail": "action N: <reason safe to show>"}`.
 | POST | `/features/compile` | `{program}` | `{ok, fingerprint, nodes, outputs:[{name,lineage,warmup_bars,availability}]}` or `{ok:false,error,line,col}` |
 | POST | `/hypothesis/run` | Spec | Experiment report (below) |
 | POST | `/hypothesis/compare` | `{base: Spec, candidates:[{program,score}]}` | `{status, periods, candidates:[{name,verdict,mean_ic,net_per_period,permutation_p,holm_p,romano_wolf_p}], pbo, in_sample_best, best_survives_corrections, text, reports}` |
+| POST | `/events/timeline` | `{symbol, start, end}` | `{symbol,start,end,bars:[{d,c,v}],items:[{date,kind: price_anomaly|volume_anomaly|corporate_action|sourced_event, evidence: prices|exchange|source, text, ...}], note, provenance}` |
 | GET | `/school/curriculum` | – | `{tracks, concepts, lessons:[{id,track,title,minutes,prereqs,concepts,summary}]}` |
 | GET | `/school/lessons/{id}` | – | lesson with `body` and quiz **without** answers/explanations |
 | POST | `/school/grade` | `{lesson_id, answers:[int], state}` | `{score, per_question:[{id,correct,explain}], state}` |
@@ -106,6 +109,7 @@ Gated by feature flag `research_lab` (default **off** until legal review of NSE 
 | GET | `/sessions/{id}/autopsy?order_id=` | ml-engine autopsy |
 | POST | `/sessions/{id}/mentor` | `{question, order_id?}` → `{answer, grounded_on:{...facts used}, mode:"llm"|"rules", disclaimer}` |
 | DELETE | `/sessions/{id}` | |
+| POST | `/events/timeline` | proxy (Market Event Reconstruction) |
 | GET | `/school/curriculum` · `/school/lessons/{id}` | proxy |
 | POST | `/school/lessons/{id}/grade` | `{answers}` → grade + saves progress |
 | GET | `/school/progress` | `{state, mastered:[concepts], completed:[lessons]}` |
