@@ -157,6 +157,10 @@ struct stockmeApp: App {
             .task {
                 await performAsyncBoot()
             }
+            // Flags load beside boot, not before it: the cached values serve until then.
+            .task {
+                await FeatureFlags.shared.refresh()
+            }
             .onAppear {
                 // Permission prompts wait for a signed-in session (UX-19).
                 if authManager.isLoggedIn {
@@ -203,6 +207,7 @@ struct stockmeApp: App {
                     showPrivacyCover = true  // no relock here: Face ID itself causes .inactive
                 case .active:
                     showPrivacyCover = false
+                    Task { await FeatureFlags.shared.refresh() }  // throttled to once per 600 s
                     let elapsed = Date().timeIntervalSince1970 - lastActiveTimestamp
                     if wentToBackground && !isAuthenticating
                         && AppLockPolicy.shouldRelock(isLoggedIn: authManager.isLoggedIn, timeout: biometricTimeout, elapsed: elapsed) {
