@@ -258,3 +258,18 @@ Stage 4 deletes `tradingagents-core`, the TradingAgents path, `quant_engine.py`,
 - when, in the backend access logs, 410 responses on legacy paths (`/analyze*`, `POST /batch`, `/daily-action/*`) fall below **5% of research GETs** (`GET /api/v1/research/stocks/*`) for 30 consecutive days.
 
 Compute the ratio per day from the access logs; the `X-Nivesh-Client` header sent by new builds separates new-build traffic from old builds. Record the 30-day series in the Stage 4 PR.
+
+## 10. Offline prose eval (before any prompt or model change)
+
+Run this before switching the DeepSeek model (`NIVESH_DEEPSEEK_MODEL`) or editing the `rf-1` prompt. It replays frozen report payloads through the formatter and prints deterministic metrics; there is no LLM judge and no `research_*` rows are written. Paid runs are owner-only and never run in CI.
+
+1. Freeze 20 payloads once per quarter: `cd backend && python scripts/research_prose_eval.py freeze --n 20 --out ~/nivesh-data/prose_eval/payloads-YYYYQn.jsonl`.
+2. Run a baseline with the current environment: `python scripts/research_prose_eval.py run --in <payloads> --max-calls 40 --label baseline --out baseline-samples.jsonl --yes`.
+3. Run the candidate with `NIVESH_DEEPSEEK_MODEL=<candidate>`, or on the branch that changes `rf-1`, using the same payloads and a different `--label`.
+4. Adopt the candidate only if all of these hold:
+   - candidate `validated_rate` is at least 0.90 and at least the baseline minus 0.02;
+   - `template_rate` rises by no more than 2 points;
+   - 20 rendered samples pass human review.
+5. Paste both summaries into the PR.
+
+Each run makes up to `--max-calls` paid DeepSeek calls (about $0.0009 each at the engine spec 7.8 estimate; verify current pricing); they are recorded in `llm_usage` under the `prose_eval` feature. The script exits with code 2 without `--yes`, without `DEEPSEEK_API_KEY`, above 200 calls, or on empty input.
