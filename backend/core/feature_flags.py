@@ -25,6 +25,10 @@ FLAGS: dict[str, tuple[str, bool]] = {
     "money_commission_drag": ("FEATURE_MONEY_COMMISSION_DRAG", False),
     "money_tax_report": ("FEATURE_MONEY_TAX_REPORT", False),
     "money_crisis_replay": ("FEATURE_MONEY_CRISIS_REPLAY", False),
+    # AI cluster (docs: spec_ai 2.1).
+    "ai_allowance": ("FEATURE_AI_ALLOWANCE", True),
+    "risk_flags_concentration": ("FEATURE_RISK_FLAGS_CONCENTRATION", True),
+    "risk_flags_surveillance": ("FEATURE_RISK_FLAGS_SURVEILLANCE", False),
 }
 
 _TRUE = frozenset({"1", "true", "yes", "on"})

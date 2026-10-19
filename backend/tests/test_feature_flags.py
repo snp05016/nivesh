@@ -21,6 +21,9 @@ DEFAULTS = {
     "money_commission_drag": False,
     "money_tax_report": False,
     "money_crisis_replay": False,
+    "ai_allowance": True,
+    "risk_flags_concentration": True,
+    "risk_flags_surveillance": False,
 }
 
 
@@ -132,3 +135,18 @@ def test_require_flag_on_returns_200(monkeypatch):
     resp = _guarded_app().get("/dummy")
     assert resp.status_code == 200
     assert resp.json() == {"ok": True}
+
+
+def test_ai_flags_gate_a_route(monkeypatch):
+    app = FastAPI()
+
+    @app.get("/x", dependencies=[Depends(ff.require_flag("risk_flags_surveillance"))])
+    def _x():
+        return {"ok": True}
+
+    client = TestClient(app)
+    resp = client.get("/x")
+    assert resp.status_code == 404
+    assert resp.json()["detail"]["code"] == "FEATURE_DISABLED"
+    _set(monkeypatch, "risk_flags_surveillance", "true")
+    assert client.get("/x").status_code == 200
