@@ -310,6 +310,7 @@ struct LabScreen<Content: View>: View {
             .padding(.horizontal, Theme.screenPadding)
             .padding(.vertical, Theme.Spacing.card)
         }
+        .scrollDismissesKeyboard(.interactively)
         .background(Theme.canvas.ignoresSafeArea())
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)

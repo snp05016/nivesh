@@ -68,7 +68,7 @@ def rules_answer(bundle: dict) -> str:
             parts.append(f"{trade.get('symbol', 'Trade')}: {verdict}")
         for check in (trade.get("process") or {}).get("checks") or []:
             if not check.get("passed") and check.get("text"):
-                parts.append(f"- {check['text']}")
+                parts.append(f"- Not met: {check['text']}")
     for flag in bundle["behaviour"]:
         if flag.get("text"):
             parts.append(f"Pattern ({flag.get('severity', 'low')}): {flag['text']}")

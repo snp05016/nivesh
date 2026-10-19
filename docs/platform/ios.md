@@ -8,13 +8,16 @@ description: The Lab's SwiftUI screens, routes and shared components - what exis
 <p class="nv-lede">The Lab lives in <code>ios/StockApp/stockme/stockme/Views/Lab/</code>. It talks only to the
 backend's <code>/api/v1/research-lab</code> routes and is hidden unless the <code>research_lab</code> flag is on.</p>
 
-!!! example "In progress"
-    These screens are being built now. This page lists the routes declared in `LabHubView.swift` and
-    marks which view files exist in the tree today. Re-check the folder before relying on a screen.
+!!! success "Driven end to end in the simulator"
+    Every route below was exercised on an iPhone 17 Pro simulator against a local gateway that serves the
+    backend's response shapes from the real ml-engine Lab. The real backend (auth, database, flags) has not
+    been exercised from the app yet. See [Status](status.md#ios-verification).
 
 ## Navigation
 
-`LabHubView` is a two-column grid of five tiles. Its tagline reads: "A practice space. Nothing here is
+The Markets tab shows a "The Lab" card (only when `research_lab` is on, or in DEBUG builds launched with
+`-LabDevURL <url>`). It pushes `LabRoute.hub`; `LabRoute` destinations are registered once, at the Markets
+`NavigationStack` root in `ContentView.swift`. `LabHubView` is a two-column grid of five tiles. Its tagline reads: "A practice space. Nothing here is
 investment advice, and no real money moves." Every screen is reached through a typed `LabRoute`:
 
 ```mermaid
@@ -38,15 +41,15 @@ flowchart TD
 
 | Route | View | Backend calls | File |
 |---|---|---|---|
-| `.timeMachine` | `ScenarioPickerView`: pick a curated scenario or a custom window | `GET /scenarios`, `GET /universe`, `POST /sessions` | <span class="nv-pill real">present</span> |
-| `.session(id)` | `TimeMachineSessionView`: watchlist, orders, advance, portfolio | `GET /sessions/{id}`, `POST /sessions/{id}/actions` | <span class="nv-pill planned">in progress</span> |
-| `.chart(sessionId, symbol)` | `SimChartView`: bars up to the session clock | `POST /sessions/{id}/history` | <span class="nv-pill planned">in progress</span> |
-| `.autopsy(sessionId, orderId)` | `TradeAutopsyView`: knowable / hindsight / counterfactual, score ring, 2×2 verdict | `GET /sessions/{id}/autopsy` | <span class="nv-pill planned">in progress</span> |
-| `.mentor(sessionId, orderId?)` | `MentorChatView` | `POST /sessions/{id}/mentor` | <span class="nv-pill planned">in progress</span> |
-| `.hypothesisLab` | `HypothesisLabView`: question → spec → run | `/research/translate`, `/research/compile`, `/research/experiments` | <span class="nv-pill planned">in progress</span> |
-| `.experiments` / `.experiment(id)` | `ExperimentListView`, `ExperimentReportView`: the user's ledger and skeptic findings | `GET /research/experiments[/{id}]` | <span class="nv-pill planned">in progress</span> |
-| `.school` / `.lesson(id)` | `SchoolHomeView`, `LessonView`: tracks, lessons, quizzes | `/school/*` | <span class="nv-pill planned">in progress</span> |
-| `.eventExplorer` | `EventTimelineView`: anomalies, corporate actions, sourced events | `POST /events/timeline` | <span class="nv-pill planned">in progress</span> |
+| `.timeMachine` | `ScenarioPickerView`: pick a curated scenario or a custom window | `GET /scenarios`, `GET /universe`, `POST /sessions` | <span class="nv-pill real">verified</span> |
+| `.session(id)` | `TimeMachineSessionView`: watchlist, orders, advance, portfolio | `GET /sessions/{id}`, `POST /sessions/{id}/actions` | <span class="nv-pill real">verified</span> |
+| `.chart(sessionId, symbol)` | `SimChartView`: bars up to the session clock | `POST /sessions/{id}/history` | <span class="nv-pill real">verified</span> |
+| `.autopsy(sessionId, orderId)` | `TradeAutopsyView`: knowable / hindsight / counterfactual, score ring, 2×2 verdict | `GET /sessions/{id}/autopsy` | <span class="nv-pill real">verified</span> |
+| `.mentor(sessionId, orderId?)` | `MentorChatView` | `POST /sessions/{id}/mentor` | <span class="nv-pill real">verified</span> |
+| `.hypothesisLab` | `HypothesisLabView`: question → spec → run | `/research/translate`, `/research/compile`, `/research/experiments` | <span class="nv-pill real">verified</span> |
+| `.experiments` / `.experiment(id)` | `ExperimentListView`, `ExperimentReportView`: the user's ledger and skeptic findings | `GET /research/experiments[/{id}]` | <span class="nv-pill real">verified</span> |
+| `.school` / `.lesson(id)` | `SchoolHomeView`, `LessonView`: tracks, lessons, quizzes | `/school/*` | <span class="nv-pill real">verified</span> |
+| `.eventExplorer` | `EventTimelineView`: anomalies, corporate actions, sourced events | `POST /events/timeline` | <span class="nv-pill real">verified</span> |
 
 ## Shared components (`LabComponents.swift`)
 

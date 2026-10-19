@@ -65,7 +65,7 @@ private struct LabRecommendationRow: View {
                 Text(rec.title ?? "Lesson")
                     .font(Theme.engravedSerif(size: 14, weight: .bold, relativeTo: .subheadline))
                     .foregroundStyle(Theme.inkPrimary)
-                Text("Why: \(rec.reason ?? "next in sequence")")
+                Text(Self.why(rec.reason))
                     .font(Theme.microLabel())
                     .foregroundStyle(Theme.securityGold)
             }
@@ -75,6 +75,16 @@ private struct LabRecommendationRow: View {
         .frame(minHeight: 44)
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
+    }
+
+    /// `reason` is a code from the School engine (lab/school/engine.py next_lessons).
+    static func why(_ reason: String?) -> String {
+        switch reason {
+        case "weakness": return "Targets a habit flagged in your Time Machine trades"
+        case "review: weakness": return "Review: targets a habit flagged in your trades"
+        case "prerequisite for weakness": return "Builds toward a habit flagged in your trades"
+        default: return "Next in the course"
+        }
     }
 }
 

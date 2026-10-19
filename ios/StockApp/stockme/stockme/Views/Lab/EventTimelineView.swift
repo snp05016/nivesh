@@ -52,22 +52,31 @@ private struct LabEventQueryCard: View {
     let busy: Bool
     let enabled: Bool
     let onLoad: () -> Void
+    @FocusState private var symbolFocused: Bool
 
     var body: some View {
         LabCard {
             TextField("NSE symbol, e.g. RELIANCE", text: $symbol)
+                .focused($symbolFocused)
+                .submitLabel(.search)
+                .onSubmit { if enabled { load() } }
                 .textInputAutocapitalization(.characters)
                 .autocorrectionDisabled()
                 .font(Theme.monoTabular(size: 15))
                 .frame(minHeight: 44)
             DatePicker("From", selection: $start, displayedComponents: .date)
             DatePicker("To", selection: $end, in: start..., displayedComponents: .date)
-            Button(action: onLoad) { LabPrimaryLabel(title: "Reconstruct events", icon: "waveform.path.ecg", busy: busy, enabled: enabled) }
+            Button(action: load) { LabPrimaryLabel(title: "Reconstruct events", icon: "waveform.path.ecg", busy: busy, enabled: enabled) }
                 .buttonStyle(EKPressStyle())
                 .disabled(!enabled)
         }
         .font(Theme.engravedSerif(size: 14, relativeTo: .body))
         .tint(Theme.securityGold)
+    }
+
+    private func load() {
+        symbolFocused = false
+        onLoad()
     }
 }
 
