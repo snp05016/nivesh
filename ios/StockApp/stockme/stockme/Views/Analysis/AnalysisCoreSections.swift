@@ -7,27 +7,23 @@ struct AnalysisCoreSections: View {
     let livePrice: Double?
     @ObservedObject var viewModel: AnalysisViewModel
     @State private var showFullSummary = false
-    @State private var showQuantInspector = false
 
     var body: some View {
         LazyVStack(spacing: 48) { // Premium Spacing (Rule 8: White space increases perceived importance)
+            ArchivedReportBanner()
             stockHeaderSectionView
-            aiVerdictSectionView
             aiSummarySectionView
             
-            if let prev = previousAnalysis, prev.analysisDate != analysis.analysisDate {
+            if let prev = previousAnalysis, prev.analysisDate != analysis.analysisDate,
+               prev.currentPriceInr != analysis.currentPriceInr {
                 whatChangedSectionView(previous: prev)
             }
             dialecticDebateSectionView
-            timeHorizonSectionView
             riskFactorsSectionView
             fundamentalsSectionView
             newsSectionView
             whatToWatchSectionView
             disclaimerSectionView
-        }
-        .sheet(isPresented: $showQuantInspector) {
-            QuantInspectorSheet(analysis: analysis)
         }
     }
 
@@ -83,7 +79,6 @@ struct AnalysisCoreSections: View {
                     }
                 }
                 Spacer()
-                BanknoteSignalBadge(signal: analysis.signal, rotation: -3).stampAppear()
             }
             if let perf = analysis.pricePerformance {
                 HStack(spacing: Theme.Spacing.medium) {
@@ -104,66 +99,6 @@ struct AnalysisCoreSections: View {
                 .padding(.horizontal, -Theme.screenPadding)
                 .immersiveChartTint(isPositive: (viewModel.quickInfo?.changePercent ?? 0) >= 0)
             }
-        }
-    }
-
-    private var aiVerdictSectionView: some View {
-        let sig = analysis.signal.rawValue
-        let conf = analysis.calibratedConfidence != nil
-            ? Int((analysis.calibratedConfidence ?? 0) * 100)
-            : analysis.confidencePercent
-        let segs = confidenceSegments(conf)
-
-        return VStack(alignment: .leading, spacing: Theme.Spacing.card) {
-            HStack {
-                Text("AI VERDICT")
-                    .font(Theme.sectionCapsLabel())
-                    .tracking(1.5)
-                    .foregroundStyle(Theme.inkPrimary)
-                Spacer()
-                Text(analysis.analysisDate)
-                    .font(Theme.microLabel())
-                    .foregroundStyle(Theme.inkTertiary)
-            }
-
-            HStack(spacing: Theme.Spacing.standard) {
-                Text(sig)
-                    .font(Theme.engravedSerif(size: 20, weight: .bold))
-                    .foregroundStyle(signalBadgeTextColor(analysis.signal))
-                    .padding(.horizontal, Theme.Spacing.large)
-                    .padding(.vertical, Theme.Spacing.card)
-                    .background(signalBadgeBgColor(analysis.signal))
-                    .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.pill))
-                Spacer()
-                ConfidenceArcView(score: conf, size: 72)
-            }
-
-            HStack(spacing: Theme.Spacing.small) {
-                Text("HEURISTIC CONFIDENCE")
-                    .font(Theme.microLabel())
-                    .foregroundStyle(Theme.inkTertiary)
-                    .explainableTerm("Heuristic Confidence")
-                if analysis.confidenceMathBreakdown != nil {
-                    QuantInspectorInfoButton {
-                        showQuantInspector = true
-                    }
-                }
-                Spacer()
-            }
-
-            HStack(spacing: Theme.Spacing.xSmall) {
-                ForEach(0..<5, id: \.self) { i in
-                    RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
-                        .fill(i < segs ? Theme.goldPrimary : Theme.inkTertiary.opacity(0.15))
-                        .frame(height: 6)
-                }
-            }
-            
-            Text("Analysis by Nivesh AI \u{2024} Dalal Street weighted")
-                .font(Theme.microLabel(size: 9))
-                .foregroundStyle(Theme.inkTertiary)
-                .frame(maxWidth: .infinity, alignment: .center)
-                .padding(.top, Theme.Spacing.tight)
         }
     }
 
@@ -264,17 +199,6 @@ struct AnalysisCoreSections: View {
                 .padding(Theme.Spacing.card).frame(maxWidth: .infinity)
                 .background(Theme.dataNegativeMuted.opacity(0.2))
                 .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
-            }
-        }
-    }
-
-    private var timeHorizonSectionView: some View {
-        VStack(spacing: Theme.Spacing.standard) {
-            SectionHeaderView(title: "PRICE PROJECTIONS")
-            HStack(spacing: Theme.Spacing.card) {
-                horizonCard(label: "3M", target: analysis.targetPrices.shortTerm3m, upside: analysis.upsideDownsidePct.shortTerm)
-                horizonCard(label: "12M", target: analysis.targetPrices.mediumTerm12m, upside: analysis.upsideDownsidePct.mediumTerm, featured: true)
-                horizonCard(label: "3Y", target: analysis.targetPrices.longTerm36m, upside: analysis.upsideDownsidePct.longTerm)
             }
         }
     }
@@ -402,76 +326,14 @@ struct AnalysisCoreSections: View {
             SectionHeaderView(title: "WHAT CHANGED SINCE LAST ANALYSIS")
 
             VStack(spacing: Theme.Spacing.medium) {
-                if analysis.signal != previous.signal {
-                    diffRow(label: "AI SIGNAL", oldVal: previous.signal.rawValue, newVal: analysis.signal.rawValue, isPositive: analysis.signal == .bullish)
-                }
-
-                if analysis.currentPriceInr != previous.currentPriceInr {
-                    let pctChange = ((analysis.currentPriceInr - previous.currentPriceInr) / previous.currentPriceInr) * 100
-                    diffRow(label: "PRICE", oldVal: IndianFormatter.priceCompact(previous.currentPriceInr), newVal: IndianFormatter.priceCompact(analysis.currentPriceInr), isPositive: pctChange > 0)
-                }
-
-                if analysis.confidencePercent != previous.confidencePercent {
-                    let diff = analysis.confidencePercent - previous.confidencePercent
-                    diffRow(label: "CONFIDENCE", oldVal: "\(previous.confidencePercent)%", newVal: "\(analysis.confidencePercent)%", isPositive: diff > 0)
-                }
-
-                if analysis.targetPrices.mediumTerm12m != previous.targetPrices.mediumTerm12m {
-                    let diff = analysis.targetPrices.mediumTerm12m - previous.targetPrices.mediumTerm12m
-                    diffRow(label: "12M TARGET", oldVal: IndianFormatter.priceCompact(previous.targetPrices.mediumTerm12m), newVal: IndianFormatter.priceCompact(analysis.targetPrices.mediumTerm12m), isPositive: diff > 0)
-                }
+                // Only the observed price is compared; legacy signal, confidence and target rows were removed (spec 10.4).
+                diffRow(label: "PRICE", oldVal: IndianFormatter.priceCompact(previous.currentPriceInr), newVal: IndianFormatter.priceCompact(analysis.currentPriceInr), isPositive: analysis.currentPriceInr > previous.currentPriceInr)
             }
             .padding(Theme.Spacing.card)
             .background(Theme.surfaceElevated)
             .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.card))
             .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.card).stroke(Theme.borderSubtle, lineWidth: 0.5))
         }
-    }
-
-    private func horizonRow(label: String, target: Double, upside: Double, featured: Bool = false) -> some View {
-        let colW = UIScreen.main.bounds.width - 2 * Theme.screenPadding
-        return HStack(spacing: Theme.Spacing.standard) {
-            Text(label)
-                .font(featured ? Theme.monoTabular(size: 13).weight(.bold) : Theme.monoTabular(size: 12))
-                .foregroundStyle(featured ? Theme.goldPrimary : Theme.inkSecondary)
-                .frame(width: colW * 0.23, alignment: .leading)
-            Image(systemName: upside >= 0 ? "arrowtriangle.up.fill" : "arrowtriangle.down.fill")
-                .font(.caption2)
-                .foregroundStyle(upside >= 0 ? Theme.dataPositive : Theme.dataNegative)
-            Text(IndianFormatter.priceCompact(target))
-            .lineLimit(1)
-            .minimumScaleFactor(0.6)
-                .font(Theme.monoTabular(size: 14)).foregroundStyle(Theme.inkPrimary)
-            Spacer()
-            PnlBadge(value: upside, showPercentage: true)
-        }
-        .padding(.horizontal, Theme.Spacing.medium).padding(.vertical, Theme.Spacing.small)
-        .background(featured ? Theme.goldMuted.opacity(0.5) : Color.clear)
-        .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
-    }
-
-    private func signalBadgeTextColor(_ signal: Signal) -> Color {
-        switch signal {
-        case .bullish, .cautiously_bullish: return .white
-        case .bearish, .cautiously_bearish: return .white
-        case .hold, .neutral: return Theme.goldPrimary
-        }
-    }
-
-    private func signalBadgeBgColor(_ signal: Signal) -> Color {
-        switch signal {
-        case .bullish, .cautiously_bullish: return Theme.dataPositive
-        case .bearish, .cautiously_bearish: return Theme.dataNegative
-        case .hold, .neutral: return Theme.goldMuted
-        }
-    }
-
-    private func confidenceSegments(_ pct: Int) -> Int {
-        if pct >= 80 { return 5 }
-        if pct >= 60 { return 4 }
-        if pct >= 40 { return 3 }
-        if pct >= 20 { return 2 }
-        return 1
     }
 
     @ViewBuilder
@@ -492,28 +354,6 @@ struct AnalysisCoreSections: View {
         }
     }
 
-    private func horizonCard(label: String, target: Double, upside: Double, featured: Bool = false) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
-            Text(label)
-                .font(Theme.sectionCapsLabel(size: 9))
-                .foregroundStyle(featured ? Theme.goldPrimary : Theme.inkSecondary)
-                .padding(.horizontal, Theme.Spacing.tight).padding(.vertical, Theme.Spacing.xSmall)
-                .background(featured ? Theme.goldMuted : Theme.inkTertiary.opacity(0.1))
-                .clipShape(Capsule())
-            Text(IndianFormatter.priceCompact(target))
-            .lineLimit(1)
-            .minimumScaleFactor(0.6)
-                .font(Theme.dataLarge(size: featured ? 24 : 20, relativeTo: featured ? .title : .title2))
-                .foregroundStyle(Theme.inkPrimary)
-            PnlBadge(value: upside, showPercentage: true)
-        }
-        .padding(Theme.Spacing.card).frame(maxWidth: .infinity)
-        .background(featured ? Theme.surfaceFloat : Theme.surfaceElevated)
-        .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.card)
-            .stroke(featured ? Theme.borderStrong : Theme.borderSubtle, lineWidth: featured ? 1 : 0.5))
-        .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.card))
-    }
-
     private func diffRow(label: String, oldVal: String, newVal: String, isPositive: Bool) -> some View {
         let colW = UIScreen.main.bounds.width - 2 * Theme.screenPadding
         return HStack(spacing: Theme.Spacing.medium) {
@@ -524,88 +364,28 @@ struct AnalysisCoreSections: View {
             Spacer()
         }
     }
-
-    @ViewBuilder
-    private var conformalBoundsView: some View {
-        if let upper = analysis.conformalTargetUpper3m,
-           let lower = analysis.conformalTargetLower3m,
-           upper > 0, lower > 0 {
-            ConformalBoundsRow(
-                upper: upper,
-                lower: lower,
-                onInfoTap: analysis.confidenceMathBreakdown == nil ? nil : {
-                    showQuantInspector = true
-                }
-            )
-        }
-    }
 }
 
-// Separate struct — prevents chkstk_darwin (AGENTS.md §6.6)
-struct ConformalBoundsRow: View {
-    let upper: Double
-    let lower: Double
-    let onInfoTap: (() -> Void)?
-
+/// Shown at the top of every saved legacy report (spec 10.4). Those blobs stay decodable,
+/// but their figures came from the retired pipeline and were never validated.
+private struct ArchivedReportBanner: View {
     var body: some View {
-        HStack(spacing: Theme.Spacing.standard) {
-            VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
-                HStack(spacing: Theme.Spacing.small) {
-                    Text("3M VOLATILITY RANGE")
-                        .font(Theme.officialStampFont(size: 9))
-                        .tracking(1.5)
-                        .foregroundStyle(Theme.inkTertiary)
-                    if let onInfoTap {
-                        QuantInspectorInfoButton(action: onInfoTap)
-                    }
-                }
-                HStack(spacing: Theme.Spacing.small) {
-                    Text(IndianFormatter.priceCompact(lower))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.6)
-                        .font(Theme.serialNumberFont(size: 13))
-                        .foregroundStyle(Theme.bearRed)
-                    Text("→")
-                        .font(Theme.engravedSerif(size: 11, relativeTo: .caption2))
-                        .foregroundStyle(Theme.inkTertiary)
-                    Text(IndianFormatter.priceCompact(upper))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.6)
-                        .font(Theme.serialNumberFont(size: 13))
-                        .foregroundStyle(Theme.bullGreen)
-                }
-            }
-            Spacer()
-            Text("≈90% RANGE")
-                .font(Theme.officialStampFont(size: 9))
-                .tracking(1.5)
-                .foregroundStyle(Theme.inkTertiary)
+        HStack(alignment: .top, spacing: Theme.Spacing.medium) {
+            Image(systemName: "archivebox")
+                .font(.footnote)
+                .foregroundStyle(Theme.inkSecondary)
+                .accessibilityHidden(true)
+            Text("Archived report from the previous engine. Its figures were not computed or validated by the current method.")
+                .font(Theme.engravedSerif(size: 13, weight: .regular, relativeTo: .footnote))
+                .foregroundStyle(Theme.inkPrimary)
+                .lineSpacing(3)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
         }
-        .padding(.horizontal, Theme.Spacing.standard)
-        .padding(.vertical, Theme.Spacing.small)
-        .background(Theme.canvasDeep.opacity(0.4))
-        .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.small))
-    }
-}
-
-private struct QuantInspectorInfoButton: View {
-    let action: () -> Void
-    private var hitTarget: CGFloat {
-        Theme.Spacing.xLarge + Theme.Spacing.standard
-    }
-
-    var body: some View {
-        Button {
-            HapticManager.selection()
-            action()
-        } label: {
-            Image(systemName: "info.circle")
-                .font(Theme.microLabel(size: 13, relativeTo: .caption))
-                .foregroundStyle(Theme.securityGold)
-                .frame(minWidth: hitTarget, minHeight: hitTarget)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(EKPressStyle())
-        .accessibilityLabel("Open quantitative engine log")
+        .padding(Theme.Spacing.card)
+        .background(Theme.surfaceElevated)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium))
+        .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium).stroke(Theme.borderSubtle, lineWidth: 0.5))
+        .accessibilityElement(children: .combine)
     }
 }

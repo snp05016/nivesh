@@ -57,7 +57,9 @@ private struct ExtremeTabBar: View {
     }
 }
 
-// MARK: - Overview Tab (Factor Radar, Scenarios, Valuation, Target Bounds)
+// MARK: - Overview Tab (Factor Radar, Scenarios, Valuation)
+// Legacy containment (spec 10.4): scenario prices and probabilities, fair values,
+// target_price_bounds and confidence_calibration are decoded but never rendered.
 
 private struct ExtremeOverviewSections: View {
     let analysis: StockAnalysis
@@ -72,7 +74,7 @@ private struct ExtremeOverviewSections: View {
                 .padding(.vertical, Theme.Spacing.tight)
             }
 
-            if let sc = analysis.scenarios, sc.bull != nil || sc.base != nil || sc.bear != nil {
+            if let sc = analysis.scenarios, [sc.bull, sc.base, sc.bear].contains(where: { !($0?.narrative ?? "").isEmpty }) {
                 Spacer().frame(height: Theme.Spacing.sectionBreath)
                 VStack(alignment: .leading, spacing: Theme.Spacing.card) {
                     SectionHeaderView(title: "SCENARIO ANALYSIS")
@@ -81,18 +83,13 @@ private struct ExtremeOverviewSections: View {
                 .padding(.vertical, Theme.Spacing.tight)
             }
 
-            if let vb = analysis.valuationBands {
+            if let vb = analysis.valuationBands, vb.peBand != nil {
                 Spacer().frame(height: Theme.Spacing.sectionBreath)
                 VStack(alignment: .leading, spacing: Theme.Spacing.card) {
                     SectionHeaderView(title: "VALUATION")
                     ValuationBandBlockView(bands: vb)
                 }
                 .padding(.vertical, Theme.Spacing.tight)
-            }
-
-            if let tb = analysis.targetPriceBounds {
-                Spacer().frame(height: Theme.Spacing.sectionBreath)
-                TargetPriceBoundsBlockView(bounds: tb)
             }
         }
     }
@@ -134,7 +131,7 @@ private struct ExtremeQuantSections: View {
     }
 }
 
-// MARK: - Deep Thesis Tab (Insights, Thesis, Governance, Calibration)
+// MARK: - Deep Thesis Tab (Insights, Thesis, Governance)
 
 private struct ExtremeThesisSections: View {
     let analysis: StockAnalysis
@@ -159,24 +156,6 @@ private struct ExtremeThesisSections: View {
             if let gf = analysis.governanceFlags, !gf.isEmpty {
                 Spacer().frame(height: Theme.Spacing.sectionBreath)
                 GovernanceFlagsBlockView(flags: gf)
-            }
-
-            if let cc = analysis.confidenceCalibration,
-               let note = cc.calibrationNote, !note.isEmpty,
-               note != "Calibration engine did not run." {
-                Spacer().frame(height: Theme.Spacing.sectionBreath)
-                VStack(alignment: .leading, spacing: Theme.Spacing.small) {
-                    SectionHeaderView(title: "CONFIDENCE CALIBRATION")
-                    Text(stripEmoji(note))
-                        .font(Theme.engravedSerif(size: 12, relativeTo: .caption))
-                        .foregroundStyle(Theme.inkSecondary)
-                        .lineSpacing(3)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                .padding(Theme.Spacing.card)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .banknoteCard()
-                .padding(.horizontal, Theme.screenPadding)
             }
         }
     }
@@ -235,45 +214,15 @@ private struct ScenarioTableView: View {
         VStack(spacing: Theme.Spacing.card) {
             ForEach(["bull", "base", "bear"], id: \.self) { flavor in
                 let pt = flavor == "bull" ? scenarios.bull : flavor == "base" ? scenarios.base : scenarios.bear
-                if let p = pt {
+                if let p = pt, let narrative = p.narrative, !narrative.isEmpty {
                     VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
-                        HStack {
-                            Text(flavor.uppercased())
-                                .font(Theme.officialStampFont(size: 11))
-                                .foregroundStyle(flavor == "bull" ? Theme.bullGreen :
-                                                 flavor == "bear" ? Theme.bearRed : Theme.securityGold)
-                            Spacer()
-                            if let prob = p.probabilityPct {
-                                Text("\(prob)% Probability")
-                                    .font(Theme.serialNumberFont(size: 12))
-                                    .foregroundStyle(Theme.inkPrimary)
-                            }
-                        }
-
-                        HStack(spacing: Theme.Spacing.large) {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("3M TARGET")
-                                    .font(.caption2).foregroundStyle(Theme.inkTertiary)
-                                Text(IndianFormatter.priceCompact(p.price3m ?? 0))
-                                    .font(Theme.serialNumberFont(size: 15))
-                                    .foregroundStyle(Theme.inkPrimary)
-                            }
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("12M TARGET")
-                                    .font(.caption2).foregroundStyle(Theme.inkTertiary)
-                                Text(IndianFormatter.priceCompact(p.price12m ?? 0))
-                                    .font(Theme.serialNumberFont(size: 15))
-                                    .foregroundStyle(Theme.inkPrimary)
-                            }
-                        }
-                        .padding(.vertical, Theme.Spacing.xSmall)
-
-                        if let narrative = p.narrative, !narrative.isEmpty {
-                            Text(stripEmoji(narrative))
-                                .font(Theme.engravedSerif(size: 13, relativeTo: .caption))
-                                .foregroundStyle(Theme.inkSecondary)
-                                .lineSpacing(3)
-                        }
+                        Text("\(flavor.uppercased()) SCENARIO")
+                            .font(Theme.officialStampFont(size: 11))
+                            .foregroundStyle(Theme.inkSecondary)
+                        Text(stripEmoji(narrative))
+                            .font(Theme.engravedSerif(size: 13, relativeTo: .caption))
+                            .foregroundStyle(Theme.inkSecondary)
+                            .lineSpacing(3)
                     }
                     .padding(Theme.Spacing.card)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -389,37 +338,12 @@ private struct ValuationBandBlockView: View {
 
     var body: some View {
         VStack(spacing: Theme.Spacing.standard) {
-            if let curr = bands.currentPrice, let fair = bands.fairValue {
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("CURRENT").font(Theme.officialStampFont(size: 8)).foregroundStyle(Theme.inkTertiary)
-                        Text(IndianFormatter.priceCompact(curr))
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.6)
-                            .font(Theme.serialNumberFont(size: 18)).foregroundStyle(Theme.inkPrimary)
-                    }
-                    Spacer()
-                    VStack(alignment: .trailing, spacing: 2) {
-                        Text("FAIR VALUE").font(Theme.officialStampFont(size: 8)).foregroundStyle(Theme.inkTertiary)
-                        Text(IndianFormatter.priceCompact(fair))
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.6)
-                            .font(Theme.serialNumberFont(size: 18))
-                            .foregroundStyle(fair > curr ? Theme.bullGreen : Theme.bearRed)
-                    }
-                }
-                if let method = bands.method {
-                    Text("Method: \(method)")
-                        .font(.caption2).foregroundStyle(Theme.inkTertiary)
-                }
-            }
             if let pe = bands.peBand {
                 HStack(spacing: Theme.Spacing.standard) {
                     ValuationLabelValueView(label: "P/E Low", value: pe.low)
                     ValuationLabelValueView(label: "P/E Mid", value: pe.mid)
                     ValuationLabelValueView(label: "P/E High", value: pe.high)
                 }
-                .padding(.top, Theme.Spacing.tight)
             }
         }
         .padding(.horizontal, Theme.screenPadding)
@@ -581,68 +505,5 @@ private struct GovernanceFlagsBlockView: View {
             }
         }
         .padding(.vertical, Theme.Spacing.tight)
-    }
-}
-
-// MARK: - Target Price Bounds
-
-private struct TargetPriceBoundsBlockView: View {
-    let bounds: TargetPriceBounds
-
-    var body: some View {
-        let st = bounds.shortTerm3m
-        let mt = bounds.mediumTerm12m
-        let lt = bounds.longTerm36m
-        let stMid = st?.mid ?? 0
-        let mtMid = mt?.mid ?? 0
-        let ltMid = lt?.mid ?? 0
-
-        if stMid > 0 || mtMid > 0 || ltMid > 0 {
-            VStack(alignment: .leading, spacing: Theme.Spacing.small) {
-                SectionHeaderView(title: "TARGET PRICE BOUNDS (90%)")
-                VStack(spacing: Theme.Spacing.standard) {
-                    if stMid > 0 {
-                        TargetPriceRowView(label: "3M", mid: stMid, lower: st?.lower ?? 0, upper: st?.upper ?? 0)
-                    }
-                    if mtMid > 0 {
-                        TargetPriceRowView(label: "12M", mid: mtMid, lower: mt?.lower ?? 0, upper: mt?.upper ?? 0)
-                    }
-                    if ltMid > 0 {
-                        TargetPriceRowView(label: "36M", mid: ltMid, lower: lt?.lower ?? 0, upper: lt?.upper ?? 0)
-                    }
-                }
-            }
-            .padding(Theme.Spacing.card)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .banknoteCard()
-            .padding(.horizontal, Theme.screenPadding)
-        }
-    }
-}
-
-private struct TargetPriceRowView: View {
-    let label: String
-    let mid: Double
-    let lower: Double
-    let upper: Double
-
-    var body: some View {
-        HStack(spacing: Theme.Spacing.standard) {
-            Text(label)
-                .font(Theme.officialStampFont(size: 11))
-                .foregroundStyle(Theme.inkTertiary)
-                .frame(width: 40, alignment: .leading)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(IndianFormatter.priceCompact(mid))
-                    .font(Theme.serialNumberFont(size: 16, relativeTo: .callout))
-                    .foregroundStyle(Theme.inkPrimary)
-
-                Text("\(IndianFormatter.priceCompact(lower)) \u{2013} \(IndianFormatter.priceCompact(upper))")
-                    .font(Theme.serialNumberFont(size: 12, relativeTo: .caption))
-                    .foregroundStyle(Theme.inkSecondary)
-            }
-            Spacer()
-        }
     }
 }

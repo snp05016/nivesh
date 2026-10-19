@@ -17,8 +17,7 @@ struct SettingsScreen: View {
     // AI & Analysis
     @AppStorage("defaultDeepScan") private var defaultDeepScan = false
     @AppStorage("nivesh_autoRegenerateStale") private var autoRegenerateStale = false
-    @AppStorage("nivesh_analysisLanguage") private var analysisLanguage = "English"
-    @AppStorage("nivesh_debateRounds") private var debateRounds = "1"
+    // Spec D20: reports are English only, so the language and debate-round pickers were removed.
     @AppStorage("nivesh_showGovernanceFirst") private var showGovernanceFirst = false
 
     // Appearance
@@ -180,8 +179,6 @@ struct SettingsScreen: View {
         SettingsGroup(title: "AI & ANALYSIS", hindi: "एआई विश्लेषण") {
             ToggleRow(icon: "waveform.badge.magnifyingglass", color: Theme.securityGold, title: "Deep Scan by Default", isOn: $defaultDeepScan)
             ToggleRow(icon: "arrow.triangle.2.circlepath", color: Theme.bearRed, title: "Auto-regenerate Stale", isOn: $autoRegenerateStale)
-            PickerRow(icon: "globe", color: Theme.inkSecondary, title: "Analysis Language", selection: $analysisLanguage, options: ["English", "Hindi", "Hinglish"])
-            PickerRow(icon: "arrow.triangle.branch", color: Theme.securityGold, title: "Debate Rounds", selection: $debateRounds, options: ["1", "2", "3"])
             ToggleRow(icon: "shield.lefthalf.filled", color: Theme.inkSecondary, title: "Show Governance First", isOn: $showGovernanceFirst)
         }
     }

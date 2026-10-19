@@ -516,18 +516,6 @@ struct StockProfileView: View {
                                         )
                                         .padding(.horizontal, Theme.screenPadding)
                                     }
-                                    GuillocheDivider()
-                                        .padding(.horizontal, Theme.screenPadding)
-                                    StockMLSignalCard(
-                                        signal: vm.mlSignal,
-                                        isLoading: vm.mlSignalLoading,
-                                        error: nil,
-                                        onOpenQuantLab: {
-                                            HapticManager.selection()
-                                            activeTab = 11  // Quant Lab tab (single mount point)
-                                        }
-                                    )
-                                    .padding(.horizontal, Theme.screenPadding)
                                 }
                                 .padding(.bottom, Theme.sectionSpacing)
                             }
