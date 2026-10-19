@@ -16,6 +16,8 @@ struct PortfolioScreen: View {
     @EnvironmentObject var authManager: AuthManager
     @EnvironmentObject var reportManager: LocalReportManager
     @StateObject private var viewModel = PortfolioScreenViewModel()
+    @StateObject private var corporateActions = CorporateActionsViewModel()
+    @State private var showCorporateActions = false
     @State private var selectedTab = 0
     @State private var showAddWatchlistSheet = false
     @State private var addSheetSearchText = ""
@@ -192,6 +194,11 @@ struct PortfolioScreen: View {
                             .banknoteCard()
                             .padding(.horizontal, Theme.screenPadding)
 
+                            if selectedTab == 0 && !corporateActions.isHidden && corporateActions.pendingCount > 0 {
+                                CorporateActionsBanner(count: corporateActions.pendingCount) { showCorporateActions = true }
+                                    .padding(.horizontal, Theme.screenPadding)
+                            }
+
                             if selectedTab == 0 && viewModel.holdings.isEmpty && viewModel.loadError != nil {
                                 // The error card above explains it; don't invite adding a "first" holding.
                                 EmptyView()
@@ -265,6 +272,7 @@ struct PortfolioScreen: View {
                             async let flags = try? NetworkManager.shared.fetchRedFlags(userId: uid)
                             async let history = try? NetworkManager.shared.fetchValuationHistory(userId: uid, days: 730)
                             await viewModel.fetchData(userId: uid)
+                            await corporateActions.load()
                             await viewModel.fetchWatchlist(userId: uid)
                             let ws = await NetworkManager.shared.getSignalWarnings(userId: uid)
                             signalWarnings = Dictionary(ws.map { ($0.ticker, $0) }, uniquingKeysWith: { _, last in last })
@@ -372,6 +380,19 @@ struct PortfolioScreen: View {
                     }
                 }
             }
+        }
+        .task(id: authManager.currentUser?.userId) {
+            guard let uid = authManager.currentUser?.userId else { return }
+            // A decision that changed a holding reloads the holdings, like pull-to-refresh.
+            corporateActions.onHoldingsChanged = {
+                Task { await viewModel.fetchData(userId: uid) }
+            }
+            await corporateActions.load()
+        }
+        .sheet(isPresented: $showCorporateActions) {
+            CorporateActionsReviewSheet(vm: corporateActions)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $showAddWatchlistSheet) {
             AddWatchlistSheet(
