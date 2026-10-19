@@ -9,8 +9,8 @@ import database
 from models.db_models import Base
 
 
-def patch_get_session(monkeypatch):
-    """Create all tables in a fresh in-memory DB (foreign keys on) and route get_session() to it; returns a factory."""
+def patch_get_session(monkeypatch, *modules):
+    """Create all tables in a fresh in-memory DB (foreign keys on) and route get_session() (and the given modules' own binding) to it; returns a factory."""
     engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
 
     @event.listens_for(engine, "connect")
@@ -32,4 +32,6 @@ def patch_get_session(monkeypatch):
             s.close()
 
     monkeypatch.setattr(database, "get_session", fake_get_session)
+    for module in modules:  # modules that did `from database import get_session` at import time
+        monkeypatch.setattr(module, "get_session", fake_get_session)
     return factory

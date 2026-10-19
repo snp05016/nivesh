@@ -1,0 +1,20 @@
+Scheme Code;ISIN Div Payout/ ISIN Growth;ISIN Div Reinvestment;Scheme Name;Net Asset Value;Date
+
+Open Ended Schemes(Equity Scheme - Large Cap Fund)
+
+Alpha Mutual Fund
+
+100001;INF000A01011;INF000A01029;Alpha Large Cap Fund - Direct Plan - Growth;123.4567;09-Oct-2026
+100002;INF000A01037;-;Alpha Large Cap Fund - Regular Plan - IDCW;45.10;09-Oct-2026
+100003;-;-;Alpha Large Cap Fund - Direct Plan - Growth Option (old);N.A.;09-Oct-2026
+100004;INF000A01045;NA;Alpha Large Cap Fund - Regular Plan - Growth;1,234.50;09-Oct-2017
+
+Beta Mutual Fund
+
+200001;INF000B01011;INF000B01029;Beta Flexi Cap Fund - Direct Plan - Growth;88.80;09-Oct-2026
+
+Close Ended Schemes(Income)
+
+Beta Mutual Fund
+
+200002;INF000B01037;-;Beta Fixed Term Plan - Direct Plan - Growth;10.5;09-Oct-2026

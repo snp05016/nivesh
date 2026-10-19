@@ -200,20 +200,28 @@ def upsert_eq_identity(session, *, symbol, isin, seen_on, source, name=None, ser
     return inst
 
 
-def upsert_mf(session, *, scheme_code, name, isin, isin_alt, seen_on, active=True):
-    """Match or create the MF instrument keyed by AMFI scheme code. No commit."""
+def upsert_mf(session, *, scheme_code, name, isin, isin_alt, seen_on, active=True, existing=None):
+    """Match or create the MF instrument keyed by AMFI scheme code. No commit.
+
+    `existing` is an optional {scheme_code: Instrument} map a bulk caller preloaded; new rows are added to it.
+    """
     from models.db_models import Instrument
 
     code = str(scheme_code)
     isin = (isin or "").strip().upper() or None
     isin_alt = (isin_alt or "").strip().upper() or None
-    inst = session.query(Instrument).filter(Instrument.amfi_scheme_code == code).first()
+    if existing is not None:
+        inst = existing.get(code)
+    else:
+        inst = session.query(Instrument).filter(Instrument.amfi_scheme_code == code).first()
     if inst is None:
         inst = Instrument(asset_class="MF", symbol=None, amfi_scheme_code=code, isin=isin, isin_alt=isin_alt,
                           name=name, status="active" if active else "inactive", source="amfi",
                           last_seen_on=seen_on)
         session.add(inst)
         session.flush()
+        if existing is not None:
+            existing[code] = inst
         return inst
     for column, new in (("isin", isin), ("isin_alt", isin_alt)):
         old = getattr(inst, column)
