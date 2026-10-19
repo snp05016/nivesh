@@ -12,7 +12,6 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from typing import Optional, Dict, List
 
-from helpers import require_auth
 from core.security import require_admin
 from services.predictions_performance import get_performance_metrics
 from services.prediction_calibration_service import (
@@ -118,6 +117,7 @@ def get_predictions_performance(user_id: int = Depends(require_admin)):
 # ── Calibration Endpoints ────────────────────────────────────────
 
 
+# internal QuantLab metric; never sold, never user-facing (REG-11, ENG §8.6)
 @router.get(
     "/api/v1/predictions/calibration",
     response_model=CalibrationResponse,
@@ -128,10 +128,12 @@ def get_predictions_performance(user_id: int = Depends(require_admin)):
     "recommendation direction.",
 )
 def get_predictions_calibration(
-    user_id: int = Depends(require_auth),
+    user_id: int = Depends(require_admin),
     horizon: str = Query("30d", pattern="^(7|30|90)[dD]$"),
 ):
     """
+    Admin only.
+
     Confidence calibration analytics for all predictions.
 
     Args:
@@ -196,6 +198,7 @@ def get_predictions_calibration(
         raise HTTPException(status_code=500, detail="Internal error computing calibration metrics")
 
 
+# internal QuantLab metric; never sold, never user-facing (REG-11, ENG §8.6)
 @router.get(
     "/api/v1/predictions/pillar-attribution",
     response_model=PillarAttributionResponse,
@@ -204,8 +207,10 @@ def get_predictions_calibration(
     "attribution metrics: correlation with outcome, bucketed accuracy, Brier score, "
     "predictive lift over final confidence, missing rate, and usefulness ranking.",
 )
-def get_predictions_pillar_attribution(user_id: int = Depends(require_auth)):
+def get_predictions_pillar_attribution(user_id: int = Depends(require_admin)):
     """
+    Admin only.
+
     Pillar-level attribution analytics showing which analysis pillars are most predictive.
 
     Args:
@@ -247,6 +252,7 @@ def get_predictions_pillar_attribution(user_id: int = Depends(require_auth)):
         raise HTTPException(status_code=500, detail="Internal error computing pillar attribution")
 
 
+# internal QuantLab metric; never sold, never user-facing (REG-11, ENG §8.6)
 @router.get(
     "/api/v1/predictions/model-versions",
     response_model=ModelVersionsResponse,
@@ -255,8 +261,10 @@ def get_predictions_pillar_attribution(user_id: int = Depends(require_auth)):
     "hit rates across horizons, average returns, Brier scores, calibration error, "
     "and the gap between stated confidence and realized accuracy.",
 )
-def get_predictions_model_versions(user_id: int = Depends(require_auth)):
+def get_predictions_model_versions(user_id: int = Depends(require_admin)):
     """
+    Admin only.
+
     Model version comparison analytics across all prediction horizons.
 
     Args:
@@ -281,14 +289,17 @@ def get_predictions_model_versions(user_id: int = Depends(require_auth)):
         raise HTTPException(status_code=500, detail="Internal error computing model version analytics")
 
 
+# internal QuantLab metric; never sold, never user-facing (REG-11, ENG §8.6)
 @router.get(
     "/api/v1/predictions/calibration/health",
     response_model=CalibrationHealthResponse,
     summary="Calibration Data Health",
     description="Returns data readiness counts to determine if enough matured predictions exist for reliable fusion weight calibration.",
 )
-def get_calibration_readiness_health(user_id: int = Depends(require_auth)):
+def get_calibration_readiness_health(user_id: int = Depends(require_admin)):
     """
+    Admin only.
+
     Check if the system has enough prediction outcomes to calibrate confidence fusion.
 
     Args:
@@ -307,14 +318,17 @@ def get_calibration_readiness_health(user_id: int = Depends(require_auth)):
         raise HTTPException(status_code=500, detail="Internal error computing calibration health")
 
 
+# internal QuantLab metric; never sold, never user-facing (REG-11, ENG §8.6)
 @router.get(
     "/api/v1/predictions/fusion-weight-recommendations",
     response_model=FusionWeightRecommendationResponse,
     summary="Fusion Weight Recommendations",
     description="Returns advisory confidence fusion weights based on historical pillar performance. Never mutates code automatically.",
 )
-def get_fusion_weight_recommendations_endpoint(user_id: int = Depends(require_auth)):
+def get_fusion_weight_recommendations_endpoint(user_id: int = Depends(require_admin)):
     """
+    Admin only.
+
     Generates recommended weights for prediction confidence fusion based on historical performance.
 
     Args:

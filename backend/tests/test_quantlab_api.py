@@ -4,16 +4,16 @@ def test_quantlab_ml_signal(client, auth_headers):
     response = client.get("/api/v1/stocks/RELIANCE.NS/ml-signal", headers=auth_headers)
     assert response.status_code == 200
 
-def test_quantlab_calibration(client, auth_headers):
-    response = client.get("/api/v1/predictions/calibration?horizon=30d", headers=auth_headers)
+def test_quantlab_calibration(client, admin_headers):
+    response = client.get("/api/v1/predictions/calibration?horizon=30d", headers=admin_headers)
     assert response.status_code == 200
 
-def test_quantlab_pillar_attribution(client, auth_headers):
-    response = client.get("/api/v1/predictions/pillar-attribution?horizon=30d", headers=auth_headers)
+def test_quantlab_pillar_attribution(client, admin_headers):
+    response = client.get("/api/v1/predictions/pillar-attribution?horizon=30d", headers=admin_headers)
     assert response.status_code == 200
 
-def test_quantlab_model_versions(client, auth_headers):
-    response = client.get("/api/v1/predictions/model-versions?horizon=30d", headers=auth_headers)
+def test_quantlab_model_versions(client, admin_headers):
+    response = client.get("/api/v1/predictions/model-versions?horizon=30d", headers=admin_headers)
     assert response.status_code == 200
 
 def test_quantlab_alpha_validation(client, auth_headers):

@@ -15,6 +15,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from main import app
 from fastapi.testclient import TestClient
 from helpers import require_auth
+from core.security import require_admin
 from services.outcome_tracker import update_prediction_outcomes
 
 MOCK_USER_ID = 1
@@ -22,6 +23,7 @@ MOCK_USER_ID = 1
 @pytest.fixture()
 def authed_client():
     app.dependency_overrides[require_auth] = lambda: MOCK_USER_ID
+    app.dependency_overrides[require_admin] = lambda: MOCK_USER_ID
     with TestClient(app) as c:
         yield c
     app.dependency_overrides.clear()

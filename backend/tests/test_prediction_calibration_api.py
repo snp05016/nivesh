@@ -26,11 +26,13 @@ MOCK_USER_ID = 1
 
 
 from helpers import require_auth
+from core.security import require_admin
 
 @pytest.fixture()
 def authed_client():
     """TestClient with require_auth bypassed to return a fixed user_id."""
     app.dependency_overrides[require_auth] = lambda: MOCK_USER_ID
+    app.dependency_overrides[require_admin] = lambda: MOCK_USER_ID
     with TestClient(app) as c:
         yield c
     app.dependency_overrides.clear()

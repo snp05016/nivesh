@@ -80,14 +80,14 @@ def test_strategy_sweep_returns_valid_configs(auth_headers):
 
 # ── Test 3: Calibration endpoint ─────────────────────────────────────────────
 
-def test_calibration_endpoint_accepts_lowercase_horizon(auth_headers):
+def test_calibration_endpoint_accepts_lowercase_horizon(admin_headers):
     """GET /api/v1/predictions/calibration?horizon=30d returns 200 with proper schema."""
     from main import app
     client = TestClient(app)
 
     resp = client.get(
         "/api/v1/predictions/calibration?horizon=30d",
-        headers=auth_headers,
+        headers=admin_headers,
     )
     assert resp.status_code == 200
     body = resp.json()
@@ -116,14 +116,14 @@ def test_ml_signal_returns_graceful_unavailable(auth_headers):
 
 # ── Test 5: Pillar attribution schema ────────────────────────────────────────
 
-def test_pillar_attribution_returns_pillars(auth_headers):
+def test_pillar_attribution_returns_pillars(admin_headers):
     """Pillar attribution returns a pillars array (may be empty with no data)."""
     from main import app
     client = TestClient(app)
 
     resp = client.get(
         "/api/v1/predictions/pillar-attribution?horizon=30d",
-        headers=auth_headers,
+        headers=admin_headers,
     )
     assert resp.status_code == 200
     body = resp.json()
