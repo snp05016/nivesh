@@ -1,45 +1,47 @@
-"""Investment brainstorming service.
+"""Market-theme brainstorming service.
 
-This module provides an interface to an LLM to generate thematic investment strategies
-and stock ideas based on user-provided topics and risk tolerances.
+This module asks an LLM for educational Indian market themes around a user topic, each
+with an illustrative listed company. Output is research, never a recommendation (REG-02).
 """
 import json
 import logging
 
 from services.instrument_universe import validate_tickers
 from services.llm_utils import _deepseek_chat
+from services.advisory_guard import NON_ADVISORY_RULES
 from helpers import _extract_json_from_text, _ban_western_scale
 
 logger = logging.getLogger(__name__)
 
 def generate_brainstorming_ideas(topic: str, risk_tolerance: str) -> dict:
-    """Generates 3-5 investment strategies related to the topic, suggesting Indian stock tickers.
+    """Generates 3-5 educational market themes related to the topic, each with an example ticker.
 
     Args:
-        topic (str): The investment theme or topic to brainstorm around.
-        risk_tolerance (str): The user's risk tolerance profile.
+        topic (str): The market theme or topic to brainstorm around.
+        risk_tolerance (str): The risk level of themes to describe (a filter, not a profile).
 
     Returns:
         dict: A dictionary containing a list of generated ideas with titles, descriptions, and tickers.
     """
-    prompt = f"""You are a financial advisor for the Indian stock market.
-The user wants to brainstorm investment ideas based on the following topic: "{topic}".
-Their risk tolerance is: {risk_tolerance}.
+    prompt = f"""You are an educational research assistant for Indian market themes.
+The user wants to explore market themes related to the following topic: "{topic}".
+Describe themes whose typical risk level is: {risk_tolerance}.
 
-Provide 3-5 distinct, actionable investment strategies or angles related to this topic in the Indian market.
+Provide 3-5 distinct themes related to this topic in the Indian market.
 Each idea should be an object with:
-- "title": A short catchy title (e.g. "EV Battery Infrastructure")
-- "description": A 1-2 sentence description of why this angle works.
-- "ticker": (Optional) An NSE/BSE stock ticker symbol that perfectly fits this idea (e.g. "RELIANCE.NS").
+- "title": A short title (e.g. "EV Battery Infrastructure")
+- "description": A 1-2 sentence factual description of the theme and its main risks.
+- "ticker": (Optional) An NSE/BSE ticker symbol of an example listed company in this theme (illustrative, not a recommendation) (e.g. "RELIANCE.NS").
 
+{NON_ADVISORY_RULES}
 Ensure all numbers are in Lakhs/Crores. Never use Million, Billion, or Trillion.
 
 Output your response ONLY in valid JSON format with the following structure:
 {{
     "ideas": [
         {{
-            "title": "Strategy Name",
-            "description": "Why it works...",
+            "title": "Theme name",
+            "description": "What the theme is and its main risks...",
             "ticker": "TICKER.NS"
         }}
     ]

@@ -43,7 +43,7 @@ struct DailyActionCard: View {
 
             VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
                 HStack {
-                    Text("TODAY'S ACTION")
+                    Text("TODAY'S PORTFOLIO NOTE")
                         .font(Theme.officialStampFont(size: 8))
                         .foregroundStyle(Theme.inkSecondary)
                     Spacer()

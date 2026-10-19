@@ -33,6 +33,7 @@ from services.market_service import get_rbi_policy
 from services.llm_utils import deepseek_chat as _deepseek_chat
 from services.kyc_consent_service import AI_PROCESSING_CONSENT, has_active_consent
 from services import llm_budget
+from services.advisory_guard import strip_advisory_fields
 from repositories.analysis_repo import latest_signals_by_ticker
 from services.portfolio_service import (
     _get_asm_gsm_lists, _risk_label, compute_sip, compute_pearson_correlation,
@@ -708,6 +709,7 @@ def portfolio_timeframe_conflicts_endpoint(user_id: int, _caller: int = Depends(
                     continue
                 try:
                     data = json.loads(row.full_json)
+                    strip_advisory_fields(data)  # REG-02: zero AI targets (no conflicts) unless enabled
                 except Exception as e:
                     logging.warning(f"Caught exception: {e}")
                     continue

@@ -12,7 +12,9 @@ def test_extreme_normalizer_guarantees_blocks():
     assert isinstance(out["governance_flags"], list)
 
 
-def test_extreme_normalizer_preserves_llm_values():
+def test_extreme_normalizer_preserves_llm_values(monkeypatch):
+    # REG-02 empties scenarios unless advisory output is enabled; see test_advisory_guard.
+    monkeypatch.setenv("ADVISORY_OUTPUT_ENABLED", "true")
     from services.orchestrator import _normalize_response
     given = {"signal": "BUY", "niche_insights": ["hidden capex cycle"],
              "scenarios": {"bull": {"price_12m": 100}}}

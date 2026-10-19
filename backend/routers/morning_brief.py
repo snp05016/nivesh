@@ -17,6 +17,7 @@ import os
 from services.llm_utils import contains_devanagari
 from services.kyc_consent_service import AI_PROCESSING_CONSENT, has_active_consent
 from services import llm_budget
+from services.advisory_guard import NON_ADVISORY_RULES
 from services.portfolio_service import _get_indices_data
 from database import latest_per_ticker
 from services.yfinance_client import get_quotes
@@ -144,7 +145,8 @@ def build_morning_summary(user_id: int) -> dict:
         signals_text = "\n".join(signal_lines) if signal_lines else "No analysis available."
         indices_text = "\n".join(indices_lines) if indices_lines else "Data unavailable."
 
-        prompt = f"""You are a friendly Indian stock market advisor. Write a short morning brief (4-6 bullet points) for an investor based on their portfolio data. Write ONLY in English — never use Hindi or any other language. Be specific about which stocks to watch and why. Mention any big movers. Flag anything concerning. End with one sentence on overall market mood. Use Indian number format (lakhs/crores). Be warm and helpful.
+        prompt = f"""You write a factual morning summary of an investor's portfolio data. Write a short morning brief (4-6 bullet points). Write ONLY in English — never use Hindi or any other language. Mention any big movers. Flag anything concerning. End with one sentence on overall market mood. Use Indian number format (lakhs/crores). Be warm and helpful.
+{NON_ADVISORY_RULES}
 
 Portfolio holdings today:
 {portfolio_text}

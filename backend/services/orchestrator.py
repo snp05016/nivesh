@@ -868,6 +868,7 @@ def _normalize_response(result: dict, scan_type: str = "standard", quant_payload
     (additive — standard analyses are unaffected).
     """
     import math
+    from services.advisory_guard import strip_advisory_fields
     from services.harvester_reformatter import strip_emoji
 
     # 0. Clean NaN/Inf values before any other processing
@@ -1172,7 +1173,9 @@ def _normalize_response(result: dict, scan_type: str = "standard", quant_payload
         if sig in ("BULLISH", "CAUTIOUSLY BULLISH"):
             result["signal"] = "HOLD"
 
-    return result
+    # 26. REG-02: no price targets, upside or target bands leave the server unless a
+    #     SEBI-registered entity enabled advisory output. Last, so steps 18/24 cannot refill them.
+    return strip_advisory_fields(result)
 
 
 # ═════════════════════════════════════════════════════════════════════════════

@@ -192,12 +192,11 @@ struct TechnicalMomentumView: View {
     private var sectorsTab: some View {
         ScrollView {
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: Theme.Spacing.medium) {
-                if let pulse = dashboard?.pulse {
-                    // Fallback: show advance/decline breadth block
-                    let total = pulse.advances + pulse.declines
-                    let advPct = total > 0 ? Double(pulse.advances) / Double(total) : 0.5
+                if let pulse = dashboard?.pulse, pulse.advances + pulse.declines > 0 {
+                    // Fallback: show advance/decline breadth block (0/0 would print "nan%")
+                    let advPct = Double(pulse.advances) / Double(pulse.advances + pulse.declines)
                     SectorHeatBlock(name: "Advances", pct: advPct * 100, isPositive: true)
-                    SectorHeatBlock(name: "Declines", pct: Double(pulse.declines) / Double(total) * 100, isPositive: false)
+                    SectorHeatBlock(name: "Declines", pct: (1 - advPct) * 100, isPositive: false)
                 } else {
                     ForEach(0..<6, id: \.self) { _ in sectorPlaceholder }
                 }

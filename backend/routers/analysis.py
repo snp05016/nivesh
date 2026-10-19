@@ -46,6 +46,7 @@ from core.timeutil import ist_today
 _deepseek_chat = deepseek_chat  # backward-compat alias
 from services.kyc_consent_service import AI_PROCESSING_CONSENT, has_active_consent
 from services import llm_budget
+from services.advisory_guard import NON_ADVISORY_RULES, strip_advisory_fields
 
 # Task 31: import SECTOR_PE_MAP from central config
 from config.settings import (
@@ -85,7 +86,8 @@ def batch_analysis(req: BatchAnalyzeRequest, caller: int = Depends(require_auth)
                            .first())
             if db_analysis and db_analysis.full_json:
                 try:
-                    data = json.loads(db_analysis.full_json)
+                    # Stored rows predate REG-02 too: strip targets on the way out.
+                    data = strip_advisory_fields(json.loads(db_analysis.full_json))
                     results.append({"ticker": ticker, "status": "cached", "data": data})
                 except Exception as e:
                     logging.warning(f"Caught exception: {e}")
@@ -1359,7 +1361,8 @@ def daily_action_endpoint(user_id: int, _caller: int = Depends(require_user_matc
                     if not row or not row.full_json:
                         continue
                     try:
-                        data = json.loads(row.full_json)
+                        # REG-02: AI targets (zeroed unless advisory output is enabled).
+                        data = strip_advisory_fields(json.loads(row.full_json))
                         cp = data.get("current_price_inr")
                         tp = data.get("target_prices") or {}
                         st = tp.get("short_term_3m")
@@ -1393,26 +1396,28 @@ def daily_action_endpoint(user_id: int, _caller: int = Depends(require_user_matc
         elif warnings or conflicts:
             urgency = "medium"
 
-        action = "Review your portfolio — no urgent signals detected today."
+        context_parts = []
+        if triggered:
+            context_parts.append(f"Triggered alerts: {', '.join(t['ticker'] for t in triggered)}")
+        if warnings:
+            bearish = [w['ticker'] for w in warnings if w.get('is_bearish')]
+            flipped = [w['ticker'] for w in warnings if w.get('signal_flipped')]
+            if bearish: context_parts.append(f"Bearish signals: {', '.join(bearish)}")
+            if flipped: context_parts.append(f"Signal flips: {', '.join(flipped)}")
+        if conflicts:
+            context_parts.append(f"Timeframe conflicts: {', '.join(c['ticker'] for c in conflicts)}")
+
+        # REG-02: a factual note on alerts and signal changes, never an instruction.
+        action = "; ".join(context_parts) or "No alerts or signal changes on your holdings today."
         # Holdings go to the LLM processor only with the opt-in consent (FINSEC-04).
         if os.getenv("DEEPSEEK_API_KEY") and has_active_consent(user_id, AI_PROCESSING_CONSENT):
             try:
                 llm_budget.guard(user_id, "daily_action")  # over budget -> the static action
-                context_parts = []
-                if triggered:
-                    context_parts.append(f"Triggered alerts: {', '.join(t['ticker'] for t in triggered)}")
-                if warnings:
-                    bearish = [w['ticker'] for w in warnings if w.get('is_bearish')]
-                    flipped = [w['ticker'] for w in warnings if w.get('signal_flipped')]
-                    if bearish: context_parts.append(f"Bearish signals: {', '.join(bearish)}")
-                    if flipped: context_parts.append(f"Signal flips: {', '.join(flipped)}")
-                if conflicts:
-                    context_parts.append(f"Timeframe conflicts: {', '.join(c['ticker'] for c in conflicts)}")
-
                 prompt = (
-                    f"Portfolio data:\n{chr(10).join(context_parts) if context_parts else 'No urgent signals.'}\n\n"
-                    "In exactly one sentence of max 20 words, what is the single most important "
-                    "thing this investor should do today? Be specific — name the ticker."
+                    f"Portfolio data:\n{chr(10).join(context_parts) or 'No alerts or signal changes.'}\n\n"
+                    "In one factual sentence of at most 20 words, summarise which holdings had "
+                    "triggered alerts or signal changes. Do not recommend any action.\n"
+                    f"{NON_ADVISORY_RULES}"
                 )
                 # LLM-19: one paid call per user, IST day and portfolio context, not per screen open.
                 cache_key = f"{user_id}:{ist_today().isoformat()}:{hashlib.sha1(prompt.encode()).hexdigest()[:12]}"

@@ -599,8 +599,8 @@ struct EarningsFeedView: View {
                         ErrorDiagnoserView(
                             error: vm.feedError ?? vm.feedDiagnostic
                                 ?? (vm.feedDataSource != nil
-                                    ? "Data source: \(vm.feedDataSource!). No results available.\n\nThe backend has no earnings records. Run an AI analysis on a stock to populate data."
-                                    : "Backend returned empty results.\n\nLikely cause: No stock analyses have been run yet. The earnings feed reads from the Analysis History database. Run an AI analysis on a stock first to populate earnings data."),
+                                    ? "Data source: \(vm.feedDataSource!). No results available.\n\nQuarterly results for the tracked large caps could not be loaded. Please retry shortly."
+                                    : "Backend returned empty results.\n\nQuarterly results for the tracked large caps could not be loaded. Please retry shortly."),
                             context: ErrorDiagnostic(
                                 endpoint: "/api/v1/earnings/feed",
                                 classification: vm.feedError != nil ? "INFRASTRUCTURE_EXCEPTION" : "DATA_EMPTY"
@@ -637,7 +637,7 @@ struct EarningsFeedView: View {
             if let src = vm.feedDataSource {
                 HStack(spacing: Theme.Spacing.small) {
                     Circle()
-                        .fill(src == "database" ? Theme.bullGreen : src == "yfinance_fallback" ? Theme.holdAmber : Theme.bearRed)
+                        .fill(src == "empty" ? Theme.bearRed : Theme.bullGreen)
                         .frame(width: 5, height: 5)
                     Text("Source: \(src.replacingOccurrences(of: "_", with: " ").uppercased())")
                         .font(.caption2.weight(.medium).monospaced())

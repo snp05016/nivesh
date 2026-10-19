@@ -11,18 +11,21 @@ Imported by routers/market.py to replace inline helper functions.
 
 from __future__ import annotations
 
-import json
 import logging
 import math
 import random
 import time
+from typing import Any
+from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError as FuturesTimeout
 
 import yfinance as yf
 
+from core.timeutil import ist_today
 from helpers import _to_ns
+from services.cache_service import cached_call
 # The single guarded (rate-limited, circuit-broken) info fetcher; re-exported for
 # routers that import it from here (ARCH-11).
-from services.yfinance_client import _yf_fetch_info
+from services.yfinance_client import _yf_fetch_info, _yf_price, yf_history
 
 logger = logging.getLogger(__name__)
 
@@ -273,44 +276,198 @@ def holdings_from_info(info: dict) -> dict:
         "debt_to_equity": round(dte / 100, 2) if dte is not None else None,
     }
 
-def _earnings_result_from_row(r, now_iso: str) -> dict:
-    """Build an EarningsResult dict from an AnalysisHistory row."""
+# ---------------------------------------------------------------------------
+# Earnings (CMKT-01): yfinance quarterly results for a fixed large-cap universe.
+# Nothing here reads AnalysisHistory, and a figure Yahoo does not report is omitted,
+# never estimated.
+# ---------------------------------------------------------------------------
+
+# Ticker -> company name (the fallback when Yahoo info is unavailable).
+EARNINGS_UNIVERSE: dict[str, str] = {
+    "RELIANCE": "Reliance Industries Ltd",
+    "TCS": "Tata Consultancy Services Ltd",
+    "HDFCBANK": "HDFC Bank Ltd",
+    "INFY": "Infosys Ltd",
+    "ICICIBANK": "ICICI Bank Ltd",
+    "SBIN": "State Bank of India",
+    "BAJFINANCE": "Bajaj Finance Ltd",
+    "LT": "Larsen & Toubro Ltd",
+    "WIPRO": "Wipro Ltd",
+    "SUNPHARMA": "Sun Pharmaceutical Industries Ltd",
+    "TITAN": "Titan Company Ltd",
+    "MARUTI": "Maruti Suzuki India Ltd",
+}
+_EARNINGS_SNAPSHOT_TTL = 21600  # 6 h
+_POST_RESULT_TTL = 1800         # 30 min
+
+
+def _cell(row, col, scale: float = 1.0) -> float | None:
+    """One quarterly_financials value divided by scale, or None when missing or NaN."""
+    if row is None or col not in row.index:
+        return None
+    v = _safe_float(row[col], math.nan)
+    return None if math.isnan(v) else round(v / scale, 2)
+
+
+def _growth_pct(cur: float, prev: float) -> float | None:
+    """YoY growth in percent; None when the prior-year figure is not positive."""
+    return round((cur - prev) / prev * 100, 2) if prev > 0 else None
+
+
+def _quarterly_result(ticker: str) -> tuple[dict | None, str | None]:
+    """(EarningsResult dict, None) for the latest quarter against the same quarter a
+    year earlier, or (None, reason) when yfinance lacks either quarter."""
+    full_ticker = _to_ns(ticker)
+    _, fin = _get_quarterly_fin(full_ticker)
+    if fin is None or fin.empty:
+        return None, f"{ticker}: no quarterly financial data from yfinance"
+    cols = list(fin.columns)
+    # True YoY only: the fifth column must be the same quarter one year earlier.
+    if len(cols) < 5 or not 330 <= (cols[0] - cols[4]).days <= 400:
+        return None, f"{ticker}: no same-quarter-last-year figures"
+    latest, year_ago = cols[0], cols[4]
+
+    def _row(*names: str):
+        return next((fin.loc[n] for n in names if n in fin.index), None)
+
+    rev_row, profit_row = _row("Total Revenue"), _row("Net Income")
+    revenue, revenue_prev = _cell(rev_row, latest, 1e7), _cell(rev_row, year_ago, 1e7)
+    net_profit, net_profit_prev = _cell(profit_row, latest, 1e7), _cell(profit_row, year_ago, 1e7)
+    if revenue is None or revenue_prev is None or net_profit is None or net_profit_prev is None:
+        return None, f"{ticker}: revenue or net profit missing for a compared quarter"
+    eps_row = _row("Diluted EPS", "Basic EPS", "Diluted Earnings Per Share")
+
+    info: dict = {}
     try:
-        fj = json.loads(r.full_json or "{}")
-    except Exception as _e:
-        fj = {}
-    fs = fj.get("fundamentals_snapshot", {})
-    revenue = _safe_float(fs.get("revenue_crores") or fs.get("revenue"))
-    net_profit = _safe_float(fs.get("net_profit_crores") or fs.get("net_profit"))
-    eps_val = fs.get("eps")
+        info = _yf_fetch_info(full_ticker) or {}
+    except Exception as e:
+        logger.warning("[earnings] quote unavailable for %s: %s", ticker, e)
+    ltp = _safe_float(info.get("regularMarketPrice") or info.get("currentPrice"))
+    prev_close = _safe_float(info.get("regularMarketPreviousClose") or info.get("previousClose"))
     return {
-        "ticker": r.ticker,
-        "company_name": fj.get("company_name") or r.ticker,
-        "quarter": fj.get("quarter") or "Q4FY26",
-        "result_date": r.analysis_date or now_iso[:10],
-        "market_cap": "large_cap",
+        "ticker": ticker,
+        "company_name": info.get("longName") or info.get("shortName") or EARNINGS_UNIVERSE.get(ticker, ticker),
+        "quarter": quarter_label(latest),
+        # Period end: yfinance quarterly financials carry no filing date.
+        "result_date": str(latest)[:10],
+        "market_cap": "large_cap",  # the universe is fixed Nifty large caps
         "revenue": revenue,
-        "revenue_prev": round(revenue * 0.85, 2),
+        "revenue_prev": revenue_prev,
         "net_profit": net_profit,
-        "net_profit_prev": round(net_profit * 0.80, 2),
+        "net_profit_prev": net_profit_prev,
         "gross_profit": None,
         "gross_profit_prev": None,
-        "eps": _safe_float(eps_val) if eps_val is not None else None,
-        "eps_prev": None,
-        "ltp": 0.0,
-        "change_percent": 0.0,
+        "eps": _cell(eps_row, latest),
+        "eps_prev": _cell(eps_row, year_ago),
+        "ltp": round(ltp, 2),
+        "change_percent": round((ltp - prev_close) / prev_close * 100, 2) if ltp > 0 and prev_close > 0 else 0.0,
         "is_consolidated": True,
-        "reported_at": r.created_at.isoformat() if r.created_at else None,
+        "reported_at": None,
+        "revenue_growth_pct": _growth_pct(revenue, revenue_prev),
+        "net_profit_growth_pct": _growth_pct(net_profit, net_profit_prev),
+    }, None
+
+
+def build_quarterly_earnings(tickers: list[str]) -> tuple[list[dict], str]:
+    """Quarterly YoY results for tickers, newest period first, and a diagnostic that is
+    non-empty only when no ticker produced a result."""
+    results: list[dict] = []
+    errors: list[str] = []
+    with ThreadPoolExecutor(max_workers=8) as ex:
+        futures = {ex.submit(_quarterly_result, t): t for t in tickers}
+        try:
+            for fut in as_completed(futures, timeout=45):
+                try:
+                    item, err = fut.result()
+                except Exception as e:
+                    item, err = None, f"{futures[fut]}: {str(e)[:120]}"
+                if item:
+                    results.append(item)
+                if err:
+                    errors.append(err)
+        except FuturesTimeout:
+            errors.append("yfinance timed out")
+    diagnostic = ""
+    if not results:
+        detail = f" Errors: {'; '.join(errors[:3])}." if errors else ""
+        diagnostic = (f"Quarterly results unavailable from yfinance for the {len(tickers)} "
+                      f"tracked large caps.{detail} Please retry shortly.")
+    results.sort(key=lambda r: (r["result_date"], r["ticker"]), reverse=True)
+    return results, diagnostic
+
+
+def earnings_universe_snapshot() -> dict:
+    """{'results', 'diagnostic'} for EARNINGS_UNIVERSE, cached 6 h; an empty build is not cached."""
+    def _build() -> dict:
+        results, diagnostic = build_quarterly_earnings(list(EARNINGS_UNIVERSE))
+        return {"results": results, "diagnostic": diagnostic}
+    return cached_call("market", "earnings_universe_v2", _build,
+                       ttl=_EARNINGS_SNAPSHOT_TTL, cache_if=lambda snap: bool(snap["results"]))
+
+
+def _post_result_move(ticker: str, today) -> dict | None:
+    """Move from the last close before a results announcement in the last 14 days to the
+    latest price, else None."""
+    full_ticker = _to_ns(ticker)
+    dates = _yf_frame(full_ticker, "earnings_dates")  # announcement dates, newest first
+    if dates is None:
+        return None
+    recent = [d.date() for d in dates.index if 0 <= (today - d.date()).days <= 14]
+    if not recent:
+        return None
+    result_day = max(recent)
+    hist: Any = yf_history(full_ticker, "1mo")  # DatetimeIndex rows; pandas stubs type the index as int
+    if hist.empty:
+        return None
+    closes = hist["Close"].dropna()
+    before = closes[[d.date() < result_day for d in closes.index]]
+    if before.empty:
+        return None
+    base = float(before.iloc[-1])
+    ltp = _yf_price(full_ticker)[0] or float(closes.iloc[-1])
+    vol = _safe_float(hist["Volume"].iloc[-1], math.nan) if "Volume" in hist.columns else math.nan
+    return {
+        "ticker": ticker,
+        "company_name": EARNINGS_UNIVERSE.get(ticker, ticker),
+        "result_date": result_day.strftime("%Y-%m-%d"),
+        "ltp": round(ltp, 2),
+        "change_percent": round((ltp - base) / base * 100, 2) if base > 0 else 0.0,
+        "volume": None if math.isnan(vol) else int(vol),
     }
 
 
-def _scan_upcoming_earnings(target_date: str) -> list[dict]:
-    """Scan yfinance for tickers with earnings on or near target_date. Returns up to 10."""
+def post_result_movers(tickers: list[str]) -> list[dict]:
+    """Tickers that announced results (yfinance earnings dates) in the last 14 days, by
+    absolute price move since the pre-announcement close. One bad ticker is skipped."""
+    today = ist_today()
+
+    def _one(ticker: str) -> dict | None:
+        try:
+            return _post_result_move(ticker, today)
+        except Exception as e:
+            logger.warning("[post-result-movers] skipping %s: %s", ticker, e)
+            return None
+
+    with ThreadPoolExecutor(max_workers=8) as ex:
+        movers = [m for m in ex.map(_one, tickers) if m]
+    movers.sort(key=lambda m: abs(m["change_percent"]), reverse=True)
+    return movers
+
+
+def recent_post_result_movers() -> list[dict]:
+    """post_result_movers(EARNINGS_UNIVERSE), cached 30 min (an empty list for 5 min)."""
+    return cached_call("market", "post_result_movers_v2", lambda: post_result_movers(list(EARNINGS_UNIVERSE)),
+                       ttl=_POST_RESULT_TTL, negative_ttl=300)
+
+
+def _scan_upcoming_earnings(target_date: str, tickers: list[str] | None = None) -> list[dict]:
+    """Scan yfinance for tickers (default: a large-cap list) with earnings within 3 days
+    of target_date. Returns up to 10."""
     from datetime import datetime
 
-    scan_tickers = ["RELIANCE", "TCS", "HDFCBANK", "INFY", "ICICIBANK", "SBIN",
-                    "BAJFINANCE", "LT", "AXISBANK", "WIPRO", "SUNPHARMA", "TITAN",
-                    "MARUTI", "KOTAKBANK", "ITC", "HINDUNILVR", "BHARTIARTL"]
+    scan_tickers = tickers or ["RELIANCE", "TCS", "HDFCBANK", "INFY", "ICICIBANK", "SBIN",
+                               "BAJFINANCE", "LT", "AXISBANK", "WIPRO", "SUNPHARMA", "TITAN",
+                               "MARUTI", "KOTAKBANK", "ITC", "HINDUNILVR", "BHARTIARTL"]
     results = []
     for ticker in scan_tickers:
         try:

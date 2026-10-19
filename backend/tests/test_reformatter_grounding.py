@@ -110,7 +110,9 @@ def test_reformatter_receives_agent_reports(full_run):
     assert "LIVE MARKET DATA" in prompt and "Last price (INR): 1234.50" in prompt
 
 
-def test_prediction_entry_price_is_live_quote(full_run):
+def test_prediction_entry_price_is_live_quote(full_run, monkeypatch):
+    # Target grounding only applies when targets are served (REG-02 strips them by default).
+    monkeypatch.setenv("ADVISORY_OUTPUT_ENABLED", "true")
     result, _ = full_run("LLMFOURB")
     assert result["current_price_inr"] == 1234.5
     assert result["current_price_source"] == "live_quote"

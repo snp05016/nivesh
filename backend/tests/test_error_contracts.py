@@ -55,7 +55,7 @@ def test_option_chain_unavailable_503(client, monkeypatch):
 
 
 def test_earnings_calendar_failure_degraded_no_leak(client, monkeypatch):
-    monkeypatch.setattr(earnings_router, "get_session", _boom)
+    monkeypatch.setattr(earnings_router, "_scan_upcoming_earnings", _boom)
     resp = client.get("/api/v1/earnings/calendar", params={"date": "2026-01-01"})
     assert resp.status_code == 200
     body = resp.json()

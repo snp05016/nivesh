@@ -1174,13 +1174,20 @@ Errors are caught, logged to market_error_logs, and fallback values served.
         log_market_error("market_momentum", str(exc))
         logging.info(f"[DASHBOARD-PULSE] momentum fetch error: {exc}")
 
-    raw_breadth = pulse_raw.get("breadth") or {}
+    # fetch_market_pulse (Firecrawl extract and yfinance fallback) puts breadth at the
+    # top level; there is no "breadth" sub-dict (CMKT-03).
+    advances = int(pulse_raw.get("advances") or 0)
+    declines = int(pulse_raw.get("declines") or 0)
+    breadth_ratio = pulse_raw.get("breadth_ratio")
+    if breadth_ratio is None and declines > 0:
+        breadth_ratio = round(advances / declines, 2)
     pulse_section = {
         "indices": pulse_raw.get("indices", []),
-        "advances": raw_breadth.get("advances", 0) or 0,
-        "declines": raw_breadth.get("declines", 0) or 0,
-        "unchanged": raw_breadth.get("unchanged", 0) or 0,
-        "breadth_ratio": raw_breadth.get("ad_ratio"),
+        "advances": advances,
+        "declines": declines,
+        "unchanged": int(pulse_raw.get("unchanged") or 0),
+        "breadth_ratio": breadth_ratio,
+        "breadth_sample_size": pulse_raw.get("breadth_sample_size"),
         "fetched_at": now_iso,
     }
 

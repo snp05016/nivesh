@@ -11,6 +11,7 @@ from helpers import (
     get_session, _to_ns, _yf_price, User, Portfolio, AnalysisHistory,
     SignalEvent, format_indian_currency,
 )
+from services.advisory_guard import advisory_output_enabled
 import importlib.util as _importlib_util
 
 router = APIRouter(tags=["Portfolio"])
@@ -29,6 +30,20 @@ try:
     OPENPYXL_AVAILABLE = True
 except ImportError:
     OPENPYXL_AVAILABLE = False
+
+
+_HISTORY_BASE_HEADERS = ["Date", "Ticker", "Signal", "Confidence %"]
+_HISTORY_TARGET_HEADERS = ["Target 3M (Rs)", "Target 12M (Rs)", "Target 3Y (Rs)"]
+
+
+def _history_headers() -> list[str]:
+    """Analysis History headers; the stored AI price targets only when advisory output is on (REG-02)."""
+    return _HISTORY_BASE_HEADERS + (_HISTORY_TARGET_HEADERS if advisory_output_enabled() else [])
+
+
+def _history_row(row: tuple) -> list:
+    """(date, ticker, signal, confidence, t3m, t12m, t36m) -> cells matching _history_headers()."""
+    return list(row) if advisory_output_enabled() else list(row[:4])
 
 
 # ---------------------------------------------------------------------------
@@ -116,24 +131,18 @@ def export_portfolio_excel(user_id: int, _caller: int = Depends(require_user_mat
 
         # ── Sheet 2: Analysis History ───────────────────────────────
         ws2 = wb.create_sheet("Analysis History")
-        hist_headers = ["Date", "Ticker", "Signal", "Confidence %",
-                        "Target 3M (Rs)", "Target 12M (Rs)", "Target 3Y (Rs)"]
+        hist_headers = _history_headers()
         for col, h in enumerate(hist_headers, 1):
             cell = ws2.cell(row=1, column=col, value=h)
             cell.fill = header_fill
             cell.font = header_font
             cell.alignment = Alignment(horizontal="center")
-        for w, col in zip([14, 14, 22, 14, 18, 18, 18], range(1, 8)):
+        for col, w in enumerate([14, 14, 22, 14, 18, 18, 18][:len(hist_headers)], 1):
             ws2.column_dimensions[openpyxl.utils.get_column_letter(col)].width = w
 
-        for idx, (adate, aticker, signal, conf, t3m, t12m, t36m) in enumerate(history_data, 2):
-            ws2.cell(row=idx, column=1, value=adate)
-            ws2.cell(row=idx, column=2, value=aticker)
-            ws2.cell(row=idx, column=3, value=signal)
-            ws2.cell(row=idx, column=4, value=conf)
-            ws2.cell(row=idx, column=5, value=t3m)
-            ws2.cell(row=idx, column=6, value=t12m)
-            ws2.cell(row=idx, column=7, value=t36m)
+        for idx, record in enumerate(history_data, 2):
+            for col, value in enumerate(_history_row(record), 1):
+                ws2.cell(row=idx, column=col, value=value)
 
         import io
         output = io.BytesIO()

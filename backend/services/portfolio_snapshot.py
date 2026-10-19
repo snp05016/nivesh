@@ -23,6 +23,7 @@ from schemas.db_json_schemas import PortfolioPositionSchema, PortfolioSnapshotSc
 from services.llm_utils import contains_devanagari
 from services.yfinance_client import _yf_price, _to_ns
 from services.kyc_consent_service import AI_PROCESSING_CONSENT, has_active_consent
+from services.advisory_guard import NON_ADVISORY_RULES
 
 logger = logging.getLogger(__name__)
 
@@ -354,10 +355,11 @@ async def pregen_morning_briefs_all_users() -> dict:
             signals_text = "\n".join(signal_lines) or "No analysis available."
 
             prompt = (
-                "You are a friendly Indian stock market advisor. Write a short morning brief "
-                "(4-6 bullet points) for an investor. Write ONLY in English — never use Hindi. Be specific. "
+                "You write a factual morning summary of an investor's portfolio data. Write a short "
+                "morning brief (4-6 bullet points). Write ONLY in English — never use Hindi. "
                 "Mention big movers. Flag anything concerning. End with one sentence on market mood. "
-                "Use Indian number format (lakhs/crores). Be warm.\n\n"
+                "Use Indian number format (lakhs/crores). Be warm.\n"
+                f"{NON_ADVISORY_RULES}\n\n"
                 f"Portfolio:\n{portfolio_text}\n\n"
                 f"Significant movers (±2%+):\n{movers_text}\n\n"
                 f"Last AI signals:\n{signals_text}\n\n"
