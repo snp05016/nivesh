@@ -97,3 +97,16 @@ def test_journey_model_governance_rejects_impressive_noise(monkeypatch):
     r = c.post("/lab/v1/hypothesis/compare", json={"base": base, "candidates": cands}, headers=KEY).json()
     assert r["status"] == "ok" and not r["best_survives_corrections"]
     assert r["in_sample_best"] in {x["score"] for x in cands}
+
+
+def test_sweep_applies_search_corrections(monkeypatch):
+    from tests.lab.test_hypothesis import panel
+
+    p = panel(edge=0.0, seed=4)
+    monkeypatch.setattr(api, "_panel", lambda src: (p, {"source": "synthetic", "warnings": []}))
+    c = _client(monkeypatch, make_data())
+    base = {"program": "s = trades", "score": "s", "start": "2018-09-01", "end": "2020-09-30", "horizon": 5,
+            "universe_n": 60, "min_names": 30, "holdout_months": 3, "permutations": 100}
+    r = c.post("/lab/v1/hypothesis/sweep", json={"base": base, "template": "s = -(px_idx / lag(px_idx, {n}) - 1)", "values": [2, 3, 5, 10]}, headers=KEY).json()
+    assert r["status"] == "ok" and len(r["candidates"]) == 4 and "searched" in r["note"]
+    assert c.post("/lab/v1/hypothesis/sweep", json={"base": base, "template": "s = close", "values": [1, 2]}, headers=KEY).status_code == 422

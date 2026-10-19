@@ -395,3 +395,25 @@ def school_placement(body: PlacementIn) -> dict:
         return sch.placement(body.answers_by_lesson, body.state)
     except (KeyError, ValueError, sch.CurriculumError) as e:
         raise HTTPException(422, str(e)) from None
+
+
+class SweepIn(BaseModel):
+    """Generate variants of one idea by substituting `{n}` and test them all with search-aware corrections."""
+    model_config = ConfigDict(extra="forbid")
+    base: SpecIn
+    template: str = Field(max_length=2000, description="FDL program containing {n}; must define `score`")
+    values: list[int] = Field(min_length=2, max_length=12)
+
+
+@router.post("/hypothesis/sweep")
+def hypothesis_sweep(body: SweepIn) -> dict:
+    if "{n}" not in body.template:
+        raise HTTPException(422, "template must contain {n}")
+    if any(not 1 <= v <= 756 for v in body.values) or len(set(body.values)) != len(body.values):
+        raise HTTPException(422, "values must be distinct integers in [1, 756]")
+    cands = [CandidateIn(program=body.template.replace("{n}", str(v)).replace(body.base.score, f"{body.base.score}_{v}"),
+                         score=f"{body.base.score}_{v}") for v in body.values]
+    out = hypothesis_compare(CompareIn(base=body.base, candidates=cands))
+    out["note"] = (f"{len(body.values)} variants were searched. Each extra variant raises the bar: the corrected p-values and the "
+                   "probability of backtest overfitting account for the whole search, not just the winner.")
+    return out
