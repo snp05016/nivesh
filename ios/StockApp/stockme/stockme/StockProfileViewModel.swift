@@ -31,23 +31,6 @@ class StockProfileViewModel: ObservableObject {
     @Published var shareholding: ShareholdingResponse?
     @Published var shareholdingError: String?
 
-    // Corporate actions (new)
-    @Published var corporateActions: CorporateActionsResponse?
-    @Published var corporateActionsLoading = false
-
-    // Valuation (new)
-    @Published var valuationData: ValuationResponse?
-    @Published var valuationLoading = false
-    @Published var valuationError: String?
-
-    // Risk signals (new)
-    @Published var riskSignals: RiskSignalsResponse?
-    @Published var riskSignalsLoading = false
-
-    // ML Signal
-    @Published var mlSignal: MLSignalResponse?
-    @Published var mlSignalLoading = false
-
     // News / Analyst
     @Published var analystRatings: AnalystRatingsResponse?
     @Published var holdersLoading = false
@@ -171,80 +154,6 @@ class StockProfileViewModel: ObservableObject {
         }
     }
 
-    // MARK: - Corporate Actions
-
-    /// Fetches corporate actions including dividends, splits, bonuses, and buybacks.
-    func fetchCorporateActions() async {
-        guard corporateActions == nil else { return }
-        await MainActor.run {
-            corporateActionsLoading = true
-        }
-        do {
-            let result = try await NetworkManager.shared.fetchCorporateActions(
-                symbol: ticker,
-                exchange: exchange
-            )
-            await MainActor.run {
-                corporateActions = result
-                corporateActionsLoading = false
-            }
-        } catch {
-            await MainActor.run {
-                corporateActionsLoading = false
-            }
-        }
-    }
-
-    // MARK: - Valuation
-
-    /// Fetches valuation metrics including PE, PB, EV/EBITDA, peer comparison, and PE band history.
-    func fetchValuation() async {
-        guard valuationData == nil else { return }
-        await MainActor.run {
-            valuationLoading = true
-            valuationError = nil
-        }
-        do {
-            let result = try await NetworkManager.shared.fetchValuation(
-                symbol: ticker,
-                exchange: exchange
-            )
-            await MainActor.run {
-                valuationData = result
-                valuationLoading = false
-            }
-        } catch {
-            await MainActor.run {
-                valuationError = error.localizedDescription
-                valuationLoading = false
-            }
-        }
-    }
-
-    // MARK: - Risk Signals
-
-    /// Fetches risk signals including governance, pledge, FII trend, and debt concerns.
-    func fetchRiskSignals() async {
-        guard riskSignals == nil else { return }
-        await MainActor.run {
-            riskSignalsLoading = true
-        }
-        do {
-            let result = try await NetworkManager.shared.fetchRiskSignals(
-                symbol: ticker,
-                exchange: exchange
-            )
-            await MainActor.run {
-                riskSignals = result
-                riskSignalsLoading = false
-            }
-        } catch {
-            await MainActor.run {
-                riskSignalsLoading = false
-            }
-        }
-    }
-
     func fetchHolders() async {
         guard analystRatings == nil else { return }
         await MainActor.run { holdersLoading = true }
@@ -267,26 +176,12 @@ class StockProfileViewModel: ObservableObject {
         }
     }
 
-    // MARK: - ML Signal
-
-    func fetchMLSignal() async {
-        await MainActor.run { mlSignalLoading = true }
-        do {
-            let result = try await NetworkManager.shared.fetchMLSignal(symbol: ticker)
-            await MainActor.run { mlSignal = result }
-        } catch {
-            // Silently fail — ML signal is supplementary
-        }
-        await MainActor.run { mlSignalLoading = false }
-    }
-
     func fetchStockProfile() async {
         guard stockProfile == nil else { return }
         await MainActor.run {
             chartLoading = true
             financialsLoading = true
             overviewLoading = true
-            mlSignalLoading = true
             stockProfileError = nil
         }
         do {
@@ -343,8 +238,6 @@ class StockProfileViewModel: ObservableObject {
                 financialsLoading = false
                 overviewLoading = false
             }
-            // Fetch ML signal concurrently after profile succeeds
-            await fetchMLSignal()
         } catch {
             await MainActor.run {
                 stockProfileError = error.localizedDescription

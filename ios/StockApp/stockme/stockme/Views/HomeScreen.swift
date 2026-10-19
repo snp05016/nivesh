@@ -414,65 +414,6 @@ struct FundReturnRow: View {
     }
 }
 
-// MARK: - AdvisoryConsensusEmptyCard
-
-struct AdvisoryConsensusEmptyCard: View {
-    var body: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: Theme.CornerRadius.card)
-                .fill(.ultraThinMaterial)
-                .overlay(
-                    RoundedRectangle(cornerRadius: Theme.CornerRadius.card)
-                        .stroke(Color.primary.opacity(0.07), lineWidth: 0.5)
-                )
-
-            RBISealBackground()
-                .opacity(0.04)
-
-            HStack(spacing: Theme.Spacing.none) {
-                SecurityThread()
-
-                VStack(alignment: .leading, spacing: Theme.Spacing.none) {
-                    VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
-                        Text("दलाल स्ट्रीट सलाह")
-                            .font(.caption2)
-                            .foregroundStyle(dimText)
-                        Text("DALAL STREET ADVISORY")
-                            .font(.caption.weight(.semibold)).monospaced()
-                            .tracking(2.0)
-                            .foregroundStyle(.primary.opacity(0.7))
-                    }
-                    .padding(.bottom, Theme.Spacing.standard)
-
-                    GuillocheDivider()
-                        .padding(.bottom, Theme.Spacing.standard)
-
-                    HStack(alignment: .top, spacing: Theme.Spacing.standard) {
-                        Image(systemName: "clock.badge")
-                            .font(.title2.weight(.light))
-                            .foregroundStyle(goldAccent.opacity(0.7))
-                            .frame(width: 28)
-
-                        VStack(alignment: .leading, spacing: Theme.Spacing.small) {
-                            Text("Next harvest at 1:30 AM")
-                                .font(.footnote.weight(.semibold))
-                                .foregroundStyle(.primary.opacity(0.80))
-
-                            Text("Advisor stances from SOIC, Basant Maheshwari, and others will appear here after the nightly run.")
-                                .font(.caption)
-                                .foregroundStyle(Theme.inkSecondary)
-                                .fixedSize(horizontal: false, vertical: true)
-                                .lineSpacing(2)
-                        }
-                    }
-                }
-                .padding(cardVPad)
-            }
-        }
-        .frame(minHeight: 110)
-    }
-}
-
 @MainActor
 class HomeViewModel: ObservableObject {
 
@@ -902,24 +843,6 @@ private struct DailyActionCard: View {
 
 
 
-private struct StatNoteBlock: View {
-    let label: String
-    let value: String
-    let color: Color
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.small) {
-            Text(label)
-                .font(Theme.officialStampFont(size: 8))
-                .foregroundStyle(Theme.inkSecondary)
-            Text(value)
-                .contentTransition(.numericText())
-                .font(Theme.serialNumberFont(size: 14))
-                .foregroundStyle(color)
-        }
-    }
-}
-
 private struct MorningDecreeCard: View {
     let briefData: MorningSummaryResponse
 
@@ -1097,35 +1020,6 @@ private struct SectorPill: View {
     }
 }
 
-private struct SectorPulseCard: View {
-    let sector: SectorPerformance
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.tight) {
-            Text(sector.name.uppercased())
-                .font(Theme.officialStampFont(size: 8))
-                .foregroundStyle(Theme.inkSecondary)
-                .lineLimit(1)
-
-            Text((sector.changePct >= 0 ? "+" : "") + String(format: "%.2f%%", sector.changePct))
-                .contentTransition(.numericText())
-                .font(Theme.serialNumberFont(size: 18))
-                .foregroundStyle(sector.changePct >= 0 ? Theme.bullGreen : Theme.bearRed)
-
-            // Mini bar
-            ZStack(alignment: .leading) {
-                Rectangle().fill(Theme.inkSecondary.opacity(0.08)).frame(height: 3)
-                Rectangle()
-                    .fill(sector.changePct >= 0 ? Theme.bullGreen : Theme.bearRed)
-                    .frame(width: min(UIScreen.main.bounds.height * 0.10, UIScreen.main.bounds.height * 0.10 * abs(sector.changePct) / 5.0), height: 3)
-            }
-            .frame(height: 3)
-        }
-        .padding(Theme.Spacing.standard)
-        .banknoteCard()
-    }
-}
-
 // MARK: - Timeframe Conflicts Banner
 
 private struct TimeframeConflictsBanner: View {
@@ -1189,30 +1083,6 @@ private struct TimeframeConflictCard: View {
         .background(Theme.canvasDeep)
         .cornerRadius(Theme.CornerRadius.medium)
         .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.medium).stroke(Theme.borderFine, lineWidth: 0.5))
-    }
-}
-
-// MARK: - Dashboard Section Wrapper
-
-private struct DashboardSection<Content: View>: View {
-    let id: String
-    let title: String
-    let hindi: String
-    let icon: String
-    @ViewBuilder let content: () -> Content
-
-    var body: some View {
-        VStack(spacing: Theme.Spacing.standard) {
-            HStack(spacing: Theme.Spacing.tight) {
-                Image(systemName: icon)
-                    .font(.caption)
-                    .foregroundStyle(Theme.securityGold)
-                SectionHeader(title: title, hindiTitle: hindi)
-            }
-            content()
-        }
-        .id(id)
-        .padding(.horizontal, Theme.screenPadding)
     }
 }
 
@@ -1652,17 +1522,6 @@ struct MomentumRowView: View {
         .padding(.horizontal, Theme.Spacing.standard)
         .padding(.vertical, Theme.Spacing.standard)
     }
-}
-
-// MARK: - 14.7 Anti-Patterns Validator (passive checks, no UI)
-
-/// Validates that a Double value from the server does not represent a
-/// Western million/billion scale (>= 1_000_000 raw without crore conversion).
-/// Returns a safe IndianFormatter string, never raw Western numbers.
-func safeIndianCurrency(_ raw: Double) -> String {
-    // Block any value that looks like it was passed as raw millions/billions
-    // (i.e. > 100 crore threshold without going through formatLakhsCrores)
-    return IndianFormatter.formatLakhsCrores(raw)
 }
 
 // MARK: - Compact News Cell — rich card with expand-to-detail

@@ -153,21 +153,6 @@ struct ContentView: View {
         .toolbarBackground(.visible, for: .tabBar)
         .modifier(GlobalOverlayModifier(selectedTab: $selectedTab, tutorialManager: tutorialManager))
     }
-
-    @ViewBuilder
-    private var tabContent: some View {
-        Group {
-            switch selectedTab {
-            case 0: HomeScreen()
-            case 1: MarketsView()
-            case 2: ExpertNetworkView()
-            case 3: NewsMultimediaView()
-            case 4: PortfolioScreen()
-            default: HomeScreen()
-            }
-        }
-        .modifier(GlobalOverlayModifier(selectedTab: $selectedTab, tutorialManager: tutorialManager))
-    }
 }
 
 // MARK: - Global Overlay Modifier

@@ -26,10 +26,6 @@ ALLOWLIST = {
     # whether each is wired up or deleted.
     "AppSoundManager.swift",
     "StockTapActionSheetModifier.swift",
-    "UniversalSearchViewModel.swift",
-    "UniversalSearchView.swift",
-    "StockCorporateActionsView.swift",
-    "StockFinancialsView.swift",
 }
 
 _ATTRS = r"(?:@\w+(?:\([^)]*\))?\s+)*"
