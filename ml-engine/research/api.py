@@ -45,7 +45,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from . import config, live, outcomes, pipeline, registry
 from .contract import SCHEMA_VERSION, LiveMetricsRequest, OutcomeRequestItem, RunCounts, RunStatus
-from .marketdata import store, universe
+from .marketdata import eod, store, universe
 from .report import as_timestamp
 
 __all__ = ["router"]
@@ -68,6 +68,7 @@ PanelSource = Literal["store", "local_csv"]
 # The single active run of this process: {"run_id", "market_date", "thread"}.
 _LOCK = threading.Lock()
 _ACTIVE: dict[str, Any] | None = None
+_SYNC_ID = "marketdata-sync"  # the _ACTIVE run_id while a gap-fill sync holds the engine slot
 
 
 # ── settings and auth ───────────────────────────────────────────────────────
@@ -271,6 +272,10 @@ class RunRequest(_Body):
     extra_symbols: Annotated[list[Annotated[str, Field(max_length=32)]], Field(max_length=MAX_EXTRA_SYMBOLS)] = []
 
 
+class SyncRequest(_Body):
+    through: date
+
+
 class ComputeRequest(_Body):
     symbol: Annotated[str, Field(min_length=1, max_length=32)]
 
@@ -340,7 +345,8 @@ def start_run(body: RunRequest) -> JSONResponse:
     with _LOCK:
         if _ACTIVE is not None and _ACTIVE["thread"].is_alive():
             return JSONResponse(status_code=409, content={
-                "run_id": _ACTIVE["run_id"], "market_date": _ACTIVE["market_date"].isoformat(),
+                "run_id": _ACTIVE["run_id"],
+                "market_date": _ACTIVE["market_date"].isoformat() if _ACTIVE["market_date"] else None,
             })
         prune_runs(root)
         done = _finished_run(root, body.market_date, extra)
@@ -362,6 +368,54 @@ def start_run(body: RunRequest) -> JSONResponse:
         _ACTIVE = {"run_id": run_id, "market_date": body.market_date, "thread": thread}
         thread.start()
     return JSONResponse(status_code=202, content={"run_id": run_id, "status": "running"})
+
+
+@router.get("/eod/{market_date}")
+def eod_export(market_date: date) -> JSONResponse:
+    """200 ``{market_date, status, rows, index_closes}`` from the curated store; 404 NOT_INGESTED.
+
+    Read-only: no run lock, no network, no writes.
+    """
+    try:
+        return JSONResponse(content=eod.eod_rows(market_date, data_dir=config.DATA_DIR))
+    except eod.NotIngested:
+        return JSONResponse(status_code=404, content={"code": "NOT_INGESTED"})
+
+
+def _sync_thread(through: date, root: Path) -> None:
+    global _ACTIVE
+    try:
+        log.info("marketdata sync through %s: %s", through, eod.sync_marketdata(through, data_dir=root))
+    except Exception:
+        log.exception("marketdata sync through %s failed", through)
+    finally:
+        with _LOCK:
+            if _ACTIVE is not None and _ACTIVE["run_id"] == _SYNC_ID:
+                _ACTIVE = None
+
+
+@router.post("/marketdata/sync")
+def marketdata_sync(body: SyncRequest) -> JSONResponse:
+    """202 started; 409 ENGINE_BUSY while a run or another sync is active; 422 for a date after today (IST).
+
+    The engine's gap-fill (bhavcopies and the Nifty 50 cache) runs in a daemon thread and
+    holds the engine's single-run slot, so a nightly run and a sync never overlap.
+    """
+    global _ACTIVE
+    if body.through > _ist_today():
+        raise HTTPException(status_code=422, detail="through is in the future")
+    if not _LOCK.acquire(blocking=False):
+        return JSONResponse(status_code=409, content={"code": "ENGINE_BUSY"})
+    try:
+        if _ACTIVE is not None and _ACTIVE["thread"].is_alive():
+            return JSONResponse(status_code=409, content={"code": "ENGINE_BUSY"})
+        thread = threading.Thread(target=_sync_thread, args=(body.through, _data_dir()),
+                                  name="marketdata-sync", daemon=True)
+        _ACTIVE = {"run_id": _SYNC_ID, "market_date": None, "thread": thread}
+        thread.start()
+    finally:
+        _LOCK.release()
+    return JSONResponse(status_code=202, content={"status": "started", "through": body.through.isoformat()})
 
 
 def _run_dir_or_404(run_id: str) -> Path:
