@@ -1,0 +1,476 @@
+{
+  "version": "2026-10-19",
+  "scenarios": [
+    {
+      "id": "gfc-jan-2008-crash",
+      "title": "January 2008: the first crack after the record high",
+      "category": "selloff",
+      "start": "2008-01-17",
+      "end": "2008-02-15",
+      "difficulty": "intermediate",
+      "universe_hint": ["RELIANCE", "SBIN", "ICICIBANK", "HDFCBANK", "INFY", "TCS", "LT", "ONGC", "BHEL", "DLF", "TATASTEEL"],
+      "briefing": "Mid-January 2008. The Sensex set an intraday record of 21,206.77 on January 10, 2008, after a powerful multi-year bull run, and has slipped back since. Global markets are nervous about the health of the US economy and its housing and credit markets. Domestic sentiment, IPO activity and leverage in the market are all high. You hold cash and can trade large caps across banks, energy, infrastructure, real estate and IT.",
+      "debrief": "On Monday, January 21, 2008 the Sensex fell 1,408.35 points (7.41%) to close at 17,605.35, then its biggest single-day point fall, amid FII selling, margin calls and US recession fears. On January 22 the market opened sharply lower and breached the 10% index circuit breaker: NSE closed its capital market segment at 9:55:58 for one hour and trading resumed at 10:55. The Sensex hit an intraday low of 15,332.42 before recovering to close 875.41 points lower; the Nifty closed at 4,899.30, down 309.50 points (5.94%). Later that day (US time) the Federal Reserve made an unscheduled 75 bp cut to 3.5%. The January 10 intraday high was not surpassed until November 2013.",
+      "timeline": [
+        {"date": "2008-01-10", "event": "Sensex intraday all-time high of 21,206.77 (context, before start).", "source_url": "https://www.business-standard.com/article/pti-stories/sensex-hits-new-record-high-of-21-293-88-up-129-36-pts-113110100132_1.html"},
+        {"date": "2008-01-21", "event": "Sensex closes down 1,408.35 points (7.41%) at 17,605.35, its biggest single-day point fall to that date.", "source_url": "https://www.oneindia.com/2008/01/21/sensex-registers-biggest-ever-fall-tumbles-by-140835-pts-1200920662.html"},
+        {"date": "2008-01-22", "event": "Index circuit breaker hit at the open; NSE capital market closed at 9:55:58 for one hour.", "source_url": "https://nsearchives.nseindia.com/content/press/22012008.htm"},
+        {"date": "2008-01-22", "event": "Sensex intraday low 15,332.42; closes 875.41 points lower. Nifty closes at 4,899.30 (-5.94%).", "source_url": "https://www.oneindia.com/2008/01/22/sensex-tumbles-by-87541-pts-1201008807.html"},
+        {"date": "2008-01-22", "event": "US Federal Reserve makes an unscheduled 75 bp cut in the fed funds target to 3.5%.", "source_url": "https://www.federalreserve.gov/newsevents/pressreleases/monetary20080122b.htm"}
+      ],
+      "learning_goals": [
+        "Experience a gap-down through a market-wide circuit breaker and see that stop orders cannot fill while trading is halted",
+        "Recognise how leverage and margin calls amplify a fall",
+        "Decide whether to buy a sharp one-day rebound or treat it as a bear-market rally"
+      ],
+      "related_concepts": ["market-wide circuit breakers", "gap risk", "margin calls", "position sizing", "stop discipline", "drawdown"],
+      "sources": [
+        {"title": "Sensex hits new record high of 21,293.88 (notes the Jan 10, 2008 intraday record)", "url": "https://www.business-standard.com/article/pti-stories/sensex-hits-new-record-high-of-21-293-88-up-129-36-pts-113110100132_1.html", "publisher": "Business Standard (PTI)"},
+        {"title": "Sensex registers biggest ever fall, tumbles by 1408.35 pts", "url": "https://www.oneindia.com/2008/01/21/sensex-registers-biggest-ever-fall-tumbles-by-140835-pts-1200920662.html", "publisher": "Oneindia (UNI)"},
+        {"title": "NSE press release, January 22, 2008", "url": "https://nsearchives.nseindia.com/content/press/22012008.htm", "publisher": "National Stock Exchange of India"},
+        {"title": "Sensex tumbles by 875.41 pts", "url": "https://www.oneindia.com/2008/01/22/sensex-tumbles-by-87541-pts-1201008807.html", "publisher": "Oneindia"},
+        {"title": "FOMC statement, January 22, 2008", "url": "https://www.federalreserve.gov/newsevents/pressreleases/monetary20080122b.htm", "publisher": "Board of Governors of the Federal Reserve System"}
+      ],
+      "verification": "verified",
+      "notes": "Some secondary sources conflate the Jan 21 close-to-close record fall with the Jan 22 circuit-breaker halt; the NSE press release confirms the halt was on Jan 22. Intraday point-fall figures for Jan 22 vary slightly by source (2,263.93 vs 2,272.93)."
+    },
+    {
+      "id": "gfc-lehman-oct-2008",
+      "title": "Autumn 2008: Lehman, liquidity and emergency rate cuts",
+      "category": "macro_shock",
+      "start": "2008-09-12",
+      "end": "2008-10-31",
+      "difficulty": "advanced",
+      "universe_hint": ["SBIN", "ICICIBANK", "HDFCBANK", "AXISBANK", "RELIANCE", "LT", "BHEL", "DLF", "TATASTEEL", "INFY", "HINDUNILVR", "ITC"],
+      "briefing": "Mid-September 2008. The Sensex is far below its January 2008 record after a year of falls. The US financial system has been under stress for months and investors are watching large US financial institutions closely. The RBI has been fighting inflation with tight policy (repo at 9%, CRR at 9%). Banks, infrastructure and real estate names have been hit hardest so far; FMCG and some defensives have held up better.",
+      "debrief": "Lehman Brothers filed for bankruptcy on September 15, 2008; the Sensex closed 469.54 points lower at 13,531.27 that day after falling over 800 points intraday. Through October the RBI shifted to emergency easing: a 50 bp CRR cut announced on Monday October 6, a further cut announced October 10 that took CRR to 7.5% from 9% (the Sensex closed down 792 points at 10,537 that day), and a 100 bp repo cut to 8.0% effective October 20. On October 24, after the RBI's mid-term policy review disappointed and global markets fell, the Sensex dropped 1,070 points (about 11%) to close at 8,701, below 9,000. The Sensex lost about 24% in October alone.",
+      "timeline": [
+        {"date": "2008-09-15", "event": "Lehman Brothers bankruptcy; Sensex closes down 469.54 points at 13,531.27 after an intraday fall of over 800 points.", "source_url": "https://www.business-standard.com/amp/article/markets/sensex-ends-down-470pts-on-global-worries-108091500038_1.html"},
+        {"date": "2008-10-10", "event": "RBI announces a further CRR cut, taking CRR to 7.5% from 9% (including a 50 bp cut announced Oct 6). Sensex closes down 792 points at 10,537.", "source_url": "https://www.business-standard.com/amp/article/finance/rbi-cuts-crr-by-150bps-to-inject-rs-60-000cr-tomorrow-108101000050_1.html"},
+        {"date": "2008-10-20", "event": "RBI cuts the LAF repo rate by 100 bp to 8.0% with immediate effect; reverse repo unchanged at 6%.", "source_url": "https://website.rbi.org.in/as/web/rbi/-/notifications/liquidity-adjustment-facility-repo-and-reverse-repo-rates-4569"},
+        {"date": "2008-10-24", "event": "After a tepid RBI mid-term review and weak global markets, Sensex falls 1,070 points (about 11%) to close at 8,701.", "source_url": "https://www.tribuneindia.com/2008/20081025/main1.htm"}
+      ],
+      "learning_goals": [
+        "See that the first policy response does not necessarily mark the bottom",
+        "Practise sizing positions when daily volatility is several times normal",
+        "Compare drawdowns in high-beta sectors (banks, real estate, capital goods) with defensives"
+      ],
+      "related_concepts": ["volatility regime", "position sizing", "catching a falling knife", "liquidity crisis", "monetary policy transmission", "sector rotation"],
+      "sources": [
+        {"title": "Sensex ends down 470pts on global worries", "url": "https://www.business-standard.com/amp/article/markets/sensex-ends-down-470pts-on-global-worries-108091500038_1.html", "publisher": "Business Standard"},
+        {"title": "RBI cuts CRR by 150bps, to inject Rs 60,000cr tomorrow", "url": "https://www.business-standard.com/amp/article/finance/rbi-cuts-crr-by-150bps-to-inject-rs-60-000cr-tomorrow-108101000050_1.html", "publisher": "Business Standard"},
+        {"title": "Sensex ends down 792pts at 10,537", "url": "https://www.business-standard.com/amp/article/markets/sensex-ends-down-792pts-at-10-537-108101000030_1.html", "publisher": "Business Standard"},
+        {"title": "Liquidity Adjustment Facility - Repo and Reverse Repo Rates (RBI/2008-2009/241)", "url": "https://website.rbi.org.in/as/web/rbi/-/notifications/liquidity-adjustment-facility-repo-and-reverse-repo-rates-4569", "publisher": "Reserve Bank of India"},
+        {"title": "Special coverage, October 25, 2008", "url": "https://www.tribuneindia.com/2008/20081025/main1.htm", "publisher": "The Tribune"},
+        {"title": "Canara Robeco factsheet, October 2008 (Sensex down 23.89% in October)", "url": "https://canararobeco.com/wp-content/uploads/2025/02/factsheet-october-2008.pdf", "publisher": "Canara Robeco Mutual Fund"}
+      ],
+      "verification": "verified",
+      "notes": "The briefing's 9% repo/CRR levels are implied by the RBI notices (repo cut from 9% to 8%; CRR from 9%). A further CRR cut to 6.5% around Oct 15 appeared in search results but its exact date was not confirmed, so it is omitted. Oct 24 intraday fall reported as ~1,205 points in one source vs 1,070 close-to-close."
+    },
+    {
+      "id": "election-result-2009-upper-circuit",
+      "title": "May 2009: the election result nobody priced in",
+      "category": "volatility",
+      "start": "2009-05-15",
+      "end": "2009-06-12",
+      "difficulty": "beginner",
+      "universe_hint": ["SBIN", "ICICIBANK", "HDFCBANK", "AXISBANK", "LT", "BHEL", "RELIANCE", "DLF", "TATASTEEL", "INFY", "ITC", "HINDUNILVR"],
+      "briefing": "Friday, May 15, 2009. India's month-long general election is over and votes will be counted on Saturday, May 16; markets reopen Monday. Exit polls point to neither the Congress-led UPA nor the BJP-led NDA reaching a majority on its own, and the widely held view is a hung parliament that would need coalition bargaining. Markets have been recovering from the 2008 crash. Decide what exposure you want to carry over the weekend.",
+      "debrief": "The UPA won about 262 seats, far above the roughly 195 the exit polls had suggested and only about 10 short of a majority, so it could govern without depending on the Left. On Monday, May 18, 2009, the Sensex and Nifty hit an upper circuit within seconds of the open; equity and derivatives trading was halted for two hours, and on reopening the indices hit the next upper circuit and trading was closed for the day. These were the first upper-circuit halts in the market's history; short covering amplified the move.",
+      "timeline": [
+        {"date": "2009-05-16", "event": "Lok Sabha results announced; UPA wins about 262 seats versus exit-poll estimates of about 195.", "source_url": "https://www.theweek.in/news/india/2024/06/03/lok-sabha-election-2024-how-reliable-are-exit-polls-a-look-at-the-predictions-in-2009-2014-2019.amp.html"},
+        {"date": "2009-05-18", "event": "Indices hit an upper circuit at the open; equity and equity-derivatives markets closed for two hours.", "source_url": "https://nsearchives.nseindia.com/content/press/18052009.htm"},
+        {"date": "2009-05-18", "event": "Second upper circuit on reopening; trading closed for the rest of the day.", "source_url": "https://taxguru.in/finance/sensex-given-vote-of-support-to-congress-hit-two-upper-circuits-in-one-day.html"}
+      ],
+      "learning_goals": [
+        "Understand event risk held over a weekend: a binary outcome can gap prices beyond any order level",
+        "See that a short position can be impossible to exit when the market is locked at an upper circuit",
+        "Distinguish consensus expectations (exit polls) from outcomes"
+      ],
+      "related_concepts": ["event risk", "gap risk", "upper circuit", "short squeeze", "position sizing", "expectations vs outcome"],
+      "sources": [
+        {"title": "Lok Sabha election 2024: How reliable are exit polls? A look at the predictions in 2009, 2014, 2019", "url": "https://www.theweek.in/news/india/2024/06/03/lok-sabha-election-2024-how-reliable-are-exit-polls-a-look-at-the-predictions-in-2009-2014-2019.amp.html", "publisher": "The Week"},
+        {"title": "NSE press release, May 18, 2009", "url": "https://nsearchives.nseindia.com/content/press/18052009.htm", "publisher": "National Stock Exchange of India"},
+        {"title": "Existing policy on circuit breaker to continue: BSE", "url": "https://www.business-standard.com/amp/article/markets/existing-policy-on-circuit-breaker-to-continue-bse-109051800180_1.html", "publisher": "Business Standard"},
+        {"title": "Sensex given vote of support to Congress, hit two upper circuits in one day", "url": "https://taxguru.in/finance/sensex-given-vote-of-support-to-congress-hit-two-upper-circuits-in-one-day.html", "publisher": "TaxGuru"}
+      ],
+      "verification": "verified",
+      "notes": "Closing gain figures differ slightly by source (around 17%; 2,099.21 vs 2,110.79 Sensex points), so magnitude is left to the price data. Circuit-breaker thresholds at the time were computed from the previous quarter-end index level, which is why a ~15% intraday move tripped the 2-hour halt."
+    },
+    {
+      "id": "taper-tantrum-2013",
+      "title": "2013 taper tantrum: when the Fed talks, the rupee walks",
+      "category": "macro_shock",
+      "start": "2013-05-21",
+      "end": "2013-09-30",
+      "difficulty": "advanced",
+      "universe_hint": ["INFY", "TCS", "WIPRO", "HCLTECH", "SBIN", "ICICIBANK", "AXISBANK", "HDFCBANK", "RELIANCE", "BPCL", "MARUTI", "HINDUNILVR"],
+      "briefing": "May 21, 2013. The US Federal Reserve is buying $85 billion of bonds a month and global liquidity has supported emerging markets. India runs a wide current-account deficit and inflation is elevated. Foreign investors have been active buyers of Indian debt and equities. The rupee and India's import-heavy and rate-sensitive sectors are sensitive to any change in global capital flows.",
+      "debrief": "On May 22, 2013 Fed Chairman Ben Bernanke first signalled the Fed could pare its bond buying. Foreign funds pulled about $12 billion from Indian debt and equities over the following three months and the rupee fell to a record intraday low of 68.85 per dollar on August 28, 2013; the RBI sold dollars to slow the slide. Raghuram Rajan took charge as RBI Governor on September 4 and announced a set of measures; the Sensex rose about 333 points that day as the rupee recovered. On September 18 (US time) the Fed unexpectedly kept its purchases unchanged, and on September 19 the Sensex jumped 684.48 points (3.43%) to 20,646.64. On September 20 Rajan raised the repo rate for the first time in nearly two years, and the market gave back some gains.",
+      "timeline": [
+        {"date": "2013-05-22", "event": "Bernanke first signals the Fed may pare its $85bn monthly bond purchases.", "source_url": "https://www.bloomberg.com/news/articles/2013-08-20/rupee-drops-to-record-on-concern-fed-tapering-to-spur-outflows"},
+        {"date": "2013-08-28", "event": "Rupee touches an all-time low of 68.85 per US dollar intraday.", "source_url": "https://www.businesstoday.in/in-depth/year-2013-roundup/story/2013-roundup-rupee-suffers-reality-check-speculation-hits-further-42275-2013-12-24"},
+        {"date": "2013-09-04", "event": "Raghuram Rajan's first day as RBI Governor; reform measures announced; Sensex up about 333 points on rupee recovery.", "source_url": "https://www.business-standard.com/amp/article/pti-stories/sensex-bounces-back-333-points-on-smart-recovery-in-rupee-113090400689_1.html"},
+        {"date": "2013-09-19", "event": "After the Fed's no-taper decision, Sensex jumps 684.48 points (3.43%) to 20,646.64; rupee rallies.", "source_url": "https://www.business-standard.com/amp/article/pti-stories/thrilling-thursday-stocks-rupee-soar-as-fed-stimulus-stays-113091900920_1.html"},
+        {"date": "2013-09-20", "event": "RBI raises the repo rate in Rajan's first policy review, the first hike in nearly two years.", "source_url": "https://www.business-standard.com/amp/article/markets/market-this-week-fed-proposes-raghuram-disposes-113092100157_1.html"}
+      ],
+      "learning_goals": [
+        "Link a currency shock to sector winners (IT exporters) and losers (importers, rate-sensitive banks)",
+        "See how foreign capital flows drive Indian markets independently of domestic earnings",
+        "Handle policy-surprise days in both directions"
+      ],
+      "related_concepts": ["currency risk", "FPI flows", "sector rotation", "hedging", "central bank communication", "relative strength"],
+      "sources": [
+        {"title": "Rupee drops to record on concern Fed tapering to spur outflows", "url": "https://www.bloomberg.com/news/articles/2013-08-20/rupee-drops-to-record-on-concern-fed-tapering-to-spur-outflows", "publisher": "Bloomberg"},
+        {"title": "2013 roundup: Rupee suffers reality check, speculation hits further", "url": "https://www.businesstoday.in/in-depth/year-2013-roundup/story/2013-roundup-rupee-suffers-reality-check-speculation-hits-further-42275-2013-12-24", "publisher": "Business Today"},
+        {"title": "Sensex bounces back 333 points on smart recovery in rupee", "url": "https://www.business-standard.com/amp/article/pti-stories/sensex-bounces-back-333-points-on-smart-recovery-in-rupee-113090400689_1.html", "publisher": "Business Standard (PTI)"},
+        {"title": "Markets dance to Rajan tune", "url": "https://www.business-standard.com/amp/article/markets/markets-dance-to-rajan-tune-113090500961_1.html", "publisher": "Business Standard"},
+        {"title": "Thrilling Thursday: Stocks, rupee soar as Fed stimulus stays", "url": "https://www.business-standard.com/amp/article/pti-stories/thrilling-thursday-stocks-rupee-soar-as-fed-stimulus-stays-113091900920_1.html", "publisher": "Business Standard (PTI)"},
+        {"title": "Market this week: Fed proposes, Raghuram disposes", "url": "https://www.business-standard.com/amp/article/markets/market-this-week-fed-proposes-raghuram-disposes-113092100157_1.html", "publisher": "Business Standard"}
+      ],
+      "verification": "verified",
+      "notes": "One IANS roundup dates the Fed signal to May 17; Bloomberg and others give May 22, used here. Record-low rupee quoted as 68.83-68.86 by different outlets. The simulator has equity prices only; USD/INR moves are described, not tradable."
+    },
+    {
+      "id": "demonetisation-2016",
+      "title": "November 2016: demonetisation night (and a US election)",
+      "category": "macro_shock",
+      "start": "2016-11-08",
+      "end": "2016-12-30",
+      "difficulty": "intermediate",
+      "universe_hint": ["SBIN", "HDFCBANK", "ICICIBANK", "KOTAKBANK", "DLF", "GODREJPROP", "HINDUNILVR", "MARUTI", "HEROMOTOCO", "TITAN", "ASIANPAINT", "BAJFINANCE"],
+      "briefing": "Close of trading, Tuesday, November 8, 2016. Indian markets have had a steady year. Voting in the US presidential election is under way and results will arrive during Indian market hours tomorrow. You hold cash and can trade banks, real estate, consumer and auto names.",
+      "debrief": "On the evening of November 8, 2016 the government announced that Rs 500 and Rs 1,000 notes would cease to be legal tender from midnight; old notes could be deposited in bank accounts from November 10 until December 30, 2016. On November 9, with Donald Trump also leading the US election count, the Sensex fell about 1,689 points (around 6%) intraday, its worst intraday plunge in nearly 15 months, but recovered to close down 338.61 points (1.23%) at 27,252.53; real estate was among the worst hit. In the fortnight after the announcement the Sensex fell 6.6%. Worries about the cash crunch's effect on growth persisted (factory activity slowed sharply in November), and by December 22 the Sensex had erased its 2016 year-to-date gains.",
+      "timeline": [
+        {"date": "2016-11-08", "event": "After market hours, Rs 500 and Rs 1,000 notes withdrawn as legal tender from midnight.", "source_url": "https://www.rbi.org.in/SCRIPTS/BS_PressReleaseDisplay.aspx?prid=38520"},
+        {"date": "2016-11-09", "event": "Sensex falls about 1,689 points intraday on demonetisation and Trump's lead.", "source_url": "https://yourstory.com/2016/11/sensex-crashes-1689-pts"},
+        {"date": "2016-11-09", "event": "Sensex closes down 338.61 points (1.23%) at 27,252.53 after recovering most of the fall.", "source_url": "https://www.business-standard.com/amp/article/pti-stories/mkt-crashes-on-trump-win-black-money-curb-ends-339-pts-down-116110901119_1.html"},
+        {"date": "2016-12-01", "event": "Sensex snaps a four-day rally on worries about demonetisation's effect on growth; November factory activity slows sharply.", "source_url": "https://www.business-standard.com/amp/article/reuters/sensex-snaps-four-day-rally-financials-down-116120100790_1.html"},
+        {"date": "2016-12-22", "event": "Sensex's 2016 year-to-date gains erased.", "source_url": "https://www.business-standard.com/amp/article/opinion/demonetisation-erases-2016-s-gains-for-many-bse200-stocks-116122600790_1.html"},
+        {"date": "2016-12-30", "event": "Last day for depositing old notes in bank accounts.", "source_url": "https://www.rbi.org.in/SCRIPTS/BS_PressReleaseDisplay.aspx?prid=38520"}
+      ],
+      "learning_goals": [
+        "Separate two simultaneous shocks (domestic policy and a global event) when explaining a move",
+        "See how a scary open can reverse intraday, and why panic market orders at the open are costly",
+        "Identify which sectors depend on cash transactions"
+      ],
+      "related_concepts": ["overnight gap", "intraday reversal", "sector exposure", "confounding events", "stop discipline"],
+      "sources": [
+        {"title": "RBI press release: Withdrawal of legal tender character of Rs 500 and Rs 1000 notes", "url": "https://www.rbi.org.in/SCRIPTS/BS_PressReleaseDisplay.aspx?prid=38520", "publisher": "Reserve Bank of India"},
+        {"title": "Sensex crashes 1,689 points on black money crackdown, US elections", "url": "https://yourstory.com/2016/11/sensex-crashes-1689-pts", "publisher": "YourStory (IANS)"},
+        {"title": "Mkt crashes on Trump win, black money curb, ends 339 pts down", "url": "https://www.business-standard.com/amp/article/pti-stories/mkt-crashes-on-trump-win-black-money-curb-ends-339-pts-down-116110901119_1.html", "publisher": "Business Standard (PTI)"},
+        {"title": "Sensex snaps four-day rally; financials down", "url": "https://www.business-standard.com/amp/article/reuters/sensex-snaps-four-day-rally-financials-down-116120100790_1.html", "publisher": "Business Standard (Reuters)"},
+        {"title": "Note ban erases 2016's gains for many BSE200 stocks", "url": "https://www.business-standard.com/amp/article/opinion/demonetisation-erases-2016-s-gains-for-many-bse200-stocks-116122600790_1.html", "publisher": "Business Standard"}
+      ],
+      "verification": "verified",
+      "notes": "The Dec 30 deadline appears in the revised RBI release and RBI FAQs rather than verifiably in the original Nov 8 text. The 6.6% fortnight fall is a Business Standard data analysis. Start date is the announcement day itself because the announcement came after market close."
+    },
+    {
+      "id": "ilfs-nbfc-crisis-2018",
+      "title": "September 2018: IL&FS defaults and the NBFC liquidity scare",
+      "category": "banking",
+      "start": "2018-09-14",
+      "end": "2018-10-31",
+      "difficulty": "advanced",
+      "universe_hint": ["DHFL", "BAJFINANCE", "LICHSGFIN", "PNBHOUSING", "YESBANK", "HDFCBANK", "KOTAKBANK", "ICICIBANK", "SBIN", "INDUSINDBK"],
+      "briefing": "Friday, September 14, 2018. Infrastructure lender IL&FS, a large and highly rated borrower in the money markets, has been struggling to meet short-term obligations, and its credit ratings have already been cut to sub-investment grade. Non-bank lenders (NBFCs and housing finance companies) have grown fast by funding themselves through commercial paper bought largely by mutual funds. Their stocks have been market favourites.",
+      "debrief": "IL&FS could not meet commercial-paper redemptions due September 14, 2018, and on Monday September 17 ICRA cut its ratings to default grade ('D'). Fear spread to other wholesale-funded lenders. On Friday September 21, after a mutual fund sold DHFL commercial paper at a higher yield, DHFL fell as much as 59.67% intraday to Rs 246.25 and closed 42.43% lower at Rs 351.55 on BSE; other housing finance companies also crashed. The same morning YES Bank fell 34% after the RBI declined to extend CEO Rana Kapoor's term beyond January 31, 2019. DHFL said it had not defaulted and had no IL&FS exposure; it rebounded about 25% intraday on September 24 after CARE and ICRA reaffirmed its ratings. On October 1, the NCLT allowed the government to supersede the IL&FS board and install a new board led by Uday Kotak.",
+      "timeline": [
+        {"date": "2018-09-14", "event": "IL&FS unable to meet commercial-paper redemption obligations due this day.", "source_url": "https://www.moneylife.in/article/icra-downgrades-ratings-for-ilfs-borrowing-programmes/55323.html"},
+        {"date": "2018-09-17", "event": "ICRA downgrades IL&FS borrowing programmes to D (default) from BB/A4.", "source_url": "https://www.moneylife.in/article/icra-downgrades-ratings-for-ilfs-borrowing-programmes/55323.html"},
+        {"date": "2018-09-21", "event": "DHFL falls up to 59.67% intraday, closes down 42.43%; housing finance stocks crash.", "source_url": "https://www.business-standard.com/amp/article/pti-stories/housing-finance-firms-crash-dhfl-sinks-42-118092100736_1.html"},
+        {"date": "2018-09-21", "event": "YES Bank falls 34% in early trade after RBI limits Rana Kapoor's term to Jan 31, 2019.", "source_url": "https://www.business-standard.com/amp/article/markets/yes-bank-tumbles-over-20-on-rbi-s-denial-to-rana-kapoor-s-tenure-extension-118092100131_1.html"},
+        {"date": "2018-09-24", "event": "DHFL rebounds about 25% intraday after CARE and ICRA reaffirm its ratings.", "source_url": "https://www.business-standard.com/amp/article/markets/dhfl-infibeam-avenues-itnl-up-over-10-after-friday-s-fall-118092400529_1.html"},
+        {"date": "2018-10-01", "event": "NCLT allows government to supersede the IL&FS board; new board headed by Uday Kotak.", "source_url": "https://moneylife.in/article/nclt-approves-government-petition-ilfs-gets-a-new-board-headed-by-uday-kotak/55440.html"}
+      ],
+      "learning_goals": [
+        "Understand funding-liquidity risk: lenders that borrow short and lend long are exposed when credit markets freeze",
+        "See contagion from one issuer to a whole sector",
+        "Practise not averaging down on a stock in a liquidity panic without a clear thesis"
+      ],
+      "related_concepts": ["contagion", "asset-liability mismatch", "credit ratings", "stop discipline", "position sizing", "sector concentration"],
+      "sources": [
+        {"title": "ICRA downgrades ratings for IL&FS' borrowing programmes", "url": "https://www.moneylife.in/article/icra-downgrades-ratings-for-ilfs-borrowing-programmes/55323.html", "publisher": "Moneylife (IANS)"},
+        {"title": "Housing finance firms crash; DHFL sinks 42%", "url": "https://www.business-standard.com/amp/article/pti-stories/housing-finance-firms-crash-dhfl-sinks-42-118092100736_1.html", "publisher": "Business Standard (PTI)"},
+        {"title": "Have strong liquidity, no exposure to IL&FS, says DHFL CMD after stock crashes", "url": "https://www.theweek.in/news/biz-tech/2018/09/21/Have-strong-liquidity-no-exposure-to-ILFS-says-DHFL-CMD-after-stock-crashes.amp.html", "publisher": "The Week"},
+        {"title": "YES Bank tumbles 34% on RBI's denial to Rana Kapoor's tenure extension", "url": "https://www.business-standard.com/amp/article/markets/yes-bank-tumbles-over-20-on-rbi-s-denial-to-rana-kapoor-s-tenure-extension-118092100131_1.html", "publisher": "Business Standard"},
+        {"title": "DHFL, Infibeam Avenues, ITNL up over 10% after Friday's fall", "url": "https://www.business-standard.com/amp/article/markets/dhfl-infibeam-avenues-itnl-up-over-10-after-friday-s-fall-118092400529_1.html", "publisher": "Business Standard"},
+        {"title": "NCLT approves government petition. IL&FS gets a new board headed by Uday Kotak", "url": "https://moneylife.in/article/nclt-approves-government-petition-ilfs-gets-a-new-board-headed-by-uday-kotak/55440.html", "publisher": "Moneylife"},
+        {"title": "Govt moves to supersede existing IL&FS board; says committed to ensure liquidity", "url": "https://www.theweek.in/news/biz-tech/2018/10/01/Govt-moves-to-supersede-existing-ILFS-board-says-committed-to-ensure-liquidity.amp.html", "publisher": "The Week"}
+      ],
+      "verification": "verified",
+      "notes": "ICRA downgrade date (Sep 17) is inferred from a Sep 18 IANS report saying 'on Monday'. The briefing's 'already sub-investment grade' is from ICRA's move being from BB. DHFL was later delisted (2021) and may be missing from datasets; IBULHSGFIN was omitted because of its later renaming. The Sep 14 default became public only after market close, so the briefing does not state it."
+    },
+    {
+      "id": "infosys-whistleblower-2019",
+      "title": "October 2019: a whistleblower letter hits an IT bellwether",
+      "category": "corporate_event",
+      "start": "2019-10-18",
+      "end": "2020-01-17",
+      "difficulty": "beginner",
+      "universe_hint": ["INFY", "TCS", "WIPRO", "HCLTECH", "TECHM"],
+      "briefing": "Friday, October 18, 2019. Infosys reported its September-quarter results earlier this month and is one of India's most widely held large caps. IT services stocks are seen as defensive, steady compounders. You can trade Infosys and its large IT peers.",
+      "debrief": "On October 21, 2019 a whistleblower complaint by a group calling itself 'Ethical Employees' became public, alleging CEO Salil Parekh and CFO Nilanjan Roy pushed unethical practices to inflate short-term revenue and profit. Infosys said the complaint had been placed before the audit committee and an independent investigation by Shardul Amarchand Mangaldas was under way. On October 22 Infosys shares closed down 16.21% at Rs 643.30 on BSE, wiping about Rs 53,451 crore of market value, the sharpest intraday fall in over six years. On October 24 the stock fell about 2% more after the company disclosed the US SEC had begun an investigation. On January 10, 2020 the audit committee said it found no evidence of financial impropriety or executive misconduct and no restatement was warranted.",
+      "timeline": [
+        {"date": "2019-10-21", "event": "Whistleblower complaint against Infosys CEO and CFO becomes public.", "source_url": "https://www.businesstoday.in/amp/latest/corporate/story/infosys-whistleblower-allegations-audit-panel-finds-no-proof-of-financial-impropriety-executive-misconduct-241644-2020-01-10"},
+        {"date": "2019-10-22", "event": "Infosys closes down 16.21% at Rs 643.30 on BSE; market value falls about Rs 53,451 crore.", "source_url": "https://www.business-standard.com/amp/article/pti-stories/infosys-shares-nosedive-nearly-17-pc-m-cap-drops-by-rs-53-451-cr-on-whistleblower-complaint-119102200810_1.html"},
+        {"date": "2019-10-24", "event": "Shares fall about 2% after Infosys says the US SEC has initiated an investigation.", "source_url": "https://www.business-standard.com/amp/article/pti-stories/infosys-shares-fall-2-pc-after-sebi-us-sec-initiate-probe-into-whistleblower-allegations-119102400458_1.html"},
+        {"date": "2020-01-10", "event": "Audit committee finds no evidence of financial impropriety or executive misconduct.", "source_url": "https://infosys.com/newsroom/press-releases/2020/audit-committee-finds-no-evidence-financial-impropriety.html"}
+      ],
+      "learning_goals": [
+        "See single-stock gap risk in a 'safe' large cap and why diversification matters",
+        "Decide how to act on unverified allegations: exit, hold, or buy, and size accordingly",
+        "Track how a stock reprices as an investigation resolves"
+      ],
+      "related_concepts": ["idiosyncratic risk", "diversification", "gap risk", "governance risk", "position sizing", "news-driven trading"],
+      "sources": [
+        {"title": "Infosys shares nosedive nearly 17 pc; m-cap drops by Rs 53,451 cr on whistleblower complaint", "url": "https://www.business-standard.com/amp/article/pti-stories/infosys-shares-nosedive-nearly-17-pc-m-cap-drops-by-rs-53-451-cr-on-whistleblower-complaint-119102200810_1.html", "publisher": "Business Standard (PTI)"},
+        {"title": "Infosys Whistleblower Drama: Stocks Down, Damage Control Mode On", "url": "https://www.thequint.com/amp/story/news/business/infosys-stocks-down-chairman-nandan-nilekani-statement", "publisher": "The Quint"},
+        {"title": "Infosys shares fall 2 pc after Sebi, US SEC initiate probe into whistleblower allegations", "url": "https://www.business-standard.com/amp/article/pti-stories/infosys-shares-fall-2-pc-after-sebi-us-sec-initiate-probe-into-whistleblower-allegations-119102400458_1.html", "publisher": "Business Standard (PTI)"},
+        {"title": "Audit committee finds no evidence of financial impropriety", "url": "https://infosys.com/newsroom/press-releases/2020/audit-committee-finds-no-evidence-financial-impropriety.html", "publisher": "Infosys"},
+        {"title": "Infosys whistleblower allegations: Audit panel finds no evidence of executive misconduct", "url": "https://www.businesstoday.in/amp/latest/corporate/story/infosys-whistleblower-allegations-audit-panel-finds-no-proof-of-financial-impropriety-executive-misconduct-241644-2020-01-10", "publisher": "Business Today"}
+      ],
+      "verification": "verified",
+      "notes": "Chosen as the earnings/corporate-event scenario instead of the Paytm IPO (see report). The complaint surfaced on Oct 21 (reportedly a market holiday for the Maharashtra assembly election; confirm against the price calendar), so the first tradable reaction is Oct 22."
+    },
+    {
+      "id": "covid-crash-2020",
+      "title": "February–March 2020: the COVID crash",
+      "category": "selloff",
+      "start": "2020-02-20",
+      "end": "2020-04-30",
+      "difficulty": "advanced",
+      "universe_hint": ["RELIANCE", "HDFCBANK", "ICICIBANK", "KOTAKBANK", "BAJFINANCE", "INFY", "TCS", "HINDUNILVR", "INDIGO", "MARUTI", "SUNPHARMA", "CIPLA", "DRREDDY"],
+      "briefing": "Thursday, February 20, 2020. The Nifty is not far from its January record high. A new coronavirus outbreak that began in China has disrupted Chinese factories and travel, and cases are being reported in other countries; India has very few reported cases. Markets have so far treated it mainly as a China supply-chain issue. Your universe spans banks, IT, consumer, auto, aviation and pharma.",
+      "debrief": "The sell-off accelerated as the virus spread globally. After the WHO called the outbreak a pandemic late on March 11, the Sensex fell 2,919.26 points (8.18%) to 32,778.14 on March 12. Market-wide circuit breakers were hit on two days: on March 13 the Nifty hit its 10% lower circuit in early trade and trading was halted for 45 minutes, after which the market recovered sharply; on March 23, as states announced lockdowns, the Sensex hit its 10% lower circuit at 9:58 am, trading was halted for 45 minutes, and it closed down 3,934.72 points (13.15%) at 25,981.24, its biggest one-day fall. The Nifty closed at its low of the episode on March 23 (about 7,610) and made its intraday low of 7,511 on March 24, about 40% below its record high. That evening the Prime Minister announced a 21-day nationwide lockdown, and on March 27 the RBI cut the repo rate by 75 bp to 4.40% and permitted a three-month moratorium on term-loan instalments. The Nifty was back above 8,000 within two sessions of the low.",
+      "timeline": [
+        {"date": "2020-03-12", "event": "After WHO terms COVID-19 a pandemic (late Mar 11), Sensex falls 2,919.26 points (8.18%) to 32,778.14.", "source_url": "https://www.business-standard.com/amp/article/pti-stories/sensex-crashes-2-919-pts-amid-manic-global-selloff-nifty-below-9-600-120031200894_1.html"},
+        {"date": "2020-03-13", "event": "Nifty hits 10% lower circuit; trading halted 45 minutes (first market-wide halt since 2008); market recovers after reopening.", "source_url": "https://www.business-standard.com/amp/article/markets/nifty-hits-lower-circuit-amid-global-sell-off-trading-halted-for-45-mins-120031300188_1.html"},
+        {"date": "2020-03-23", "event": "Sensex hits 10% lower circuit at 9:58 am; trading halted 45 minutes.", "source_url": "https://www.business-standard.com/amp/article/markets/sensex-hits-10-lower-circuit-trading-halted-for-45-minutes-120032300237_1.html"},
+        {"date": "2020-03-23", "event": "Sensex closes down 3,934.72 points (13.15%) at 25,981.24, its worst one-day fall.", "source_url": "https://www.business-standard.com/amp/article/pti-stories/market-bleeds-sensex-nifty-post-worst-ever-one-day-crash-120032300935_1.html"},
+        {"date": "2020-03-24", "event": "Nifty intraday low of 7,511; PM announces a 21-day nationwide lockdown that evening.", "source_url": "https://www.bloombergquint.com/markets/from-12168-to-7511-back-mapping-the-niftys-journey-in-2020"},
+        {"date": "2020-03-27", "event": "RBI cuts repo by 75 bp to 4.40% and permits a three-month moratorium on term loans.", "source_url": "https://www.business-standard.com/amp/article/economy-policy/rbi-cuts-repo-fm-says-slashed-interest-rate-needs-quick-transmission-120032700806_1.html"}
+      ],
+      "learning_goals": [
+        "Experience two market-wide halts and see why stop-losses can fill far from their trigger",
+        "Notice that the most violent rallies happen inside bear markets",
+        "Practise reducing size as volatility explodes instead of holding size constant"
+      ],
+      "related_concepts": ["market-wide circuit breakers", "volatility targeting", "position sizing", "stop discipline", "gap risk", "capitulation", "sector dispersion"],
+      "sources": [
+        {"title": "Sensex crashes 2,919 pts amid manic global selloff; Nifty below 9,600", "url": "https://www.business-standard.com/amp/article/pti-stories/sensex-crashes-2-919-pts-amid-manic-global-selloff-nifty-below-9-600-120031200894_1.html", "publisher": "Business Standard (PTI)"},
+        {"title": "Nifty hits lower circuit amid global sell-off; trading halted for 45 mins", "url": "https://www.business-standard.com/amp/article/markets/nifty-hits-lower-circuit-amid-global-sell-off-trading-halted-for-45-mins-120031300188_1.html", "publisher": "Business Standard"},
+        {"title": "Sensex hits 10% lower circuit, trading halted for 45 minutes", "url": "https://www.business-standard.com/amp/article/markets/sensex-hits-10-lower-circuit-trading-halted-for-45-minutes-120032300237_1.html", "publisher": "Business Standard"},
+        {"title": "Market bleeds: Sensex, Nifty post worst ever one-day crash", "url": "https://www.business-standard.com/amp/article/pti-stories/market-bleeds-sensex-nifty-post-worst-ever-one-day-crash-120032300935_1.html", "publisher": "Business Standard (PTI)"},
+        {"title": "From 12,168 to 7,511 & back: mapping the Nifty's journey in 2020", "url": "https://www.bloombergquint.com/markets/from-12168-to-7511-back-mapping-the-niftys-journey-in-2020", "publisher": "BloombergQuint"},
+        {"title": "PM Narendra Modi announces 3-week national lockdown from March 24 midnight", "url": "https://www.deccanherald.com/amp/story/india%2Fpm-narendra-modi-announces-3-week-national-lockdown-from-march-24-midnight-817221.html", "publisher": "Deccan Herald"},
+        {"title": "RBI cuts repo, FM says slashed interest rate needs quick transmission", "url": "https://www.business-standard.com/amp/article/economy-policy/rbi-cuts-repo-fm-says-slashed-interest-rate-needs-quick-transmission-120032700806_1.html", "publisher": "Business Standard"},
+        {"title": "Markets up 100% from March 2020 lows (Nifty closing low 7,610 on Mar 23)", "url": "https://stableinvestor.com/2021/02/markets-100percent-march-2020.html", "publisher": "Stable Investor"}
+      ],
+      "verification": "verified",
+      "notes": "Market-wide circuit breakers: Mar 13 (triggered by the Nifty) and Mar 23 (Sensex 10% at 9:58 am; all segments halted). Some outlets attribute the Mar 13 trigger to the Sensex; BS says Nifty. The briefing's 'very few cases in India' is a general characterisation without a specific count; no figure is given. Overlaps the yes-bank-moratorium-2020 scenario."
+    },
+    {
+      "id": "yes-bank-moratorium-2020",
+      "title": "March 2020: Yes Bank is placed under moratorium",
+      "category": "banking",
+      "start": "2020-03-04",
+      "end": "2020-03-31",
+      "difficulty": "intermediate",
+      "universe_hint": ["YESBANK", "SBIN", "ICICIBANK", "AXISBANK", "INDUSINDBK", "KOTAKBANK", "HDFCBANK", "RBLBANK"],
+      "briefing": "Wednesday, March 4, 2020. Yes Bank, once one of India's fastest-growing private lenders, has spent much of the last two years dealing with regulatory action, a leadership change and asset-quality problems, and has been trying to raise fresh capital. Its share price has already fallen a long way. Global markets are also volatile because of the coronavirus outbreak.",
+      "debrief": "On the evening of March 5, 2020 the government, on the RBI's application, placed Yes Bank under a 30-day moratorium, capped depositor withdrawals at Rs 50,000, and the RBI superseded its board, appointing former SBI CFO Prashant Kumar as administrator. On March 6 the stock fell as much as 84.93% to Rs 5.55 intraday and closed down 56.04% at Rs 16.20; SBI fell 6.19%, IndusInd 5.62% and ICICI Bank 3.67%, and the Sensex closed 893.99 points lower. A draft reconstruction scheme had SBI taking up to a 49% stake. The government notified the Yes Bank reconstruction scheme effective March 13, with SBI holding at least 26% for three years and a three-year lock-in on 75% of holdings for other shareholders with 100 or more shares; the moratorium was lifted at 6 pm on March 18, 2020. All of this unfolded alongside the COVID market crash.",
+      "timeline": [
+        {"date": "2020-03-05", "event": "Moratorium imposed on Yes Bank after market hours; withdrawals capped at Rs 50,000; board superseded.", "source_url": "https://www.business-standard.com/amp/article/finance/govt-puts-yes-bank-under-moratorium-withdrawals-limited-to-rs-50-000-120030501669_1.html"},
+        {"date": "2020-03-06", "event": "Yes Bank falls up to 84.93% intraday and closes down 56.04% at Rs 16.20; banks fall with it.", "source_url": "https://www.business-standard.com/article/pti-stories/yes-bank-shares-plummet-85-pc-mcap-drops-by-rs-5-432-cr-120030600567_1.html"},
+        {"date": "2020-03-13", "event": "Government notifies the Yes Bank reconstruction scheme; moratorium to end at 6 pm on March 18.", "source_url": "https://www.moneylife.in/article/govt-notifies-yes-bank-reconstruction-scheme-moratorium-to-be-lifted-at-6pm-on-18th-march/59712.html"},
+        {"date": "2020-03-18", "event": "Moratorium lifted at 6 pm; full banking services resume.", "source_url": "https://www.thenewsminute.com/amp/story/news/yes-bank-resume-full-banking-services-6pm-march-18-120342"}
+      ],
+      "learning_goals": [
+        "See how a regulatory action can wipe out most of a stock's value overnight",
+        "Understand lock-in clauses: a rescue can protect depositors without protecting shareholders' liquidity",
+        "Separate stock-specific risk from sector contagion"
+      ],
+      "related_concepts": ["regulatory risk", "gap risk", "contagion", "lock-in", "bail-in vs bail-out", "position sizing"],
+      "sources": [
+        {"title": "Govt puts Yes Bank under moratorium; withdrawals limited to Rs 50,000", "url": "https://www.business-standard.com/amp/article/finance/govt-puts-yes-bank-under-moratorium-withdrawals-limited-to-rs-50-000-120030501669_1.html", "publisher": "Business Standard"},
+        {"title": "Here's the full text of RBI's statement on Yes Bank moratorium", "url": "https://www.business-standard.com/amp/article/finance/here-s-the-full-text-of-rbi-s-statement-on-yes-bank-moratorium-120030501710_1.html", "publisher": "Business Standard"},
+        {"title": "YES Bank tumbles 85% after RBI imposes moratorium; SBI plunges 11%", "url": "https://www.business-standard.com/amp/article/markets/yes-bank-tumbles-30-after-rbi-imposes-moratorium-sbi-plunges-11-120030600266_1.html", "publisher": "Business Standard"},
+        {"title": "Yes Bank shares plummet 85 pc; m-cap drops by Rs 5,432 cr", "url": "https://www.business-standard.com/article/pti-stories/yes-bank-shares-plummet-85-pc-mcap-drops-by-rs-5-432-cr-120030600567_1.html", "publisher": "Business Standard (PTI)"},
+        {"title": "YES Bank stock crash and financial mess: How the crisis unfolded in 2 years", "url": "https://www.business-standard.com/amp/podcast/companies/yes-bank-stock-crash-and-financial-mess-how-the-crisis-unfolded-in-2-years-120030600886_1.html", "publisher": "Business Standard"},
+        {"title": "Govt notifies Yes Bank reconstruction scheme, moratorium to be lifted at 6pm on 18th March", "url": "https://www.moneylife.in/article/govt-notifies-yes-bank-reconstruction-scheme-moratorium-to-be-lifted-at-6pm-on-18th-march/59712.html", "publisher": "Moneylife"},
+        {"title": "YES Bank crisis: RBI's moratorium on lender to be lifted on March 18", "url": "https://www.business-standard.com/amp/article/finance/yes-bank-crisis-rbi-s-moratorium-on-lender-to-be-lifted-on-march-18-120031400188_1.html", "publisher": "Business Standard"},
+        {"title": "Yes Bank to resume full banking services from 6pm on March 18", "url": "https://www.thenewsminute.com/amp/story/news/yes-bank-resume-full-banking-services-6pm-march-18-120342", "publisher": "The News Minute"}
+      ],
+      "verification": "verified",
+      "notes": "Some outlets report the scheme as notified late Friday Mar 13, others Saturday Mar 14; the gazette gives effect from Mar 13. Early-session intraday falls were reported at 73–85% depending on the timestamp. Overlaps covid-crash-2020."
+    },
+    {
+      "id": "covid-recovery-2020-21",
+      "title": "April 2020 – February 2021: the recovery rally",
+      "category": "sector_rally",
+      "start": "2020-03-31",
+      "end": "2021-02-26",
+      "difficulty": "intermediate",
+      "universe_hint": ["RELIANCE", "INFY", "TCS", "HDFCBANK", "ICICIBANK", "SBIN", "BAJFINANCE", "TATASTEEL", "HINDALCO", "DIVISLAB", "ASIANPAINT", "MARUTI"],
+      "briefing": "Tuesday, March 31, 2020. India entered a 21-day nationwide lockdown on March 25 and the economic damage is unknown. The Sensex and Nifty suffered their worst falls in history in March. The RBI has cut the repo rate to 4.40% and allowed a three-month moratorium on loan repayments. Central banks worldwide are easing aggressively. Earnings forecasts are being cut across sectors.",
+      "debrief": "Despite a deep economic contraction, equities recovered quickly. On May 22, 2020 the RBI cut the repo rate a further 40 bp to 4%, extended the loan moratorium by three months and said GDP would contract in FY21; the Sensex fell 260 points that day, led by banks. The Sensex reached 40,000 on October 8, 2020. After Pfizer–BioNTech's vaccine efficacy announcement on November 9, the Sensex crossed 43,000 for the first time on November 10. On January 21, 2021 it touched 50,000 for the first time (closing lower), having gone from 40,000 to 50,000 in 74 sessions and about 96% above its March 24, 2020 low. On February 1, 2021 the Union Budget sparked a 2,314.84-point (5%) Sensex gain, the best Budget-day gain since 1997.",
+      "timeline": [
+        {"date": "2020-05-22", "event": "RBI cuts repo by 40 bp to 4%, extends loan moratorium; Sensex closes 260 points lower at 30,672.", "source_url": "https://www.business-standard.com/amp/article/finance/rbi-advances-mpc-meeting-cuts-policy-repo-rate-by-40-bps-shaktikanta-das-120052200306_1.html"},
+        {"date": "2020-10-08", "event": "Sensex reaches the 40,000 mark.", "source_url": "https://www.business-standard.com/amp/article/markets/road-to-50k-sensex-jumps-10-000-pts-in-74-sessions-these-are-top-gainers-121012100559_1.html"},
+        {"date": "2020-11-10", "event": "Sensex and Nifty at record highs after Pfizer–BioNTech vaccine efficacy news; Sensex crosses 43,000 for the first time.", "source_url": "https://www.business-standard.com/amp/article/news-cm/sensex-climbs-680-pts-nifty-tops-12-600-as-banks-shine-120111001179_1.html"},
+        {"date": "2021-01-21", "event": "Sensex hits 50,000 for the first time, closes lower on profit-booking.", "source_url": "https://www.business-standard.com/amp/article/markets/sensex-hits-50-000-mark-for-the-first-time-ends-lower-on-profit-booking-121012200057_1.html"},
+        {"date": "2021-02-01", "event": "Union Budget day: Sensex gains 2,314.84 points (5%) to 48,600.61.", "source_url": "https://www.money9.com/news/share-bazaar/sensex-zooms-2314-pts-after-budget-2021-nifty-reclaims-14k-4819.html"}
+      ],
+      "learning_goals": [
+        "Learn that markets discount the future: prices can rise while economic data is still terrible",
+        "Practise staying invested in a trend instead of selling every bounce",
+        "Compare leadership across sectors (metals, pharma, IT, banks) during a recovery"
+      ],
+      "related_concepts": ["trend following", "market discounting", "sector rotation", "fear of missing out", "trailing stops", "rebalancing"],
+      "sources": [
+        {"title": "RBI says India GDP will contract in FY21, cuts repo rate by 40 bps to 4%", "url": "https://www.business-standard.com/amp/article/finance/rbi-advances-mpc-meeting-cuts-policy-repo-rate-by-40-bps-shaktikanta-das-120052200306_1.html", "publisher": "Business Standard"},
+        {"title": "Share Market update: Sensex closes 260 points lower at 30,672", "url": "https://www.businesstoday.in/amp/markets/stocks/story/share-marrket-live-sensex-nifty-trading-on-may-22-2020-asian-markets-reliance-industries-tata-steel-ntpc-259070-2020-05-22", "publisher": "Business Today"},
+        {"title": "Road to 50K: Sensex jumps 10,000 pts in 74 sessions; these are top gainers", "url": "https://www.business-standard.com/amp/article/markets/road-to-50k-sensex-jumps-10-000-pts-in-74-sessions-these-are-top-gainers-121012100559_1.html", "publisher": "Business Standard"},
+        {"title": "Sensex climbs 680 pts, Nifty tops 12,600 as banks shine", "url": "https://www.business-standard.com/amp/article/news-cm/sensex-climbs-680-pts-nifty-tops-12-600-as-banks-shine-120111001179_1.html", "publisher": "Business Standard"},
+        {"title": "Sensex hits 50,000-mark for the first time, ends lower on profit booking", "url": "https://www.business-standard.com/amp/article/markets/sensex-hits-50-000-mark-for-the-first-time-ends-lower-on-profit-booking-121012200057_1.html", "publisher": "Business Standard"},
+        {"title": "Sensex zooms 2,314 pts after Budget 2021; Nifty reclaims 14K", "url": "https://www.money9.com/news/share-bazaar/sensex-zooms-2314-pts-after-budget-2021-nifty-reclaims-14k-4819.html", "publisher": "Money9"},
+        {"title": "Budget delight: Sensex scales Mount 50K again (best Budget-day gain since 1997)", "url": "https://www.deccanherald.com/business/union-budget/budget-delight-sensex-scales-mount-50k-again-global-trends-earnings-to-guide-future-course-946691.html", "publisher": "Deccan Herald (PTI)"}
+      ],
+      "verification": "verified",
+      "notes": "Long window (~11 months) suited to trend/allocation decisions rather than day trading. The 'about 96% above the March 24 low' figure refers to the Sensex intraday low of 25,639 per Business Standard."
+    },
+    {
+      "id": "russia-ukraine-crude-2022",
+      "title": "February–March 2022: war in Ukraine and an oil spike",
+      "category": "commodity",
+      "start": "2022-02-22",
+      "end": "2022-03-31",
+      "difficulty": "intermediate",
+      "universe_hint": ["ONGC", "OIL", "RELIANCE", "BPCL", "IOC", "HINDPETRO", "INDIGO", "ASIANPAINT", "HINDALCO", "TATASTEEL", "COALINDIA", "MARUTI"],
+      "briefing": "Tuesday, February 22, 2022. On February 21 Russian President Vladimir Putin recognised two breakaway regions in Ukraine's Donbas, sharply escalating tensions with Ukraine and the West. Crude oil prices have been rising. India imports most of its oil, so crude is a key variable for inflation, the rupee, oil marketing companies, airlines and paint makers. Upstream producers and metal companies may react differently.",
+      "debrief": "On February 24, 2022 Russia launched a wider military campaign in Ukraine. Oil rose above $100 a barrel for the first time since 2014 and the Sensex fell 2,702.15 points (4.72%) to 54,529.91, its biggest fall in two years; the Nifty lost 815 points to 16,247. Oil kept rising: Brent neared $120 by March 3, and on March 7 Brent touched about $139 intraday, its highest since 2008, on talk of a ban on Russian oil. That day the Sensex fell 1,491 points to an eight-month low of 52,842 and the rupee hit a record low of 77.20 per dollar.",
+      "timeline": [
+        {"date": "2022-02-24", "event": "Russia launches military operation in Ukraine; oil above $100; Sensex closes down 2,702.15 points (4.72%) at 54,529.91.", "source_url": "https://www.businesstoday.in/amp/markets/top-story/story/share-market-updates-sensex-ends-2700-pts-lower-nifty-falls-below-16250-after-russia-attacks-ukraine-323710-2022-02-24"},
+        {"date": "2022-03-03", "event": "Sensex and Nifty fall for a second session as Brent nears $120 a barrel.", "source_url": "https://www.businesstoday.in/amp/markets/stocks/story/sensex-nifty-fall-for-second-straight-session-brent-crude-nears-120bbl-324638-2022-03-03"},
+        {"date": "2022-03-07", "event": "Brent touches about $139 intraday; Sensex falls 1,491 points to 52,842; rupee record low 77.20/$.", "source_url": "https://www.outlookbusiness.com/news/sensex-crashes-1-491-points-falls-to-8-month-low-on-rising-crude-oil-prices-news-185650"}
+      ],
+      "learning_goals": [
+        "Map a commodity shock to winners and losers across sectors",
+        "Practise pair-style thinking (e.g. upstream oil vs oil consumers) instead of only directional bets",
+        "Handle headline-driven volatility without overtrading"
+      ],
+      "related_concepts": ["commodity sensitivity", "input costs", "relative value", "sector rotation", "volatility", "position sizing"],
+      "sources": [
+        {"title": "Share Market updates: Sensex ends 2,700 pts lower, Nifty falls below 16,250 after Russia attacks Ukraine", "url": "https://www.businesstoday.in/amp/markets/top-story/story/share-market-updates-sensex-ends-2700-pts-lower-nifty-falls-below-16250-after-russia-attacks-ukraine-323710-2022-02-24", "publisher": "Business Today"},
+        {"title": "Sensex, Nifty crash 3% as Russia launches military operation in Ukraine", "url": "https://www.boomlive.in/news/sensex-nifty-crash-3-as-russia-launches-military-operation-in-ukraine-16895", "publisher": "BOOM"},
+        {"title": "Brent crude crosses $100; Indian markets crash", "url": "https://onmanorama.com/news/business/2022/02/24/brent-crude-100-dollars-indian-markets-crash.html", "publisher": "Onmanorama"},
+        {"title": "Sensex, Nifty fall for second straight session; Brent crude nears $120/bbl", "url": "https://www.businesstoday.in/amp/markets/stocks/story/sensex-nifty-fall-for-second-straight-session-brent-crude-nears-120bbl-324638-2022-03-03", "publisher": "Business Today"},
+        {"title": "Sensex crashes 1,491 points, falls to 8-month low on rising crude oil prices", "url": "https://www.outlookbusiness.com/news/sensex-crashes-1-491-points-falls-to-8-month-low-on-rising-crude-oil-prices-news-185650", "publisher": "Outlook Business"}
+      ],
+      "verification": "verified",
+      "notes": "The Feb 24 report says oil crossed $100 without always naming the benchmark; Brent is generally cited. Brent intraday peak quoted as $139.13. The simulator trades equities only; crude is context."
+    },
+    {
+      "id": "adani-hindenburg-2023",
+      "title": "January 2023: a short-seller report and a pulled FPO",
+      "category": "corporate_event",
+      "start": "2023-01-23",
+      "end": "2023-03-10",
+      "difficulty": "advanced",
+      "universe_hint": ["ADANIENT", "ADANIPORTS", "ADANIGREEN", "ADANIPOWER", "AMBUJACEM", "ACC", "NDTV", "SBIN", "LICI"],
+      "briefing": "Monday, January 23, 2023. The Adani group's listed companies have been among the market's best performers over the past few years and carry very high valuations. Adani Enterprises is preparing a Rs 20,000-crore follow-on public offer (FPO), one of India's largest. You can trade group companies, recently acquired cement makers, and large lenders and insurers with exposure to the group.",
+      "debrief": "On January 24, 2023 US short seller Hindenburg Research published a report alleging stock manipulation and accounting fraud at the Adani group, flagging high leverage, and disclosing a short position. The group called it 'maliciously mischievous' and baseless. Group stocks fell sharply in the following sessions (an $86 billion rout per Reuters). The FPO was fully subscribed on its last day, but on February 1 Adani Enterprises withdrew it, saying proceeding would not be 'morally correct', and promised refunds; many group stocks closed at lower circuits, and on February 2 several again hit 10% lower circuits early, with Adani Enterprises down 35% in two days and about Rs 8.7 lakh crore of group market value lost in six sessions. On March 2, GQG Partners bought Rs 15,446 crore of shares in Adani Enterprises, Adani Ports, Adani Green and Adani Transmission from the promoters in block deals, and group stocks rallied.",
+      "timeline": [
+        {"date": "2023-01-24", "event": "Hindenburg Research publishes its report on the Adani group (after Indian market hours).", "source_url": "https://investing.com/news/economy/explaineradani-vs-hindenburg-what-you-need-to-know-2993502"},
+        {"date": "2023-02-01", "event": "Adani Enterprises withdraws its fully subscribed Rs 20,000-crore FPO; group stocks fall, many to lower circuits.", "source_url": "https://moneylife.in/article/adani-enterprises-withdraws-fpo-to-refund-money-to-investors/69706.html"},
+        {"date": "2023-02-02", "event": "Adani Enterprises down 35% in two days; group market-cap loss about Rs 8.7 lakh crore in six days.", "source_url": "https://www.business-standard.com/amp/article/markets/adani-group-shares-extend-fall-adani-enterprises-tanks-35-in-2-days-123020200265_1.html"},
+        {"date": "2023-03-02", "event": "GQG Partners buys Rs 15,446 crore of Adani group shares in block deals; group stocks surge.", "source_url": "https://www.business-standard.com/amp/article/companies/adani-group-sells-shares-worth-rs-15-446-crore-to-us-based-gqg-partners-123030201130_1.html"}
+      ],
+      "learning_goals": [
+        "Experience concentration risk when a whole business group re-rates at once",
+        "See how lower circuits trap holders who want to exit",
+        "Weigh allegations, company responses and new capital as information, not certainty"
+      ],
+      "related_concepts": ["concentration risk", "lower circuit", "liquidity risk", "short-seller reports", "governance risk", "stop discipline", "position sizing"],
+      "sources": [
+        {"title": "Explainer: Adani vs Hindenburg: What you need to know", "url": "https://investing.com/news/economy/explaineradani-vs-hindenburg-what-you-need-to-know-2993502", "publisher": "Reuters (via Investing.com)"},
+        {"title": "Adani examining legal options against Hindenburg; US firm stands by its 106-page report", "url": "https://onmanorama.com/news/business/2023/01/26/adani-group-to-initiate-legal-action-against-hindenburg-research.html", "publisher": "Onmanorama"},
+        {"title": "Adani Enterprises withdraws FPO, to refund money to investors", "url": "https://moneylife.in/article/adani-enterprises-withdraws-fpo-to-refund-money-to-investors/69706.html", "publisher": "Moneylife"},
+        {"title": "Rs 8.7 trn mcap loss for Adani cos in 6 days; Adani Ent tanks 35% since Tue", "url": "https://www.business-standard.com/amp/article/markets/adani-group-shares-extend-fall-adani-enterprises-tanks-35-in-2-days-123020200265_1.html", "publisher": "Business Standard"},
+        {"title": "Adani promoters sell stakes worth Rs 15,446 crore to GQG Partners", "url": "https://www.business-standard.com/amp/article/companies/adani-group-sells-shares-worth-rs-15-446-crore-to-us-based-gqg-partners-123030201130_1.html", "publisher": "Business Standard"}
+      ],
+      "verification": "verified",
+      "notes": "ADANITRANS (renamed ADANIENSOL in 2023) and ATGL are omitted from the universe to avoid symbol-change issues in price data. Jan 26 is a market holiday (Republic Day), so the first two reaction sessions are Jan 25 and Jan 27. The exact FPO subscription dates were not independently confirmed beyond 'fully subscribed a day before Feb 1'."
+    },
+    {
+      "id": "election-result-2024",
+      "title": "June 2024: exit-poll euphoria, result-day shock, fast recovery",
+      "category": "volatility",
+      "start": "2024-05-31",
+      "end": "2024-06-28",
+      "difficulty": "intermediate",
+      "universe_hint": ["SBIN", "COALINDIA", "NTPC", "POWERGRID", "ONGC", "HAL", "BEL", "LT", "RELIANCE", "HDFCBANK", "ICICIBANK", "HINDUNILVR", "ITC", "TCS"],
+      "briefing": "Friday, May 31, 2024. India's general election is in its final phase; exit polls will be released after voting ends and votes will be counted on Tuesday, June 4. The market broadly expects the BJP-led NDA to return with a large majority, and government-owned companies (PSUs), defence and infrastructure stocks have been strong performers on that view.",
+      "debrief": "On Monday, June 3, after exit polls predicted a landslide for the BJP-led NDA, the Sensex jumped 2,507.47 points (3.39%) to a record close of 76,468.78 and the Nifty closed at 23,263.90. On June 4 counting showed the BJP well short of a majority on its own (about 241 seats) with the NDA at about 294; the Sensex fell over 6,000 points intraday and closed down 4,390 points (5.74%) at about 72,079, the Nifty down 5.93% at 21,885, the largest one-day fall since 2020, with PSU stocks hit hard. Markets recovered quickly as NDA allies backed Narendra Modi for a third term; on June 7, after the RBI held rates and raised its FY25 growth forecast to 7.2%, the Sensex closed at a record 76,693.36.",
+      "timeline": [
+        {"date": "2024-06-03", "event": "First session after exit polls: Sensex up 2,507.47 points (3.39%) to a record 76,468.78.", "source_url": "https://www.businesstoday.in/amp/markets/market-commentary/story/market-in-numbers-sensex-nifty-log-stellar-rally-gainers-52-week-highs-and-more-431891-2024-06-03"},
+        {"date": "2024-06-04", "event": "Counting day: BJP short of majority alone; Sensex closes down 4,390 points (5.74%); Nifty down 5.93%.", "source_url": "https://www.business-standard.com/markets/news/stock-market-live-updates-june-4-sensex-nifty-lok-sabha-election-results-2024-psu-stocks-nse-124060400081_1.html"},
+        {"date": "2024-06-07", "event": "RBI holds repo, raises FY25 GDP forecast to 7.2%; Sensex closes at a record 76,693.36.", "source_url": "https://www.business-standard.com/amp/markets/news/sensex-up-1-462-pts-nifty-tops-23-200-why-markets-surged-after-rbi-policy-124060700402_1.html"}
+      ],
+      "learning_goals": [
+        "See that consensus positioning raises the cost of being wrong on event day",
+        "Practise sizing into a binary event and planning exits before the result",
+        "Avoid panic selling at the bottom of a sentiment shock"
+      ],
+      "related_concepts": ["event risk", "crowded trades", "position sizing", "stop discipline", "mean reversion", "theme concentration"],
+      "sources": [
+        {"title": "Exit polls effect: Sensex, Nifty log stellar rally; gainers, 52-week highs and more", "url": "https://www.businesstoday.in/amp/markets/market-commentary/story/market-in-numbers-sensex-nifty-log-stellar-rally-gainers-52-week-highs-and-more-431891-2024-06-03", "publisher": "Business Today"},
+        {"title": "Stock Markets, June 4: Sensex crashes 4,390 pts, Nifty gives up 22k on sub-par BJP tally in LS polls", "url": "https://www.business-standard.com/markets/news/stock-market-live-updates-june-4-sensex-nifty-lok-sabha-election-results-2024-psu-stocks-nse-124060400081_1.html", "publisher": "Business Standard"},
+        {"title": "Sensex plunges over 5,000 points intraday; check factors behind the fall", "url": "https://www.business-standard.com/amp/markets/news/sensex-plunges-over-4-000-points-intraday-check-factors-behind-the-fall-124060400591_1.html", "publisher": "Business Standard"},
+        {"title": "India elections 2024: investors lose around Rs 30 lakh crore, markets down nearly 6%", "url": "https://outlookmoney.com/invest/india-elections-2024-investors-lose-around-rs-30-lakh-crore-markets-down-nearly-6", "publisher": "Outlook Money"},
+        {"title": "India elections 2024: How soon will Sensex bounce back after 4,390 point drop?", "url": "https://gulfnews.com/business/markets/india-elections-2024-how-soon-will-sensex-bounce-back-after-4390-point-drop-1.1717497687799", "publisher": "Gulf News (Reuters)"},
+        {"title": "Sensex up 1,600 pts, Nifty near 23,300: Why markets surged after RBI policy", "url": "https://www.business-standard.com/amp/markets/news/sensex-up-1-462-pts-nifty-tops-23-200-why-markets-surged-after-rbi-policy-124060700402_1.html", "publisher": "Business Standard"},
+        {"title": "Sensex climbs 1,619 points ahead of RBI's decision to keep repo rates unchanged", "url": "https://www.newsonair.gov.in/sensex-climbs-1619-points-ahead-of-rbis-decision-to-keep-repo-rates-unchanged", "publisher": "All India Radio News"}
+      ],
+      "verification": "verified",
+      "notes": "Seat counts on June 4 evening varied by timestamp (BJP 240–241; NDA 293–294). The exact single-day rebound on June 5 was not confirmed; Jun 5–7 combined gain reported as about 2,995 points."
+    },
+    {
+      "id": "fpi-selloff-2024-25",
+      "title": "September 2024 – February 2025: record highs, then a five-month slide",
+      "category": "selloff",
+      "start": "2024-09-20",
+      "end": "2025-02-28",
+      "difficulty": "intermediate",
+      "universe_hint": ["HDFCBANK", "ICICIBANK", "KOTAKBANK", "AXISBANK", "SBIN", "RELIANCE", "INFY", "TCS", "ITC", "HINDUNILVR", "BAJFINANCE", "LT", "ASIANPAINT", "MARUTI"],
+      "briefing": "Friday, September 20, 2024. Indian equities are at record highs: on September 18 the US Federal Reserve cut rates by 50 bp, its first cut in over four years, and on September 19 the Sensex hit a record intraday high. Foreign portfolio investors (FPIs) have been buying, while domestic mutual-fund SIP flows remain strong. Indian valuations are high relative to other emerging markets.",
+      "debrief": "On September 24 China announced broad stimulus including rate and reserve-ratio cuts, and Chinese stocks rallied. The Nifty set an intraday record of 26,277 on September 27, 2024 (not surpassed until November 2025). FPIs then pulled a record of roughly Rs 94,000 crore from Indian equities in October 2024, citing high valuations, slowing earnings growth and cheaper Chinese stocks; domestic investors absorbed much of the selling. Outflows continued into 2025: about Rs 78,027 crore in January and more in February, taking 2025 outflows above Rs 1 lakh crore by late February amid US tariff worries, higher US bond yields and a strong dollar. The Nifty fell 12.65% from end-September to February 27 and was set for five consecutive monthly declines, its longest losing streak since 1996.",
+      "timeline": [
+        {"date": "2024-09-18", "event": "US Fed cuts rates by 50 bp to 4.75–5.00% (context; Sensex record intraday high on Sep 19).", "source_url": "https://www.etvbharat.com/amp/en/!business/sensex-nifty-stocks-on-thursday-september-19-enn24091901513"},
+        {"date": "2024-09-24", "event": "China announces broad stimulus, including a 50 bp reserve-ratio cut.", "source_url": "https://investing.com/news/economy-news/factboxchina-rolls-out-broad-rate-cuts-and-other-stimulus-to-spur-weak-economy-3629003"},
+        {"date": "2024-09-27", "event": "Nifty intraday all-time high of 26,277.", "source_url": "https://ianslive.in/nifty-hits-fresh-record-high-as-markets-gain-momentum--20251127093706"},
+        {"date": "2024-10-31", "event": "October ends with record FPI equity outflow of about Rs 94,000 crore.", "source_url": "https://www.businesstoday.in/amp/markets/market-perspective/story/fpis-pull-out-record-rs-94000-crore-from-equities-in-october-on-attractive-china-valuation-452355-2024-11-03"},
+        {"date": "2025-02-21", "event": "FPI outflows in 2025 cross Rs 1 lakh crore (Rs 78,027 crore in January alone).", "source_url": "https://www.business-standard.com/amp/markets/news/fpis-withdraw-rs-23-710-cr-in-feb-total-outflow-at-rs-1-trn-in-2025-125022300153_1.html"},
+        {"date": "2025-02-27", "event": "Nifty down 12.65% from end-September; on track for a fifth straight monthly fall, first in 29 years.", "source_url": "https://www.magzter.com/nl/stories/newspaper/Mint-New-Delhi/NIFTY-DOWN-FOR-FIVE-MONTHS-IN-A-ROW-A-FIRST-IN-29-YEARS"}
+      ],
+      "learning_goals": [
+        "Recognise a slow, grinding drawdown driven by flows rather than a single shock",
+        "Practise trailing stops and rebalancing near record highs",
+        "Understand how foreign and domestic flows can offset each other"
+      ],
+      "related_concepts": ["FPI flows", "valuation risk", "drawdown", "trailing stops", "rebalancing", "trend following", "regime change"],
+      "sources": [
+        {"title": "Sensex, Nifty stocks on Thursday, September 19", "url": "https://www.etvbharat.com/amp/en/!business/sensex-nifty-stocks-on-thursday-september-19-enn24091901513", "publisher": "ETV Bharat"},
+        {"title": "Factbox: China rolls out broad rate cuts and other stimulus to spur weak economy", "url": "https://investing.com/news/economy-news/factboxchina-rolls-out-broad-rate-cuts-and-other-stimulus-to-spur-weak-economy-3629003", "publisher": "Reuters (via Investing.com)"},
+        {"title": "Nifty hits fresh record high as markets gain momentum", "url": "https://ianslive.in/nifty-hits-fresh-record-high-as-markets-gain-momentum--20251127093706", "publisher": "IANS"},
+        {"title": "FPIs pull out record Rs 94,000 crore from equities in October on attractive China valuation", "url": "https://www.businesstoday.in/amp/markets/market-perspective/story/fpis-pull-out-record-rs-94000-crore-from-equities-in-october-on-attractive-china-valuation-452355-2024-11-03", "publisher": "Business Today (PTI)"},
+        {"title": "FPIs withdraw Rs 23,710 cr in Feb; total outflow at Rs 1 trn in 2025", "url": "https://www.business-standard.com/amp/markets/news/fpis-withdraw-rs-23-710-cr-in-feb-total-outflow-at-rs-1-trn-in-2025-125022300153_1.html", "publisher": "Business Standard (PTI)"},
+        {"title": "Nifty down for five months in a row, a first in 29 years", "url": "https://www.magzter.com/nl/stories/newspaper/Mint-New-Delhi/NIFTY-DOWN-FOR-FIVE-MONTHS-IN-A-ROW-A-FIRST-IN-29-YEARS", "publisher": "Mint (via Magzter)"},
+        {"title": "FPI sell-off pushed drop of 4% in Nifty50 in February 2025", "url": "https://www.angelone.in/news/market-updates/fpi-sell-off-pushed-drop-of-four-percent-in-nifty50-in-february-2025", "publisher": "Angel One"}
+      ],
+      "verification": "partially_verified",
+      "notes": "Monthly FPI totals vary by data cut (Oct 2024: Rs 85,790 cr mid-month vs ~Rs 94,000 cr month-end; Feb 2025 figure is to Feb 21). The five-month streak was reported as 'on track' before the Feb 28 close; confirm with price data. The 2025-02-21 timeline date is the data cut-off of the PTI report (published Feb 23). ZOMATO omitted from universe because it was renamed ETERNAL in 2025."
+    }
+  ]
+}

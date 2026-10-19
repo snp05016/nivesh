@@ -90,3 +90,9 @@ def test_templates_compile():
     for t in TEMPLATES:
         prog = compile_program(t["program"], panel_schema())
         assert t["score"] in prog.outputs
+
+
+def test_survivorship_biased_dataset_cannot_be_supported():
+    r = run_experiment(spec(), panel(edge=0.004), {"source": "local_csv", "warnings": ["the universe is today's members (survivorship bias)"]})
+    assert r["result"]["mean_ic"] > 0.05
+    assert r["verdict"]["label"] == "fragile" and "Data Quality Investigator" in r["verdict"]["failed_checks"]

@@ -198,7 +198,18 @@ def sim_autopsy(body: AutopsyIn) -> dict:
 def scenarios() -> dict:
     if not SCENARIOS.exists():
         return {"version": None, "scenarios": []}
-    return json.loads(SCENARIOS.read_text())
+    doc = json.loads(SCENARIOS.read_text())
+    try:
+        _, prov = _panel(_source())
+        first, last = prov["first"], prov["last"]
+    except HTTPException:
+        first = last = None
+    newest = (date.today() - timedelta(days=min_data_age_days())).isoformat()
+    for sc in doc.get("scenarios", []):
+        covered = bool(first and last and first <= sc["start"] and sc["end"] <= last)
+        sc["data_available"] = covered and sc["end"] <= newest
+    doc["data_window"] = [first, last]
+    return doc
 
 
 @router.get("/universe")

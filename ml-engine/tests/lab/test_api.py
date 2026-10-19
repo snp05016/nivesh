@@ -93,3 +93,11 @@ def test_recent_data_embargo(client, monkeypatch):
     assert r.status_code == 422 and "30 days" in r.json()["detail"]
     monkeypatch.setenv("LAB_MIN_DATA_AGE_DAYS", "0")
     assert c.post("/lab/v1/sim/state", json=body(data), headers=KEY).status_code == 200
+
+
+def test_scenarios_marked_by_data_coverage(client, monkeypatch):
+    c, _ = client
+    monkeypatch.setattr(api, "_panel", lambda src: (None, {"first": "2018-01-01", "last": "2026-06-23"}))
+    j = c.get("/lab/v1/scenarios", headers=KEY).json()
+    by = {s["id"]: s["data_available"] for s in j["scenarios"]}
+    assert by and by.get("covid-crash-2020") is True and by.get("gfc-jan-2008-crash") is False

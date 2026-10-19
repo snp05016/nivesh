@@ -301,9 +301,16 @@ def _skeptics(spec, summ, perm_p, base, incr, years, regime, dsr, parity, prov, 
                      parity, critical=True))
     # Data Quality Investigator
     warns = prov.get("warnings", [])
-    F.append(Finding("Data Quality Investigator", "warn" if warns else "pass",
-                     "Dataset caveats apply: " + " ".join(warns) if warns else "Exchange bhavcopy panel with corporate-action adjustment; no dataset caveats raised.",
-                     {"source": prov.get("source"), "mean_names": summ.get("mean_names")}))
+    survivorship = any("survivorship" in w.lower() for w in warns)
+    if survivorship:
+        text = ("The universe is a list of today's index members, so every stock in it is known to have survived and grown into the index. "
+                "Any score that favours small, illiquid or beaten-down names benefits from that hindsight. Rerun on the point-in-time exchange panel before trusting this result.")
+    elif warns:
+        text = "Dataset caveats apply: " + " ".join(warns)
+    else:
+        text = "Exchange bhavcopy panel with corporate-action adjustment; no dataset caveats raised."
+    F.append(Finding("Data Quality Investigator", "fail" if survivorship else ("warn" if warns else "pass"), text,
+                     {"source": prov.get("source"), "mean_names": summ.get("mean_names"), "warnings": warns}, critical=survivorship))
     # Statistical Skeptic
     ci = summ.get("ic_ci95") or [None, None]
     ok = perm_p < 0.05 and (summ.get("ic_hac_t") or 0) > 2 and ci[0] is not None and ci[0] > 0
@@ -394,8 +401,22 @@ def compare(specs: list[Spec], panel: pd.DataFrame, provenance: dict | None = No
     return {
         "status": "ok", "periods": int(len(m)), "candidates": rows, "pbo": _r(pbo),
         "in_sample_best": names[best], "best_survives_corrections": bool(survives),
-        "text": (f"{names[best]} looked best in-sample" + (" and survives multiple-testing corrections." if survives else
-                 " but does not survive the corrections for having tried several candidates.")
-                 + (f" Probability of backtest overfitting: {pbo:.0%}." if not math.isnan(pbo) else "")),
+        "text": _compare_text(names[best], reports[best], holm_p[best], rw[best], survives, pbo),
         "reports": reports,
     }
+
+
+def _compare_text(name: str, rep: dict, holm_p: float, rw_p: float, survives: bool, pbo: float) -> str:
+    if survives:
+        why = " and survives the corrections for having tried several candidates."
+    else:
+        reasons = []
+        if rep["verdict"]["label"] != "supported":
+            reasons.append(f"its own checks failed ({', '.join(rep['verdict']['failed_checks'])})")
+        if holm_p >= 0.05:
+            reasons.append(f"Holm-adjusted p = {holm_p:.3f}")
+        if not np.isnan(rw_p) and rw_p >= 0.05:
+            reasons.append(f"Romano-Wolf p = {rw_p:.3f}")
+        why = " but is not supported: " + "; ".join(reasons) + "."
+    tail = f" Probability of backtest overfitting across the candidates: {pbo:.0%}." if not math.isnan(pbo) else ""
+    return f"{name} looked best in-sample{why}{tail}"
