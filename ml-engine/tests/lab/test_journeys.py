@@ -3,8 +3,7 @@ from datetime import date
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-
-import lab.api as api
+from lab import api
 from lab.data import Bar, NewsItem
 from lab.school import BEHAVIOUR_TO_CONCEPTS, load_curriculum
 from tests.lab.synth import make_data, weekdays

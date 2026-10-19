@@ -2,7 +2,6 @@
 import numpy as np
 import pandas as pd
 import pytest
-
 from lab.featurelang import FDLError, compile_program, panel_schema
 
 

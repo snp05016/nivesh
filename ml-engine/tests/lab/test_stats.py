@@ -2,10 +2,8 @@ import math
 
 import numpy as np
 import pytest
-
 from lab import stats as S
 from research.validation.metrics import ece_bins
-
 
 # ── purged CV ──
 

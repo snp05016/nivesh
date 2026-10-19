@@ -1,9 +1,8 @@
 from datetime import date
 
 import pytest
-
 from lab.costs import charges
-from lab.data import Bar, CorporateAction, LookaheadError, PITView
+from lab.data import Bar, CorporateAction, LookaheadError
 from lab.sim import ActionError, Sim, SimConfig, replay
 from tests.lab.synth import make_data, weekdays
 

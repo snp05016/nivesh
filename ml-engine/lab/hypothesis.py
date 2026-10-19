@@ -18,9 +18,8 @@ from datetime import date
 
 import numpy as np
 import pandas as pd
-from scipy import stats as st
-
 from research.validation import metrics as rm
+from scipy import stats as st
 
 from . import stats as ls
 from .costs import charges
@@ -124,7 +123,7 @@ def _summary(ev: pd.DataFrame, spec: Spec) -> dict:
     block = max(2, round(len(ic) ** (1 / 3)))
     sr = float(net.mean() / net.std(ddof=1)) if len(net) > 2 and net.std(ddof=1) > 0 else math.nan
     return {
-        "periods": int(len(ev)), "mean_names": round(float(ev["n"].mean()), 1),
+        "periods": len(ev), "mean_names": round(float(ev["n"].mean()), 1),
         "mean_ic": round(float(ic.mean()), 4), "ic_hac_t": _r(rm.hac_t(ic, 1)),
         "ic_ci95": [_r(x) for x in rm.block_bootstrap_ci(ic, block, reps=2000, seed=spec.seed)],
         "ic_positive_share": round(float((ic > 0).mean()), 3),
@@ -399,7 +398,7 @@ def compare(specs: list[Spec], panel: pd.DataFrame, provenance: dict | None = No
              "net_per_period": r["result"].get("top_excess_net_per_period"), "permutation_p": r.get("permutation_p"),
              "holm_p": _r(holm_p[i]), "romano_wolf_p": _r(rw[i])} for i, (n, r) in enumerate(zip(names, reports))]
     return {
-        "status": "ok", "periods": int(len(m)), "candidates": rows, "pbo": _r(pbo),
+        "status": "ok", "periods": len(m), "candidates": rows, "pbo": _r(pbo),
         "in_sample_best": names[best], "best_survives_corrections": bool(survives),
         "text": _compare_text(names[best], reports[best], holm_p[best], rw[best], survives, pbo),
         "reports": reports,

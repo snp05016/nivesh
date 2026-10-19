@@ -14,9 +14,8 @@ from typing import Any, Literal
 
 import numpy as np
 import numpy.typing as npt
-from scipy import stats
-
 from research.validation.metrics import expected_max_sr
+from scipy import stats
 
 FloatArray = npt.NDArray[np.float64]
 IntArray = npt.NDArray[np.int64]
@@ -286,7 +285,7 @@ def reliability_diagram(
         gap = abs(freq - mean_p)
         ece += len(m) * gap
         mce = max(mce, gap)
-        bins.append({"lo": lo, "hi": hi, "n": int(len(m)), "mean_p": mean_p, "freq": freq, "ci_lo": ci_lo, "ci_hi": ci_hi})
+        bins.append({"lo": lo, "hi": hi, "n": len(m), "mean_p": mean_p, "freq": freq, "ci_lo": ci_lo, "ci_hi": ci_hi})
     return {"bins": bins, "ece": ece / len(p_), "mce": mce}
 
 

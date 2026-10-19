@@ -1,8 +1,13 @@
 from datetime import date
 
 import pytest
-
-from lab.autopsy import behaviour, canonical, counterfactuals, entry_context, trade_autopsy
+from lab.autopsy import (
+    behaviour,
+    canonical,
+    counterfactuals,
+    entry_context,
+    trade_autopsy,
+)
 from lab.data import Bar, LookaheadError, PITView
 from lab.metrics import performance
 from lab.sim import SimConfig, replay

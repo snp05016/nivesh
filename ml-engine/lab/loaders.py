@@ -9,14 +9,12 @@ Sources, best first:
 """
 from __future__ import annotations
 
+import json
 from datetime import date
+from pathlib import Path
 
 import pandas as pd
-
 from research.marketdata import store
-
-import json
-from pathlib import Path
 
 from .data import Bar, CorporateAction, MarketData, NewsItem
 
@@ -94,7 +92,7 @@ def load_market(start: date, end: date, symbols: list[str] | None = None, source
         "source": used,
         "warnings": list(DEV_WARNINGS) if used == "local_csv" else [],
         "benchmark": "NIFTY 50 price index (yfinance cache)" if md.benchmark else None,
-        "rows": int(len(panel)),
+        "rows": len(panel),
         "window": [lo.date().isoformat(), end.isoformat()],
     }
     if md.benchmark is None:

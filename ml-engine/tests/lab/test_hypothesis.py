@@ -2,7 +2,6 @@ from datetime import date
 
 import numpy as np
 import pandas as pd
-
 from lab.hypothesis import Spec, run_experiment
 
 

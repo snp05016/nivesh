@@ -1,8 +1,7 @@
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-
-import lab.api as api
+from lab import api
 from tests.lab.synth import make_data
 
 KEY = {"X-ML-Engine-Key": "k"}
@@ -105,6 +104,7 @@ def test_scenarios_marked_by_data_coverage(client, monkeypatch):
 
 def test_event_timeline_flags_shock_without_cause(client, monkeypatch):
     from datetime import date as _d
+
     from lab.data import Bar
     from tests.lab.synth import make_data, weekdays
 

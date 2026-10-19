@@ -15,15 +15,14 @@ from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field
-
 from research.api import require_key
 
 from . import autopsy as ap
 from . import events as evs
-from . import school as sch
 from . import hypothesis as hy
-from .featurelang import FDLError, compile_program, panel_schema
+from . import school as sch
 from .data import MarketData, PITView
+from .featurelang import FDLError, compile_program, panel_schema
 from .loaders import DEV_WARNINGS, liquid_universe, load_market
 from .metrics import performance
 from .sim import ActionError, Sim, SimConfig, replay
@@ -265,8 +264,8 @@ class ProgramIn(BaseModel):
 
 @lru_cache(maxsize=2)
 def _panel(source: str) -> tuple[Any, dict]:
-    from research.marketdata import store
     import pandas as pd
+    from research.marketdata import store
 
     p = pd.DataFrame()
     used = source
@@ -276,7 +275,7 @@ def _panel(source: str) -> tuple[Any, dict]:
         p, used = store.load_panel(source="local_csv"), "local_csv"
     if p.empty:
         raise HTTPException(503, "no market data panel available")
-    return p, {"source": used, "warnings": list(DEV_WARNINGS) if used == "local_csv" else [], "rows": int(len(p)),
+    return p, {"source": used, "warnings": list(DEV_WARNINGS) if used == "local_csv" else [], "rows": len(p),
                "first": str(p["date"].min().date()), "last": str(p["date"].max().date())}
 
 

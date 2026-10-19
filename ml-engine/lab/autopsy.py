@@ -304,4 +304,4 @@ def _r(x: float | None) -> float | None:
     return round(x, 4) if x is not None else None
 
 
-__all__ = ["trade_autopsy", "counterfactuals", "behaviour", "entry_context", "base_rate", "canonical"]
+__all__ = ["base_rate", "behaviour", "canonical", "counterfactuals", "entry_context", "trade_autopsy"]

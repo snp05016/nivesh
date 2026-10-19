@@ -1,6 +1,5 @@
 import pytest
 
-
 # A tiny schedule so tests do not depend on the real, evolving rate file.
 SCHEDULE = {
     "components": {
@@ -18,5 +17,5 @@ SCHEDULE = {
 
 @pytest.fixture(autouse=True)
 def _fixed_schedule(monkeypatch):
-    import lab.costs as costs
+    from lab import costs
     monkeypatch.setattr(costs, "load_schedule", lambda path=None: SCHEDULE)

@@ -3,12 +3,11 @@ import json
 import re
 
 import pytest
-
 from lab.school import engine as S
 
 CUR = S.load_curriculum()
 LESSONS = CUR["lessons"]
-FORBIDDEN = re.compile(r"\b(million|billion|trillion|guaranteed|sure-shot|multibagger|recommendation)\b", re.I)
+FORBIDDEN = re.compile(r"\b(million|billion|trillion|guaranteed|sure-shot|multibagger|recommendation)\b", re.IGNORECASE)
 
 
 def right(les):

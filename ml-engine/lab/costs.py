@@ -39,7 +39,10 @@ def _row(rows: list[dict], d: date) -> dict:
     return max(hits, key=lambda r: r["effective_from"])
 
 
-def charges(side: str, value: float, d: date, brokerage: Brokerage = Brokerage(), schedule: dict | None = None) -> dict:
+DEFAULT_BROKERAGE = Brokerage()
+
+
+def charges(side: str, value: float, d: date, brokerage: Brokerage = DEFAULT_BROKERAGE, schedule: dict | None = None) -> dict:
     """Charges in INR for one delivery fill of `value` rupees on trading day `d`.
 
     Returns a breakdown plus `total` and the source ids used, so a contract note

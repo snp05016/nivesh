@@ -26,7 +26,7 @@ def main() -> None:
     ap.add_argument("--out", required=True)
     a = ap.parse_args()
     panel = store.load_panel(source=a.source)
-    prov = {"source": a.source, "warnings": list(DEV_WARNINGS) if a.source == "local_csv" else [], "rows": int(len(panel)),
+    prov = {"source": a.source, "warnings": list(DEV_WARNINGS) if a.source == "local_csv" else [], "rows": len(panel),
             "first": str(panel["date"].min().date()), "last": str(panel["date"].max().date())}
     rev = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
     start, end = date.fromisoformat(a.start), date.fromisoformat(a.end)
