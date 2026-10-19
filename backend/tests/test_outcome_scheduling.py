@@ -177,7 +177,9 @@ def test_heartbeat_ok_then_error_keeps_last_success(fake_cache, monkeypatch):
         raise RuntimeError("db down")
 
     monkeypatch.setattr(ot, "update_prediction_outcomes", _boom)
-    err = hw._run_prediction_outcomes()
+    with pytest.raises(RuntimeError):  # re-raised so job_runs records the failure
+        hw._run_prediction_outcomes()
+    err = fake_cache[("job_heartbeat", "prediction_outcomes")]
     assert err["status"] == "error"
     assert err["summary"] == {"error": "RuntimeError"}
     assert err["last_success_at"] == ok["last_success_at"]

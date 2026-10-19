@@ -138,7 +138,7 @@ flowchart LR
 | Field | Details |
 |---|---|
 | Purpose | Runs recurring harvests, snapshots, screens, outcome evaluation, RAG ingestion, backups, stale-job sweep, and price-alert polling. |
-| Responsibilities | `start_scheduler()` in `services/harvest_worker.py` registers every APScheduler job; it runs only in the leader worker (fcntl lock `/tmp/nivesh_scheduler.lock`). The leader also starts `routers.alerts._price_alert_poller`. |
+| Responsibilities | `start_scheduler()` in `services/harvest_worker.py` registers every APScheduler job; it runs only in the leader worker (fcntl lock `/tmp/nivesh_scheduler.lock`). Price alerts are the scheduler job `price_alerts` (Mon-Fri 09:00-15:55 IST, every 5 minutes). |
 | Dependencies | APScheduler, services.harvest_worker, routers.alerts, database. Outcome jobs: `advisor_harvester.evaluate_analysis_outcomes` (AnalysisHistory, 20:30 UTC) and `harvest_worker._run_prediction_outcomes` -> `outcome_tracker.update_prediction_outcomes` (AnalysisPrediction, job id `prediction_outcomes`, 21:10 UTC, heartbeat in `job_heartbeat/prediction_outcomes`, shown as `last_outcome_run` on `/api/v1/predictions/calibration/health`). `ledger_service.sync_corporate_actions_all_users` (job id `corporate_actions`, 02:00 UTC) writes split/bonus SPLIT rows. |
 | Inputs | Startup event, cron/interval schedules, env flags. |
 | Outputs | Updated DB tables, logs, jobs, materialized features, push alerts. |

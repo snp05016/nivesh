@@ -1,5 +1,4 @@
 """App startup/shutdown, called by main._lifespan (moved out of main.py, REL-15)."""
-import asyncio
 import logging
 import os
 import threading
@@ -7,8 +6,6 @@ import threading
 from database import init_db
 from services.harvest_worker import start_scheduler, stop_scheduler
 
-# Handle of the leader's price-alert poller task, cancelled on shutdown.
-_price_alert_task = None
 
 
 def _seed_catalogs():
@@ -60,11 +57,10 @@ async def on_startup():
 
     Initializes structured logging in every worker. Only the leader (the worker
     holding the scheduler lock) runs the one-time tasks: database tables, the
-    stale-job sweep, harvester/catalog seeding, the price-alert poller and the
-    preference backfill (DB-13, ARCH-07). Even with `--workers N` there is one
-    alert poller (no duplicate pushes), one job sweep and one backfill.
+    stale-job sweep, harvester/catalog seeding and the preference backfill
+    (DB-13, ARCH-07). Even with `--workers N` there is one job sweep and one
+    backfill. Price alerts are a scheduler job (harvest_worker, id price_alerts).
     """
-    global _price_alert_task
     # Wire up structured JSON logging (fixes #83)
     from core.logging_config import configure_logging
     configure_logging()
@@ -94,9 +90,6 @@ async def on_startup():
     except Exception as e:
         logging.warning("Harvester DB init failed: %s", e)
     _seed_catalogs()
-    from services.alerts_service import price_alert_poller
-    _price_alert_task = asyncio.create_task(price_alert_poller())
-
     # FinBERT loading is deferred to first request (lazy). Pre-warming at startup
     # causes memory spikes during model load, cascading worker death with uvicorn
     # --workers > 1. The 3-5s cost on first sentiment request is acceptable.
@@ -114,8 +107,6 @@ async def on_startup():
 
 async def on_shutdown():
     # Each step runs even if an earlier one fails, so worker processes are always reaped.
-    if _price_alert_task is not None:
-        _price_alert_task.cancel()
     try:
         stop_scheduler()
     except Exception:

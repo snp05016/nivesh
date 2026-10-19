@@ -7,14 +7,12 @@ from unittest.mock import MagicMock
 
 import database
 import core.lifecycle as lifecycle
-import services.alerts_service
 import services.harvest_worker as hw
 import services.harvester_db
 
 
 def _run_startup(monkeypatch, leader: bool) -> MagicMock:
     calls = MagicMock()
-    calls.poller.side_effect = lambda: asyncio.sleep(0)
     calls.sweep.return_value = 0
     monkeypatch.setattr("core.logging_config.configure_logging", calls.configure_logging)
     monkeypatch.setattr(lifecycle, "start_scheduler", lambda: leader)
@@ -24,13 +22,12 @@ def _run_startup(monkeypatch, leader: bool) -> MagicMock:
     monkeypatch.setattr(database, "sweep_stale_jobs", calls.sweep)
     monkeypatch.setattr(services.harvester_db, "init_harvester_db", calls.init_harvester_db)
     monkeypatch.setattr(hw, "_seed_harvester_sources", calls.seed_harvester_sources)
-    monkeypatch.setattr(services.alerts_service, "price_alert_poller", calls.poller)
     asyncio.run(lifecycle.on_startup())
     return calls
 
 
 _ONE_TIME = ("init_db", "sweep", "init_harvester_db", "seed_harvester_sources",
-             "seed_catalogs", "poller", "Thread")
+             "seed_catalogs", "Thread")
 
 
 def test_follower_skips_one_time_tasks(monkeypatch):
@@ -85,5 +82,5 @@ def test_start_scheduler_true_and_schedules_job_sweep(monkeypatch):
     assert hw.start_scheduler() is True
     jobs = {c.kwargs.get("id"): c for c in sched.add_job.call_args_list}
     sweep = jobs["job_sweep"]
-    assert sweep.args[0] is sweep_stale_jobs
+    assert sweep.args[0].__wrapped__ is sweep_stale_jobs  # wrapped by job_runs.tracked
     assert sweep.args[1] == "interval" and sweep.kwargs["minutes"] == 2

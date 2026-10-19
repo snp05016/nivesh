@@ -4,7 +4,7 @@ Tests for the APScheduler configuration that runs the morning brief pre-generati
 Validates timezone, cron schedule, and job uniqueness.
 
 Regression coverage:
-  - B2: Scheduler timezone must be "UTC"
+  - B2: Scheduler timezone must be "Asia/Kolkata"
   - B4: No duplicate scheduler jobs
 """
 
@@ -67,20 +67,18 @@ def _get_scheduler_config():
 class TestSchedulerConfig:
     """Validate scheduler construction parameters."""
 
-    def test_timezone_utc(self):
-        """AsyncIOScheduler must use timezone='UTC'.
+    def test_timezone_ist(self):
+        """AsyncIOScheduler must use timezone='Asia/Kolkata'.
 
-        Regression for B2: scheduler timezone is UTC so IST cron values
-        correctly map to UTC times (e.g., 6:30 AM IST → 1:00 AM UTC).
+        Regression for B2: cron fields are IST wall clock (6:30 AM IST is hour=6,
+        minute=30); only the research windows are pinned to UTC per job.
         """
         config = _get_scheduler_config()
-        assert config["timezone"] == "UTC", \
-            f"Expected timezone='UTC', got {config['timezone']!r}"
+        assert config["timezone"] == "Asia/Kolkata", \
+            f"Expected timezone='Asia/Kolkata', got {config['timezone']!r}"
 
     def test_pregen_fires_at_correct_hour(self):
-        """Morning brief pre-gen cron must be hour=1, minute=0 (UTC).
-
-        1:00 UTC = 6:30 AM IST.
+        """Morning brief pre-gen cron must be hour=6, minute=30 (IST).
         """
         config = _get_scheduler_config()
         pregen_jobs = [
@@ -88,28 +86,28 @@ class TestSchedulerConfig:
             if j["trigger"] == "cron"
             and "pregen_morning_briefs" in str(j.get("kwargs", {}))
         ]
-        # Fallback: find cron jobs with hour=1, minute=0
+        # Fallback: find cron jobs with hour=6, minute=30
         cron_jobs = [
             j for j in config["jobs"]
             if j["trigger"] == "cron"
         ]
 
-        # The pregen morning brief job should be among cron jobs with hour=1
+        # The pregen morning brief job should be among cron jobs with hour=6
         found_pregen = False
         for j in cron_jobs:
-            if (j["kwargs"].get("hour") == 1 and j["kwargs"].get("minute") == 0
+            if (j["kwargs"].get("hour") == 6 and j["kwargs"].get("minute") == 30
                     and "pregen" in str(j)):
                 found_pregen = True
                 break
         # If AST parsing didn't capture the function name, check all cron jobs
         if not found_pregen:
             found_pregen = any(
-                j["kwargs"].get("hour") == 1 and j["kwargs"].get("minute") == 0
+                j["kwargs"].get("hour") == 6 and j["kwargs"].get("minute") == 30
                 for j in cron_jobs
             )
 
         assert found_pregen, (
-            f"No cron job found with hour=1, minute=0 for morning brief pre-gen. "
+            f"No cron job found with hour=6, minute=30 for morning brief pre-gen. "
             f"All cron jobs: {[j for j in config['jobs'] if j['trigger'] == 'cron']}"
         )
 

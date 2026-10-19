@@ -117,6 +117,26 @@ def admin_harvest_news(bg_tasks: BackgroundTasks, authorization: str = Header(No
 
 _scheduler_lock_file = None
 
+
+class _TrackedScheduler:
+    """Scheduler view whose add_job wraps every job in job_runs.tracked (id, else the function name)."""
+
+    def __init__(self, scheduler):
+        self._scheduler = scheduler
+
+    def add_job(self, func, *args, **kwargs):
+        from services import job_runs
+        name = kwargs.get("id") or getattr(func, "__name__", "job")
+        return self._scheduler.add_job(job_runs.tracked(name, func), *args, **kwargs)
+
+    def __getattr__(self, name):
+        return getattr(self._scheduler, name)
+
+
+def _track_all_jobs(scheduler) -> _TrackedScheduler:
+    """tracked() keeps coroutine jobs on the scheduler's loop and plain jobs in its thread pool."""
+    return _TrackedScheduler(scheduler)
+
 def start_scheduler() -> bool:
     """Start APScheduler with all nightly cron jobs. Called from main.py startup.
 
@@ -144,9 +164,17 @@ def start_scheduler() -> bool:
 
     # misfire_grace_time: a job that comes due while the process is busy still runs
     # (APScheduler's default of 1 s silently skipped it).
-    _scheduler = AsyncIOScheduler(timezone="UTC", job_defaults={
+    _scheduler = AsyncIOScheduler(timezone="Asia/Kolkata", job_defaults={
         "coalesce": True, "max_instances": 1, "misfire_grace_time": 3600,
     })
+    # Cron fields below are IST wall clock; the research windows stay UTC (register_research_jobs).
+    # Every job is recorded in job_runs (sync and async alike) through `sched`.
+    sched = _track_all_jobs(_scheduler)
+    try:
+        from services import job_runs
+        job_runs.mark_abandoned()  # runs left 'running' by a previous process
+    except Exception:
+        logger.warning("job_runs.mark_abandoned failed", exc_info=True)
 
     from services.advisor_harvester import harvest_all_advisors, evaluate_analysis_outcomes
     from services.ledger_service import sync_corporate_actions_all_users
@@ -168,6 +196,7 @@ def start_scheduler() -> bool:
         except Exception as e:
             _dash_update_harvest("advisor", "error", {"error": str(e)})
             logger.exception("[advisor] harvest failed")
+            raise
 
     def _run_harvest_news():
         _dash_update_harvest("news", "running")
@@ -177,6 +206,7 @@ def start_scheduler() -> bool:
         except Exception as e:
             _dash_update_harvest("news", "error", {"error": str(e)})
             logger.exception("[news] harvest failed")
+            raise
 
     def _run_harvest_youtube_metadata():
         _dash_update_harvest("youtube", "running")
@@ -186,6 +216,7 @@ def start_scheduler() -> bool:
         except Exception as e:
             _dash_update_harvest("youtube", "error", {"error": str(e)})
             logger.exception("[youtube] harvest failed")
+            raise
 
     def _run_harvest_portfolio_videos():
         _dash_update_harvest("youtube", "running")
@@ -195,6 +226,7 @@ def start_scheduler() -> bool:
         except Exception as e:
             _dash_update_harvest("youtube", "error", {"error": str(e)})
             logger.exception("[youtube] harvest failed")
+            raise
 
     def _run_evaluate_analysis_outcomes():
         with get_session() as db:
@@ -213,6 +245,7 @@ def start_scheduler() -> bool:
         except Exception as e:
             _dash_update_harvest("bhavcopy", "error", {"error": str(e)})
             logger.exception("[bhavcopy] Download error")
+            raise
 
     # ── NEW JOB 3: Morning brief pre-generation — 6:30 AM IST (1:00 UTC) ────
     def _run_pregen_morning_briefs():
@@ -224,6 +257,7 @@ def start_scheduler() -> bool:
         except Exception as e:
             _dash_update_harvest("morning_brief", "error", {"error": str(e)})
             logger.exception("[morning_brief] Pre-gen error")
+            raise
 
     # ── NEW JOB 4: Piotroski weekly refresh — Sunday 11:00 PM IST (17:30 UTC)
     def _run_piotroski_batch():
@@ -235,6 +269,7 @@ def start_scheduler() -> bool:
         except Exception as e:
             _dash_update_harvest("piotroski_batch", "error", {"error": str(e)})
             logger.exception("[piotroski_batch] Error")
+            raise
 
     # No pre-market cache warm: the disk cache is gone and Redis/TTLCache
     # entries expire on their own (OPS-18).
@@ -249,6 +284,7 @@ def start_scheduler() -> bool:
         except Exception as e:
             _dash_update_harvest("error_digest", "error", {"error": str(e)})
             logger.exception("[error_digest] Error")
+            raise
 
     # ── NEW JOB 7: Market Anomaly Scanner ────────────────────────────────────
     def _run_anomaly_scan():
@@ -261,6 +297,7 @@ def start_scheduler() -> bool:
         except Exception as e:
             _dash_update_harvest("anomaly_scan", "error", {"error": str(e)})
             logger.exception("[anomaly_scan] Error")
+            raise
 
     # ── DB backup — 2:30 AM IST (21:00 UTC); see docs/codebase/BACKUP_RESTORE.md ─
     def _run_db_backup():
@@ -273,6 +310,7 @@ def start_scheduler() -> bool:
         except Exception as e:
             _dash_update_harvest("db_backup", "error", {"error": str(e)})
             logger.exception("[db_backup] Error")
+            raise
 
     # ── Wire all jobs ─────────────────────────────────────────────────────────
 
@@ -286,21 +324,37 @@ def start_scheduler() -> bool:
     _snapshot_all_users_job = _sync(snapshot_all_users)
     _run_nightly_screen_job = _sync(run_nightly_screen)
 
-    _scheduler.add_job(_run_harvest_all_advisors,     "cron", hour=1,  minute=30)  # 07:00 IST (01:30 UTC)
-    _scheduler.add_job(_run_harvest_news,             "interval", hours=2, **_stagger(5))
-    _scheduler.add_job(_run_harvest_youtube_metadata, "interval", hours=2, **_stagger(25))
-    _scheduler.add_job(_run_harvest_portfolio_videos, "interval", hours=2, **_stagger(45))
-    _scheduler.add_job(_snapshot_all_users_job,       "cron", hour=11, minute=0)   # 4:30 PM IST (11:00 UTC)
-    # Retry: fills only users the 11:00 run skipped for a missing price (DB-21).
-    _scheduler.add_job(_snapshot_all_users_job,       "cron", hour=12, minute=0)   # 5:30 PM IST (12:00 UTC)
-    _scheduler.add_job(_run_nightly_screen_job,       "cron", hour=11, minute=15)  # 4:45 PM IST (11:15 UTC)
-    _scheduler.add_job(_run_evaluate_analysis_outcomes,"cron", hour=20, minute=30)  # 2:00 AM IST (20:30 UTC)
+    sched.add_job(_run_harvest_all_advisors,     "cron", hour=7,  minute=0,
+                  id="advisor_harvest", replace_existing=True)  # 07:00 IST
+    sched.add_job(_run_harvest_news,             "interval", hours=2, id="news_harvest",
+                  replace_existing=True, **_stagger(5))
+    sched.add_job(_run_harvest_youtube_metadata, "interval", hours=2, id="youtube_metadata",
+                  replace_existing=True, **_stagger(25))
+    sched.add_job(_run_harvest_portfolio_videos, "interval", hours=2, id="youtube_portfolio",
+                  replace_existing=True, **_stagger(45))
+    sched.add_job(_snapshot_all_users_job,       "cron", hour=16, minute=30,
+                  id="portfolio_snapshot", replace_existing=True)  # 16:30 IST
+    # Retry: fills only users the 16:30 run skipped for a missing price (DB-21).
+    sched.add_job(_snapshot_all_users_job,       "cron", hour=17, minute=30,
+                  id="portfolio_snapshot_retry", replace_existing=True)  # 17:30 IST
+    sched.add_job(_run_nightly_screen_job,       "cron", hour=16, minute=45,
+                  id="nightly_screen", replace_existing=True)  # 16:45 IST
+    sched.add_job(_run_evaluate_analysis_outcomes, "cron", hour=2, minute=0,
+                  id="legacy_outcome_eval", replace_existing=True)  # 02:00 IST
     # AnalysisPrediction outcomes (7d/30d/90d/target labels, Brier); the only caller (ML-03).
-    _scheduler.add_job(_run_prediction_outcomes, "cron", hour=21, minute=10,
-                       id="prediction_outcomes", replace_existing=True)  # 2:40 AM IST
+    sched.add_job(_run_prediction_outcomes, "cron", hour=2, minute=40,
+                  id="prediction_outcomes", replace_existing=True)  # 02:40 IST
     # Splits/bonuses -> ledger SPLIT rows, so holdings show the post-action share count (MATH-07).
-    _scheduler.add_job(sync_corporate_actions_all_users, "cron", hour=2, minute=0,
-                       id="corporate_actions", replace_existing=True)  # 7:30 AM IST
+    sched.add_job(sync_corporate_actions_all_users, "cron", hour=7, minute=30,
+                  id="corporate_actions", replace_existing=True)  # 07:30 IST
+
+    # ── Price alerts: every 5 minutes while the market is open (09:00-15:55 IST, Mon-Fri) ──
+    def _run_price_alerts():
+        from services.alerts_service import _poll_once
+        asyncio.run(_poll_once())  # plain def: runs in a worker thread, off the API loop (REL-03)
+
+    sched.add_job(_run_price_alerts, "cron", day_of_week="mon-fri", hour="9-15", minute="*/5",
+                  id="price_alerts", replace_existing=True)  # every 5 min 09:00-15:55 IST
 
     # ── Notification TTL sweeper (daily, 3:00 AM IST) ───────────────────────
     def _run_notification_cleanup():
@@ -308,7 +362,8 @@ def start_scheduler() -> bool:
         deleted = cleanup_old()
         logger.info(f"Notification cleanup: {deleted} old notifs deleted")
 
-    _scheduler.add_job(_run_notification_cleanup, "cron", hour=21, minute=30)  # 3:00 AM IST
+    sched.add_job(_run_notification_cleanup, "cron", hour=3, minute=0,
+                  id="notification_cleanup", replace_existing=True)  # 03:00 IST
 
     # ── Retention: old news, finished-job payloads, triggered alerts, token log (PERF-15)
     def _run_retention():
@@ -321,9 +376,10 @@ def start_scheduler() -> bool:
         except Exception as e:
             _dash_update_harvest("retention", "error", {"error": str(e)})
             logging.exception("[retention] failed")
+            raise
 
-    _scheduler.add_job(_run_retention, "cron", hour=21, minute=50,
-                       id="retention", replace_existing=True)  # 3:20 AM IST
+    sched.add_job(_run_retention, "cron", hour=3, minute=20,
+                  id="retention", replace_existing=True)  # 03:20 IST
 
     # ── Backfill UserPreferences for existing users ─────────────────────────
     def _run_backfill_preferences():
@@ -338,7 +394,8 @@ def start_scheduler() -> bool:
             s.commit()
             logger.info(f"Backfilled preferences for {len(users)} users")
 
-    _scheduler.add_job(_run_backfill_preferences, "cron", hour=21, minute=35)  # 3:05 AM IST
+    sched.add_job(_run_backfill_preferences, "cron", hour=3, minute=5,
+                  id="preferences_backfill", replace_existing=True)  # 03:05 IST
 
     # ── Right-to-erasure: execute deletion requests past their grace period (DB-06) ──
     def _run_process_deletion_requests():
@@ -346,22 +403,39 @@ def start_scheduler() -> bool:
         done = process_due_deletion_requests()
         logging.info(f"[erasure] {done} deletion request(s) completed")
 
-    _scheduler.add_job(_run_process_deletion_requests, "cron", hour=22, minute=0,
-                       id="process_deletion_requests", replace_existing=True)  # 3:30 AM IST
+    sched.add_job(_run_process_deletion_requests, "cron", hour=3, minute=30,
+                  id="process_deletion_requests", replace_existing=True)  # 03:30 IST
 
     # ── NEW jobs ──────────────────────────────────────────────────────────────
-    _scheduler.add_job(_run_bhavcopy_download,    "cron", hour=13, minute=30)             # 7:00 PM IST
-    _scheduler.add_job(_run_pregen_morning_briefs,"cron", hour=1,  minute=0)              # 6:30 AM IST
-    _scheduler.add_job(_run_piotroski_batch,      "cron", day_of_week="sun", hour=17, minute=30)  # Sun 11 PM IST
-    _scheduler.add_job(_run_error_digest,         "cron", hour=1,  minute=30)             # 7:00 AM IST
-    # Weekdays 04:00-11:00 UTC = 09:30-16:30 IST: hourly in market hours plus one post-close run (PERF-19).
-    _scheduler.add_job(_run_anomaly_scan,         "cron", day_of_week="mon-fri", hour="4-11", minute=0)
-    _scheduler.add_job(_run_db_backup,            "cron", hour=21, minute=0, id="db_backup", replace_existing=True)  # 2:30 AM IST
+    sched.add_job(_run_bhavcopy_download,    "cron", hour=19, minute=0,
+                  id="bhavcopy", replace_existing=True)  # 19:00 IST
+    sched.add_job(_run_pregen_morning_briefs, "cron", hour=6, minute=30,
+                  id="morning_brief_pregen", replace_existing=True)  # 06:30 IST
+    sched.add_job(_run_piotroski_batch,      "cron", day_of_week="sun", hour=23, minute=0,
+                  id="piotroski_weekly", replace_existing=True)  # Sun 23:00 IST
+    sched.add_job(_run_error_digest,         "cron", hour=7, minute=0,
+                  id="error_digest", replace_existing=True)  # 07:00 IST
+    # Weekdays 09:30-16:30 IST: hourly in market hours plus one post-close run (PERF-19).
+    sched.add_job(_run_anomaly_scan,         "cron", day_of_week="mon-fri", hour="9-16", minute=30,
+                  id="anomaly_scan", replace_existing=True)
+    sched.add_job(_run_db_backup,            "cron", hour=2, minute=30, id="db_backup", replace_existing=True)  # 02:30 IST
+
+    # ── Daily model-id canary (I08) and monthly restore drill (I48) ───────────
+    def _run_model_canary():
+        from services.model_canary import run_model_canary
+        return run_model_canary()
+
+    def _run_restore_drill():
+        from services.restore_drill import run_restore_drill
+        return run_restore_drill()
+
+    sched.add_job(_run_model_canary,  "cron", hour=8, minute=30, id="model_canary", replace_existing=True)  # 08:30 IST
+    sched.add_job(_run_restore_drill, "cron", day=1, hour=4, minute=0, id="restore_drill", replace_existing=True)  # day 1, 04:00 IST
 
     # ── Harvester jobs (rate-limited) ────────────────────────────────────────────
-    _scheduler.add_job(_run_expert_harvest_bg, "interval", minutes=120, id="expert_harvest", replace_existing=True, **_stagger(65))
-    _scheduler.add_job(_run_sebi_harvest_bg,   "interval", minutes=120, id="sebi_harvest",   replace_existing=True, **_stagger(85))
-    _scheduler.add_job(_run_youtube_expert_bg, "interval", minutes=120, id="youtube_expert_harvest", replace_existing=True, **_stagger(105))
+    sched.add_job(_run_expert_harvest_bg, "interval", minutes=120, id="expert_harvest", replace_existing=True, **_stagger(65))
+    sched.add_job(_run_sebi_harvest_bg,   "interval", minutes=120, id="sebi_harvest",   replace_existing=True, **_stagger(85))
+    sched.add_job(_run_youtube_expert_bg, "interval", minutes=120, id="youtube_expert_harvest", replace_existing=True, **_stagger(105))
 
     # ── RAG ingestion — incremental, leader-only (this scheduler holds the fcntl lock).
     # Replaces the old per-worker full re-embed at startup. First run 5 min after boot.
@@ -378,33 +452,33 @@ def start_scheduler() -> bool:
         except Exception as e:
             logging.exception("[rag_ingest] failed")
             _dash_update_harvest("rag_ingest", "error", {"error": str(e)})
+            raise
 
-    _scheduler.add_job(
-        _run_rag_ingest, "cron", hour=21, minute=45, id="rag_ingest",  # 3:15 AM IST
+    sched.add_job(
+        _run_rag_ingest, "cron", hour=3, minute=15, id="rag_ingest",  # 03:15 IST
         max_instances=1, coalesce=True, replace_existing=True,
         next_run_time=datetime.now(timezone.utc) + timedelta(minutes=5),
     )
 
     # Crash recovery for analysis/stress-test jobs whose worker died (pid-aware).
     from repositories.job_repo import sweep_stale_jobs
-    _scheduler.add_job(sweep_stale_jobs, "interval", minutes=2, id="job_sweep",
-                       max_instances=1, coalesce=True, replace_existing=True)
+    sched.add_job(sweep_stale_jobs, "interval", minutes=2, id="job_sweep",
+                  max_instances=1, coalesce=True, replace_existing=True)
 
     # Research Engine jobs (spec 2.2): a failure here must not stop the others (REL-12).
     try:
         from services.research.jobs import register_research_jobs
-        register_research_jobs(_scheduler)
+        register_research_jobs(sched)
     except Exception:
         logging.critical("research job registration failed; research jobs NOT scheduled", exc_info=True)
 
     _scheduler.start()
     logging.info(
-        "All schedulers started — existing: (advisor 1:30, news 12:30, yt-channel 1:00, "
-        "yt-portfolio 1:15, snapshot 4:30 PM + retry 5:30 PM, pkscreener 4:45 PM, outcome-eval 2:00 AM) | "
-        "new: (bhavcopy 7:00 PM, morning-brief-pregen 6:30 AM, prediction-outcomes 2:40 AM, "
-        "corporate-actions 7:30 AM, "
-        "piotroski-weekly Sun 11 PM, error-digest 7:00 AM, db-backup 2:30 AM, retention 3:20 AM) | "
-        "harvesters: (expert 120min, sebi 120min, yt-expert 120min) [all IST]"
+        "All schedulers started (IST) — advisor 07:00, news/yt/harvesters 2-hourly, snapshot 16:30 + retry 17:30, "
+        "pkscreener 16:45, price-alerts */5 09:00-15:55 Mon-Fri, outcome-eval 02:00, db-backup 02:30, "
+        "prediction-outcomes 02:40, notification-cleanup 03:00, preferences 03:05, rag/retention 03:15-03:20, "
+        "deletion 03:30, morning-brief-pregen 06:30, error-digest 07:00, corporate-actions 07:30, "
+        "model-canary 08:30, bhavcopy 19:00, piotroski Sun 23:00, restore-drill day 1 04:00 | research: UTC cron"
     )
     return True
 
@@ -426,11 +500,13 @@ def _run_prediction_outcomes():
     now = datetime.now(timezone.utc).isoformat()
     beat = {"last_run_at": now, "last_success_at": prev.get("last_success_at"),
             "no_data_runs": prev.get("no_data_runs", 0)}
+    failure = None
     try:
         summary = update_prediction_outcomes()
     except Exception as e:
         logging.exception("[outcome_tracking] update_prediction_outcomes failed")
         beat.update(status="error", summary={"error": type(e).__name__})
+        failure = e
     else:
         symbols = summary.get("processed_symbols", 0)
         no_data = symbols > 0 and summary.get("missing_price_data", 0) >= symbols
@@ -440,6 +516,8 @@ def _run_prediction_outcomes():
             logging.error("[outcome_tracking] no outcomes written: no price data for %d consecutive runs",
                           beat["no_data_runs"])
     disk_cache.set(*_OUTCOME_HEARTBEAT, beat, ttl=30 * 86400)
+    if failure is not None:
+        raise failure  # job_runs records the failure; the heartbeat above is already written
     return beat
 
 
@@ -456,6 +534,7 @@ def _run_expert_harvest_bg():
         logging.info("Expert harvest: %d new cards", count)
     except Exception as e:
         logging.exception("Expert harvest failed: %s", e)
+        raise
 
 
 def _run_sebi_harvest_bg():
@@ -465,6 +544,7 @@ def _run_sebi_harvest_bg():
         logging.info("SEBI harvest: %d new cards", n)
     except Exception as e:
         logging.exception("SEBI harvest failed: %s", e)
+        raise
 
 
 def _run_youtube_expert_bg():
@@ -474,6 +554,7 @@ def _run_youtube_expert_bg():
         logging.info("YouTube expert harvest: %d new cards", n)
     except Exception as e:
         logging.exception("YouTube expert harvest failed: %s", e)
+        raise
 
 
 def _seed_harvester_sources():

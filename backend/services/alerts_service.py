@@ -353,14 +353,3 @@ async def _poll_once() -> None:
         if result != PushResult.SENT:
             logger.warning("APNs push not delivered for alert %d: %s (inbox row written)",
                            alert_id, getattr(result, "value", result))
-
-
-async def price_alert_poller():
-    """Background task that polls every 5 minutes; inbox row always, APNs push best-effort."""
-    while True:
-        try:
-            await _poll_once()
-        except Exception as e:
-            logger.error(f"Error in price alert poller: {e}")
-
-        await asyncio.sleep(300)

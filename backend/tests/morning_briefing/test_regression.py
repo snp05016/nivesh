@@ -36,22 +36,21 @@ def test_regression_B1_invalidation_clears_redis():
 
 
 # ---------------------------------------------------------------------------
-# B2 — Scheduler timezone is UTC
+# B2 — Scheduler timezone is IST
 # ---------------------------------------------------------------------------
 
-def test_regression_B2_scheduler_timezone_is_utc():
-    """The APScheduler must be constructed with timezone='UTC'.
+def test_regression_B2_scheduler_timezone_is_ist():
+    """The APScheduler must be constructed with timezone='Asia/Kolkata'.
 
     Fix: services/harvest_worker.py line 101.
     """
     hw_path = BACKEND_ROOT / "services" / "harvest_worker.py"
     source = hw_path.read_text()
 
-    # Check for AsyncIOScheduler(timezone="UTC")
-    assert 'AsyncIOScheduler(timezone="UTC")' in source or \
-           "AsyncIOScheduler(timezone='UTC')" in source or \
-           'timezone="UTC"' in source, \
-        "B2 REGRESSION: AsyncIOScheduler not using timezone='UTC'!"
+    # Check for AsyncIOScheduler(timezone="Asia/Kolkata")
+    assert 'AsyncIOScheduler(timezone="Asia/Kolkata"' in source or \
+           "AsyncIOScheduler(timezone='Asia/Kolkata'" in source, \
+        "B2 REGRESSION: AsyncIOScheduler not using timezone='Asia/Kolkata'!"
 
 
 # ---------------------------------------------------------------------------

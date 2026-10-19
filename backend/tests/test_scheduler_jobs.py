@@ -57,7 +57,7 @@ def test_all_scheduled_jobs_are_sync(captured):
 
 
 def test_job_defaults(captured):
-    assert captured.ctor_kwargs["timezone"] == "UTC"
+    assert captured.ctor_kwargs["timezone"] == "Asia/Kolkata"
     assert captured.ctor_kwargs["job_defaults"] == {
         "coalesce": True, "max_instances": 1, "misfire_grace_time": 3600,
     }

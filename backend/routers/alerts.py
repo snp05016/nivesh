@@ -8,7 +8,6 @@ from services.alerts_service import (
     remove_price_alert,
     get_alerts_data,
     check_alerts,
-    price_alert_poller as _price_alert_poller
 )
 
 router = APIRouter(tags=["Price Alerts"])
