@@ -87,6 +87,9 @@ struct PaywallView: View {
             Text("Prediction dashboards, valuation insights and strategy tools.")
                 .font(Theme.engravedSerif(size: 13, relativeTo: .subheadline))
                 .foregroundStyle(Theme.inkSecondary)
+            Text("Stock reports are free for everyone")
+                .font(Theme.engravedSerif(size: 13, weight: .bold, relativeTo: .subheadline))
+                .foregroundStyle(Theme.inkPrimary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }

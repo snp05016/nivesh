@@ -1,8 +1,7 @@
 import XCTest
 @testable import stockme
 
-/// UX-21 / UX-18: the run the user asked for (tier, language, debate rounds) is what is sent,
-/// retried, and cancelled.
+/// UX-21 / UX-18: the Settings values map to the request fields as the user chose them.
 @MainActor
 final class AnalysisRequestTests: XCTestCase {
 
@@ -18,21 +17,5 @@ final class AnalysisRequestTests: XCTestCase {
         let r = AnalysisRequest.from(ticker: "TCS", scanType: "standard", deepScan: false, languageSetting: "Hindi", roundsSetting: "1")
         XCTAssertEqual(r.language, "Hindi")
         XCTAssertEqual(r.debateRounds, 1)
-    }
-
-    func testCancelWithoutJobReturnsToIdle() {
-        let vm = AnalysisViewModel()
-        vm.isLoading = true
-        vm.cancelAnalysis()
-        XCTAssertFalse(vm.isLoading)
-        XCTAssertNil(vm.errorInfo)
-        XCTAssertNil(vm.jobId)
-    }
-
-    func testRetryLastWithoutRequestIsNoOp() {
-        let vm = AnalysisViewModel()
-        vm.retryLast(userId: nil, useMock: true, reportManager: LocalReportManager())
-        XCTAssertFalse(vm.isLoading)
-        XCTAssertNil(vm.lastRequest)
     }
 }

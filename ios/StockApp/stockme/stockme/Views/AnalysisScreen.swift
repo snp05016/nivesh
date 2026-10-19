@@ -17,31 +17,13 @@ struct AnalysisRequest: Equatable {
     }
 }
 
+/// State for an archived report from the previous engine. New reports come from the
+/// Research Engine (`ResearchReportView`); this model no longer starts or polls jobs.
+/// The static policies below are still used by `AnalysisEngineManager`'s watcher.
 @MainActor
 class AnalysisViewModel: ObservableObject {
     @Published var analysis: StockAnalysis? = nil
     @Published var quickInfo: QuickInfo? = nil
-    @Published var isLoading = false
-    @Published var errorInfo: AnalysisErrorInfo? = nil
-    @Published var quarterlyFinancials: [QuarterlyFinancial] = []
-    @Published var promoterHistory: [PromoterHistoryPoint] = []
-    @Published var niftyPrices: [NiftyPricePoint] = []
-    @Published var macroStrip: MacroStrip? = nil
-    @Published var earningsEvents: [EarningsEvent] = []
-    @Published var analystRatings: AnalystRatingsResponse? = nil
-    @Published var macroImpacts: [MacroImpactItem] = []
-
-    // v2 engine — job polling
-    @Published var jobId: String? = nil
-    @Published var jobStatus: JobStatus? = nil
-    @Published var engineCheckpoints: [CheckpointEvent] = []
-
-    private var analysisTask: Task<Void, Never>?
-    private var pollJobTask: Task<Void, Never>?
-    /// Set by an explicit Cancel; a superseding fetchAnalysis call resets it.
-    private var cancelRequested = false
-    /// The most recent run, replayed by retryLast() so a failed Extreme scan is not retried as Standard.
-    @Published private(set) var lastRequest: AnalysisRequest?
 
     /// What AnalysisScreen does on appear when it was NOT launched from the
     /// action hub (holding rows, Home, Search, Earnings push it directly).
@@ -71,22 +53,7 @@ class AnalysisViewModel: ObservableObject {
         return .unexpected
     }
 
-    // MARK: - Job polling
-
-    /// Per-run values the poll loop needs to store results and build errors.
-    private struct PollContext {
-        let jobId: String
-        let userId: Int?
-        let ticker: String
-        let scanType: String
-        let quickInfoElapsed: Double
-        let useMock: Bool
-        let deepScan: Bool
-        let reportManager: LocalReportManager
-        let started: Date
-    }
-
-    private var pollFailures = 0
+    // MARK: - Job polling policy (AnalysisEngineManager)
 
     /// What a failed job poll means for the loop.
     enum PollOutcome: Equatable { case retry, terminal(String) }
@@ -114,303 +81,29 @@ class AnalysisViewModel: ObservableObject {
         return seconds * 1_000_000_000
     }
 
-    /// One poll of the running job. Returns the delay before the next poll, or nil to stop.
-    private func pollOnce(_ ctx: PollContext) async -> UInt64? {
-        guard jobId == ctx.jobId else { return nil }
-        let raw: [String: Any]
-        do {
-            raw = try await NetworkManager.shared.pollJobRaw(jobId: ctx.jobId, userId: ctx.userId)
-        } catch {
-            if Task.isCancelled { return nil }
-            pollFailures += 1
-            if case .terminal(let message) = Self.pollOutcome(for: error) {
-                endPolling(ctx, message: message)
-                return nil
-            }
-            if pollFailures >= Self.maxPollFailures {
-                endPolling(ctx, message: "Lost contact with the analysis server. Check your connection and try again.")
-                return nil
-            }
-            return Self.pollDelay(consecutiveFailures: pollFailures)
-        }
-        if Task.isCancelled { return nil }
-        pollFailures = 0
-
-        let polledStatus = raw["status"] as? String ?? ""
-        let polledStage  = raw["stage"] as? String
-        let polledPct    = raw["progress_pct"] as? Int
-        let polledCheckpoints: [CheckpointEvent]? = (raw["checkpoints"] as? [[String: Any]])?.compactMap { cp in
-            guard let stage = cp["stage"] as? String,
-                  let agent = cp["agent"] as? String,
-                  let msg = cp["message"] as? String else { return nil }
-            return CheckpointEvent(ts: cp["ts"] as? String ?? "", stage: stage, agent: agent, message: msg, state: cp["state"] as? String ?? "running")
-        }
-        let polledError  = raw["error"] as? String
-
-        let polled = JobStatus(
-            jobId: ctx.jobId, userId: ctx.userId, ticker: ctx.ticker,
-            scanType: ctx.scanType, status: polledStatus,
-            stage: polledStage, progressPct: polledPct,
-            checkpoints: polledCheckpoints, tokensUsed: nil, error: polledError, result: nil
-        )
-        jobStatus = polled
-        // One poll channel per job: the engine watcher takes this status instead of polling (PERF-22).
-        AnalysisEngineManager.shared.screenPolled(polled)
-        if let cps = polledCheckpoints { engineCheckpoints = cps }
-        // A SUCCEEDED result is decoded asynchronously below; isLoading stays true until it is
-        // assigned, or the idle state (with a live Run button) flashes in between (PERF-24).
-        if !(polledStatus == "SUCCEEDED" && raw["result"] != nil) {
-            isLoading = polledStatus != "SUCCEEDED" && polledStatus != "FAILED" && polledStatus != "TIMEOUT" && polledStatus != "CANCELLED"
-        }
-
-        if polledStatus == "SUCCEEDED" {
-            // Try StockAnalysis decode
-            if let resultData = raw["result"] {
-                do {
-                    let jsonData = try JSONSerialization.data(withJSONObject: resultData)
-                    // The full result is 100-300 KB: decode it off the main thread (PERF-24).
-                    let decoded = try await NetworkManager.decodeOffMain(StockAnalysis.self, from: jsonData)
-                    guard !Task.isCancelled, jobId == ctx.jobId else { return nil }
-                    analysis = decoded
-                    ctx.reportManager.saveReport(decoded)
-                    isLoading = false
-                } catch {
-                    print("[AnalysisScreen] StockAnalysis decode failed: \(error)")
-                    // Show error with raw signal info so user sees something
-                    let sigRaw = (resultData as? [String: Any])?["signal"] as? String ?? "?"
-                    errorInfo = AnalysisErrorInfo(
-                        diagnostic: nil,
-                        rawError: "Decode failed but analysis complete. Signal: \(sigRaw)",
-                        httpStatusCode: 200, responseBody: "", responseHeaders: "",
-                        requestUrl: "/analyze/job/\(ctx.jobId)", elapsedSeconds: 0,
-                        quickInfoElapsed: ctx.quickInfoElapsed, isRetryable: false,
-                        isMockMode: ctx.useMock, isDeepScan: ctx.deepScan)
-                    isLoading = false
-                }
-            } else {
-                isLoading = false
-            }
-        } else if ["FAILED", "TIMEOUT", "CANCELLED"].contains(polledStatus) {
-            errorInfo = AnalysisErrorInfo(
-                diagnostic: nil, rawError: polledError ?? "analysis \(polledStatus)",
-                httpStatusCode: 0, responseBody: "", responseHeaders: "",
-                requestUrl: "/analyze/job/\(ctx.jobId)", elapsedSeconds: 0,
-                quickInfoElapsed: ctx.quickInfoElapsed, isRetryable: true,
-                isMockMode: ctx.useMock, isDeepScan: ctx.deepScan)
-            isLoading = false
-        }
-
-        switch polledStatus {
-        case "QUEUED", "RUNNING":
-            if Date().timeIntervalSince(ctx.started) > Self.maxPollDuration {
-                endPolling(ctx, message: "The analysis is taking longer than expected. Check your saved reports later.")
-                return nil
-            }
-            return Self.pollDelay(consecutiveFailures: 0)
-        case "SUCCEEDED", "FAILED", "TIMEOUT", "CANCELLED":
-            return nil
-        default:
-            endPolling(ctx, message: "Unexpected response from server")
-            return nil
-        }
-    }
-
-    private func endPolling(_ ctx: PollContext, message: String) {
-        errorInfo = AnalysisErrorInfo(
-            diagnostic: nil, rawError: message,
-            httpStatusCode: 0, responseBody: "", responseHeaders: "",
-            requestUrl: "/analyze/job/\(ctx.jobId)", elapsedSeconds: 0,
-            quickInfoElapsed: ctx.quickInfoElapsed, isRetryable: true,
-            isMockMode: ctx.useMock, isDeepScan: ctx.deepScan)
-        isLoading = false
-    }
-
-    /// Price/header data for the idle state only; no analysis job.
+    /// Price/header data for the archived view only; no analysis job.
     func loadQuickInfo(ticker: String) {
         Task { quickInfo = await NetworkManager.shared.quickInfo(ticker: ticker) }
     }
-
-    func fetchAnalysis(ticker: String, userId: Int?, useMock: Bool, reportManager: LocalReportManager, deepScan: Bool = false, scanType: String = "standard", language: String? = nil, debateRounds: Int? = nil) {
-        analysisTask?.cancel()
-        pollJobTask?.cancel()
-        // Set synchronously so the Run button disappears before a second tap can land.
-        isLoading = true
-        jobId = nil  // a stale id from a previous run would pin isLoading = true below
-        cancelRequested = false
-        lastRequest = AnalysisRequest(ticker: ticker, deepScan: deepScan, scanType: scanType, language: language, debateRounds: debateRounds)
-
-        analysisTask = Task {
-            // A Cancel that lands before this body runs must not turn the spinner back on.
-            guard !Task.isCancelled else { return }
-            isLoading = true
-            errorInfo = nil
-            engineCheckpoints = []
-
-            let parallelStart = Date()
-            // POST /analyze goes out alongside the supplementary loads, and its response is
-            // handled before awaiting them: jobId must be known as soon as the job exists so
-            // Cancel can reach the server job instead of leaving it to spend credits.
-            async let startResponse = NetworkManager.shared.startAnalysisJob(
-                ticker: ticker, exchange: "NSE", userId: userId, deepScan: deepScan, scanType: scanType,
-                language: language, debateRounds: debateRounds)
-            async let impacts = Self.loadMacroImpacts(userId: userId)
-            async let qi = NetworkManager.shared.quickInfo(ticker: ticker)
-            async let qfr = NetworkManager.shared.getQuarterlyFinancialsResponse(ticker: ticker)
-            async let nifty = NetworkManager.shared.getNiftyHistory(days: 365)
-            async let macro = NetworkManager.shared.getMacroStrip()
-            async let earnings = NetworkManager.shared.getEarningsCalendar()
-            async let ratings = NetworkManager.shared.getAnalystRatings(ticker: ticker)
-
-            // ── v2 engine: start background job, then poll ──
-            var cachedResult: StockAnalysis? = nil
-            do {
-                let start = try await startResponse
-                let quickInfoElapsed = Date().timeIntervalSince(parallelStart)
-                let outcome = Self.classify(start, ticker: ticker)
-
-                if Task.isCancelled {
-                    // Cancel landed after the server answered but before jobId was set, so
-                    // cancelAnalysis() could not cancel the job the server just created.
-                    if cancelRequested, case .attach(let jid) = outcome {
-                        Task { try? await NetworkManager.shared.cancelJob(jobId: jid, userId: nil) }
-                    }
-                    return
-                }
-
-                switch outcome {
-                case .cached:
-                    cachedResult = start.analysis  // shown once the supplementary data is in
-                case .attach(let attachJobId):
-                    // This screen polls the job; the engine watcher only learns about it (PERF-22).
-                    AnalysisEngineManager.shared.screenOwnedJobId = attachJobId
-                    AnalysisEngineManager.shared.jobStarted()
-                    jobId = attachJobId
-                    pollFailures = 0
-                    let ctx = PollContext(jobId: attachJobId, userId: userId, ticker: ticker, scanType: scanType,
-                                          quickInfoElapsed: quickInfoElapsed, useMock: useMock, deepScan: deepScan,
-                                          reportManager: reportManager, started: Date())
-                    pollJobTask = Task { [weak self] in
-                        // self is held only for one poll, so leaving the screen releases the
-                        // view model and ends the loop (the server job keeps running).
-                        while !Task.isCancelled {
-                            guard let delay = await self?.pollOnce(ctx) else { break }
-                            try? await Task.sleep(nanoseconds: delay)
-                        }
-                        // Leaving, cancelling or finishing hands the job back to the watcher.
-                        AnalysisEngineManager.shared.releaseScreenJob(ctx.jobId)
-                    }
-                case .conflict(let otherTicker):
-                    errorInfo = AnalysisErrorInfo(
-                        diagnostic: nil,
-                        rawError: "An analysis for \(otherTicker) is already running. Wait for it to finish, then try again.",
-                        httpStatusCode: 409, responseBody: start.errorDetail ?? "", responseHeaders: "",
-                        requestUrl: NetworkManager.shared.baseURL + "/analyze", elapsedSeconds: 0,
-                        quickInfoElapsed: quickInfoElapsed, isRetryable: true,
-                        isMockMode: useMock, isDeepScan: deepScan)
-                case .unexpected:
-                    errorInfo = AnalysisErrorInfo(
-                        diagnostic: nil, rawError: "Unexpected response from server",
-                        httpStatusCode: 0, responseBody: "", responseHeaders: "",
-                        requestUrl: NetworkManager.shared.baseURL + "/analyze", elapsedSeconds: 0,
-                        quickInfoElapsed: quickInfoElapsed, isRetryable: true,
-                        isMockMode: useMock, isDeepScan: deepScan)
-                }
-            } catch {
-                if Task.isCancelled { return }
-                let quickInfoElapsed = Date().timeIntervalSince(parallelStart)
-                if let networkError = error as? NetworkError,
-                   let info = networkError.diagnosticInfo {
-                    self.errorInfo = AnalysisErrorInfo(
-                        diagnostic: info.diagnostic, rawError: info.rawError,
-                        httpStatusCode: info.httpStatusCode, responseBody: info.responseBody,
-                        responseHeaders: info.responseHeaders, requestUrl: info.requestUrl,
-                        elapsedSeconds: info.elapsedSeconds, quickInfoElapsed: quickInfoElapsed,
-                        isRetryable: info.isRetryable, isMockMode: info.isMockMode, isDeepScan: info.isDeepScan)
-                } else {
-                    self.errorInfo = AnalysisErrorInfo(
-                        diagnostic: nil, rawError: error.localizedDescription,
-                        httpStatusCode: 0, responseBody: "", responseHeaders: "",
-                        requestUrl: NetworkManager.shared.baseURL + "/analyze",
-                        elapsedSeconds: 0, quickInfoElapsed: quickInfoElapsed,
-                        isRetryable: true, isMockMode: useMock, isDeepScan: deepScan)
-                }
-            }
-
-            quickInfo = await qi
-            let qfResult = await qfr
-            quarterlyFinancials = qfResult?.quarters ?? []
-            promoterHistory = qfResult?.promoterHistory ?? []
-            niftyPrices = await nifty
-            macroStrip = await macro
-            earningsEvents = await earnings
-            self.analystRatings = await ratings
-            self.macroImpacts = await impacts
-
-            if Task.isCancelled { return }
-            if let cached = cachedResult {
-                analysis = cached
-                reportManager.saveReport(cached)
-            }
-
-            // v2 engine: isLoading stays true until the poll loop sets analysis/errorInfo
-            if jobId == nil, !Task.isCancelled { isLoading = false }
-        }
-    }
-
-    private static func loadMacroImpacts(userId: Int?) async -> [MacroImpactItem] {
-        guard let uid = userId else { return [] }
-        return (try? await NetworkManager.shared.fetchMacroImpact(userId: uid))?.impacts ?? []
-    }
-
-    /// Re-runs the last request with the same tier, language and debate rounds.
-    func retryLast(userId: Int?, useMock: Bool, reportManager: LocalReportManager) {
-        guard let r = lastRequest else { return }
-        fetchAnalysis(ticker: r.ticker, userId: userId, useMock: useMock, reportManager: reportManager,
-                      deepScan: r.deepScan, scanType: r.scanType, language: r.language, debateRounds: r.debateRounds)
-    }
-
-    /// Returns the screen to idle at once (no error), whether or not the job had started.
-    func cancelAnalysis() {
-        cancelRequested = true
-        let jid = jobId
-        analysisTask?.cancel()
-        pollJobTask?.cancel()
-        isLoading = false
-        jobId = nil
-        jobStatus = nil
-        // v2 engine: the job runs server-side, so cancel it there too (fire-and-forget).
-        if let jid {
-            Task { try? await NetworkManager.shared.cancelJob(jobId: jid, userId: nil) }
-        }
-    }
 }
 
+/// Entry point for a stock's report from every screen and the `nivesh://analyze/{SYMBOL}`
+/// deep link. It renders the Research Engine's `ResearchReportView`: opening it starts no
+/// job (IOSUI-09) and saves nothing to History. Only an explicit "cached" launch opens a
+/// report saved on this device by the previous engine, in the old (archived) view.
 struct AnalysisScreen: View {
     let ticker: String
     var forceCached: Bool = false
-    /// When set (from StockActionHubView), bypasses the legacy "Cached Report
-    /// Found" alert and launches the report directly in the chosen mode.
+    /// `.cached` (from StockActionHubView) opens the archived saved report, if any.
     var launchMode: AnalysisLaunchMode? = nil
     var userNote: String? = nil
     var purchaseDateStr: String? = nil
     var portfolioHolding: PortfolioHolding? = nil
 
     @Environment(\.dismiss) var dismiss
-    @EnvironmentObject var authManager: AuthManager
     @EnvironmentObject var reportManager: LocalReportManager
     @StateObject private var viewModel = AnalysisViewModel()
-    @State private var showingRegenerateAlert = false
-    @State private var showSetAlertSheet = false
-    @State private var activeTab = 0
-    @AppStorage("defaultDeepScan") private var defaultDeepScan: Bool = false
-    @AppStorage("analysisLastTab") private var savedLastTab: Int = 0
     @AppStorage("nivesh_defaultChartRange") private var defaultChartRange: String = "1M"
-    @AppStorage("nivesh_showGovernanceFirst") private var showGovernanceFirst: Bool = false
-    @AppStorage("nivesh_analysisLanguage") private var analysisLanguage: String = "English"
-    @AppStorage("nivesh_debateRounds") private var debateRoundsStr: String = "1"
-    @AppStorage("nivesh_autoRegenerateStale") private var autoRegenerateStale: Bool = false
-    @State private var deepScanEnabled: Bool = false
-    @State private var isAnalyzing = false
     // Extreme result: 0 = AI report, 1 = full stock profile (embedded verbatim).
     @State private var extremeViewMode = 0
 
@@ -425,67 +118,40 @@ struct AnalysisScreen: View {
     @State private var heroDates: [Date] = []
     @State private var heroLoading = false
     @State private var heroPeriod = ""
-    
+
     // Retained copy of analysis to prevent EXC_BAD_ACCESS from view model dealloc
     @State private var retainedAnalysis: StockAnalysis? = nil
 
-    private static var todayString: String { WireDate.dayKey(Date()) }
-
-    private static let deepScanDisabledTickers: Set<String> = [
-        "NIFTY", "SENSEX", "BANKNIFTY", "NIFTYBANK", "INDIAVIX",
-    ]
-
-    private let tabs = ["OVERVIEW", "ANALYSIS", "CHARTS", "FUNDAMENTS", "NEWS"]
-
-    private var parsedPurchaseDate: Date? {
-        guard let s = purchaseDateStr else { return nil }
-        // New rows are "yyyy-MM-dd"; older rows were stored as "dd-MMM-yyyy".
-        return WireDate.day(s) ?? WireDate.ddMMMyyyy.date(from: s)
-    }
+    private var opensArchivedReport: Bool { forceCached || launchMode == .cached }
 
     var body: some View {
             ZStack {
                 Theme.canvas.ignoresSafeArea()
-                
+
                 if let analysis = retainedAnalysis {
                     renderFullAnalysis(analysis)
-                } else if viewModel.isLoading {
-                    renderLoadingState()
-                } else if let errorInfo = viewModel.errorInfo {
-                    renderErrorState(errorInfo)
                 } else {
-                    AnalysisIdleStateView(
-                        ticker: ticker,
-                        exchange: portfolioHolding?.stock.exchange ?? "NSE",
-                        quickInfo: viewModel.quickInfo,
-                        isRunning: viewModel.isLoading,
-                        onRun: {
-                            HapticManager.impact(.medium)
-                            runDefaultAnalysis()
-                        },
-                        onViewSaved: previousAnalysis.map { saved -> () -> Void in { viewModel.analysis = saved } }
-                    )
+                    ResearchReportView(symbol: ticker)
                 }
             }
             // App-owned back button that also restores the edge-swipe pop gesture.
             .banknoteBackButton { dismiss() }
             .toolbar {
             ToolbarItem(placement: .principal) {
-                // Screen C — inline ticker title
-                Text(ticker)
+                Text(retainedAnalysis == nil ? "Stock report" : ticker)
                     .font(.headline.weight(.bold))
                     .foregroundStyle(Theme.inkPrimary)
             }
             ToolbarItem(placement: .navigationBarTrailing) {
                 HStack(spacing: Theme.Spacing.medium) {
-                    // Stock profile quick-access while analysis is running
                     NavigationLink(value: StockProfileDest(ticker: ticker, exchange: portfolioHolding?.stock.exchange ?? "NSE")) {
                         Image(systemName: "doc.text.magnifyingglass")
                             .foregroundStyle(Theme.securityGold)
                     }
                     .buttonStyle(EKPressStyle())
-                    // Screen C — price + ChangeBadge inline on the right
-                    if let info = viewModel.quickInfo {
+                    .accessibilityLabel("Stock profile")
+                    // Archived view only: price + ChangeBadge inline on the right
+                    if retainedAnalysis != nil, let info = viewModel.quickInfo {
                         Text(IndianFormatter.price(livePrice ?? info.price))
                         .lineLimit(1)
                         .minimumScaleFactor(0.6)
@@ -495,15 +161,16 @@ struct AnalysisScreen: View {
                             ChangeBadge(value: pct)
                         }
                     }
-                    Button {
-                        HapticManager.selection()
-                        shareAsImage()
-                    } label: {
-                        Image(systemName: "square.and.arrow.up")
-                            .foregroundStyle(viewModel.analysis != nil ? Theme.inkPrimary : Theme.inkSecondary.opacity(0.3))
+                    if retainedAnalysis != nil {
+                        Button {
+                            HapticManager.selection()
+                            shareAsImage()
+                        } label: {
+                            Image(systemName: "square.and.arrow.up")
+                                .foregroundStyle(Theme.inkPrimary)
+                        }
+                        .accessibilityLabel("Share as Image")
                     }
-                    .disabled(viewModel.analysis == nil)
-                    .accessibilityLabel("Share as Image")
                 }
             }
         }
@@ -511,57 +178,17 @@ struct AnalysisScreen: View {
         .toolbarBackground(Theme.canvas, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .onAppear {
-            activeTab = showGovernanceFirst ? 3 : savedLastTab
-            deepScanEnabled = defaultDeepScan
+            guard viewModel.analysis == nil, opensArchivedReport,
+                  let saved = reportManager.getReport(for: ticker) else { return }
+            previousAnalysis = saved
+            viewModel.analysis = saved
             if heroPeriod.isEmpty {
                 heroPeriod = ["1M": "1mo", "3M": "3mo", "6M": "6mo", "1Y": "1y"][defaultChartRange] ?? "1y"
             }
-            if viewModel.analysis == nil && !viewModel.isLoading {
-                if let cached = reportManager.getReport(for: ticker) {
-                    previousAnalysis = cached
-                }
-
-                if let mode = launchMode {
-                    // Hub-driven launch: act directly, no alert.
-                    switch mode {
-                    case .cached:
-                        // Show highest-priority cache (extreme > deep > standard)
-                        if let cached = previousAnalysis { viewModel.analysis = cached }
-                        else { startRun(scanType: "standard", deepScan: false) }
-                    case .standard:
-                        startRun(scanType: "standard", deepScan: false)
-                    case .regenerate:
-                        regenerateAtCachedTier(previousAnalysis)
-                    case .deepScan:
-                        startRun(scanType: "deep", deepScan: !deepScanForbidden)
-                    case .extremeScan:
-                        startRun(scanType: "extreme", deepScan: !deepScanForbidden)
-                    }
-                } else {
-                    switch AnalysisViewModel.autoStart(
-                        forceCached: forceCached,
-                        hasCached: previousAnalysis != nil,
-                        autoRegenerateStale: autoRegenerateStale,
-                        cachedIsStale: previousAnalysis?.analysisDate != Self.todayString
-                    ) {
-                    case .showCached:
-                        viewModel.analysis = previousAnalysis
-                    case .fetch:
-                        runDefaultAnalysis()
-                    case .promptCached:
-                        showingRegenerateAlert = true
-                        // Dismissing the dialog leaves the idle view, which shows the price.
-                        viewModel.loadQuickInfo(ticker: ticker)
-                    case .idle:
-                        // No saved report: show the idle state and wait for "Run analysis".
-                        viewModel.loadQuickInfo(ticker: ticker)
-                    }
-                }
-            }
+            viewModel.loadQuickInfo(ticker: ticker)
             startPricePolling()
             fetchHeroHistory(period: heroPeriod)
         }
-        .onChange(of: activeTab) { _, val in savedLastTab = val }
         // No price polling while the app is in the background (PERF-22).
         .onChange(of: scenePhase) { _, phase in
             if phase == .background, pricePollingTask != nil {
@@ -576,61 +203,8 @@ struct AnalysisScreen: View {
             retainedAnalysis = newValue
         }
         .onDisappear {
-            // v2 engine: analysis runs server-side — do NOT cancel the job poll here. Pushing the
-            // stock profile also fires onDisappear and nothing would restart it; the poll holds
-            // the view model weakly and ends by itself once the screen is popped.
             pricePollingTask?.cancel()
             pricePollingTask = nil
-        }
-        .banknoteDialog(
-            "Cached Report Found",
-            isPresented: $showingRegenerateAlert,
-            message: "A report for \(ticker) was recently generated. Generating a new one takes time and credits. Do you want to view the existing report or generate a new one?",
-            buttons: [
-                .init("View Cached") {
-                    if let cached = reportManager.getReport(for: ticker) {
-                        viewModel.analysis = cached
-                    }
-                },
-                .init("Regenerate") {
-                    regenerateAtCachedTier(reportManager.getReport(for: ticker))
-                },
-                .cancel()
-            ]
-        ) {
-            // Fix 3.16: Disable Deep Scan for indices and newly listed tickers
-            Toggle("Deep Scan (PKScreener + FinBERT)", isOn: $deepScanEnabled)
-                .font(Theme.engravedSerif(size: 13, weight: .regular))
-                .tint(Theme.securityGold)
-                .foregroundStyle(Theme.inkSecondary)
-                .disabled(Self.deepScanDisabledTickers.contains(ticker.uppercased()))
-                .opacity(Self.deepScanDisabledTickers.contains(ticker.uppercased()) ? 0.4 : 1.0)
-        }
-    }
-
-    /// Default (non-hub) analysis run: user's deep-scan, language and debate settings.
-    private func runDefaultAnalysis() {
-        guard !viewModel.isLoading else { return }
-        startRun(scanType: "standard", deepScan: deepScanEnabled)
-    }
-
-    private var deepScanForbidden: Bool { Self.deepScanDisabledTickers.contains(ticker.uppercased()) }
-
-    /// Every run goes through here so the language and debate-round settings always reach the request.
-    private func startRun(scanType: String, deepScan: Bool) {
-        let r = AnalysisRequest.from(ticker: ticker, scanType: scanType, deepScan: deepScan,
-                                     languageSetting: analysisLanguage, roundsSetting: debateRoundsStr)
-        viewModel.fetchAnalysis(ticker: r.ticker, userId: authManager.currentUser?.userId, useMock: false,
-                                reportManager: reportManager, deepScan: r.deepScan, scanType: r.scanType,
-                                language: r.language, debateRounds: r.debateRounds)
-    }
-
-    /// Regenerate keeps the cached report's tier instead of silently downgrading it to Standard.
-    private func regenerateAtCachedTier(_ cached: StockAnalysis?) {
-        switch cached?.cachedScanType ?? cached?.analysisTier ?? "standard" {
-        case "extreme": startRun(scanType: "extreme", deepScan: !deepScanForbidden)
-        case "deep": startRun(scanType: "deep", deepScan: !deepScanForbidden)
-        default: startRun(scanType: "standard", deepScan: deepScanEnabled && !deepScanForbidden)
         }
     }
 
@@ -672,12 +246,12 @@ struct AnalysisScreen: View {
 
     private func shareAsImage() {
         guard let analysis = viewModel.analysis else { return }
-        
+
         let viewToRender = ZStack {
             Theme.canvas.ignoresSafeArea()
             DenominationBackground(denomination: .hundred)
             BanknoteWatermark(text: "CONFIDENTIAL", size: 100, opacity: 0.018, alignment: .center)
-            
+
             VStack(spacing: Theme.Spacing.sectionGap) {
                 AnalysisCoreSections(analysis: analysis, previousAnalysis: previousAnalysis, ticker: ticker, livePrice: livePrice, viewModel: viewModel)
                 if analysis.analysisTier == "extreme" {
@@ -689,10 +263,10 @@ struct AnalysisScreen: View {
             .padding(.bottom, Theme.Spacing.large)
         }
         .frame(width: UIScreen.main.bounds.width)
-        
+
         let renderer = ImageRenderer(content: viewToRender)
         renderer.scale = UIScreen.main.scale
-        
+
         if let uiImage = renderer.uiImage {
             let avc = UIActivityViewController(activityItems: [uiImage], applicationActivities: nil)
             if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
@@ -704,21 +278,7 @@ struct AnalysisScreen: View {
         }
     }
 
-    // MARK: - Loading State
-
-    private func renderLoadingState() -> some View {
-        AnalysisLoadingStateView(
-            viewModel: viewModel,
-            ticker: ticker,
-            userId: authManager.currentUser?.userId,
-            onCancel: {
-                HapticManager.impact(.rigid)
-                viewModel.cancelAnalysis()
-            }
-        )
-    }
-
-    // MARK: - Full Analysis
+    // MARK: - Archived report
 
     private func renderFullAnalysis(_ analysis: StockAnalysis) -> some View {
         AnalysisFullView(
@@ -733,24 +293,6 @@ struct AnalysisScreen: View {
             heroLoading: heroLoading,
             heroPeriod: $heroPeriod,
             onPeriodChange: { period in fetchHeroHistory(period: period) }
-        )
-    }
-
-    // MARK: - Error State
-
-    private func renderErrorState(_ info: AnalysisErrorInfo) -> some View {
-        AnalysisErrorStateView(
-            info: info,
-            quickInfo: viewModel.quickInfo,
-            onRetry: {
-                HapticManager.impact(.medium)
-                // Replays the failed request (same tier, language, rounds); falls back to a default run.
-                if viewModel.lastRequest != nil {
-                    viewModel.retryLast(userId: authManager.currentUser?.userId, useMock: false, reportManager: reportManager)
-                } else {
-                    runDefaultAnalysis()
-                }
-            }
         )
     }
 }
