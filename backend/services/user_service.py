@@ -13,6 +13,7 @@ from database import MarketErrorLog
 from repositories.analysis_repo import latest_signals_by_ticker
 from services.yfinance_client import get_quotes
 from services.harvester_reformatter import strip_emoji
+from services.advisory_guard import first_advisory_term, neutralize_push
 from services.notifications_inbox import create_notification
 from services.preferences import push_allowed
 from services.alerts_service import PushResult, send_apns
@@ -213,10 +214,18 @@ def push_morning_summary(user_id: int) -> Optional[dict]:
         item = priority_items[0]
         first_action = f"\n- {strip_emoji(item.get('ticker', ''))}: {strip_emoji(item.get('action', ''))}"
 
-    body = f"Good morning, {display_name}! [{mood_label}] {strip_emoji(summary_data.get('summary', '')[:80])}{first_action}"
+    orig_body = body = f"Good morning, {display_name}! [{mood_label}] {strip_emoji(summary_data.get('summary', '')[:80])}{first_action}"
 
+    # I03: the first_action line can carry a daily action; neutralise once so the
+    # inbox row and the push carry the same text.
+    orig_title = f"Daily Market Brief — {mood.upper()}"
+    title, body, changed = neutralize_push(orig_title, body)
+    if changed:
+        logging.getLogger(__name__).warning("push_advisory_blocked", extra={
+            "category": "morning_brief",
+            "term": first_advisory_term(orig_title) or first_advisory_term(orig_body)})
     payload = {
-        "title": f"Daily Market Brief — {mood.upper()}",
+        "title": title,
         "body": body,
         "data": {"type": "morning_summary"},
     }

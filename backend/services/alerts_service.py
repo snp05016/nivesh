@@ -12,6 +12,7 @@ from urllib.parse import quote as _url_quote
 
 from helpers import _yf_price, _to_ns, get_session, PriceTarget
 from models.db_models import DeviceToken
+from services.advisory_guard import first_advisory_term, neutralize_push
 from services.notifications_inbox import create_notification
 from services.preferences import push_allowed
 from services import entitlement_service
@@ -194,6 +195,12 @@ async def send_apns(user_id: int, title: str, body: str, data: Optional[dict] = 
         "apns-priority": "10",
         "authorization": f"bearer {apns_token}",
     }
+    safe_title, safe_body, changed = neutralize_push(title, body, (data or {}).get("ticker"))
+    if changed:  # I03 backstop for direct push callers; data (routing) is unchanged.
+        logger.warning("push_advisory_blocked", extra={
+            "category": (data or {}).get("type"),
+            "term": first_advisory_term(title) or first_advisory_term(body)})
+    title, body = safe_title, safe_body
     payload = {"aps": {"alert": {"title": title, "body": body}, "sound": "default", "badge": 1},
                **(data or {})}
 

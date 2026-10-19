@@ -1,8 +1,13 @@
 """Notification inbox service — CRUD for in_app_notifications table."""
+import logging
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 from database import get_session
 from models.db_models import InAppNotification
+from services.advisory_guard import first_advisory_term, neutralize_push
+
+logger = logging.getLogger(__name__)
+_ANALYZE_PREFIX = "nivesh://analyze/"
 
 
 def create_notification(
@@ -13,7 +18,14 @@ def create_notification(
     action_url: Optional[str] = None,
     session=None,
 ) -> int:
-    """Write an inbox row. With a caller session it only flushes (caller commits)."""
+    """Write an inbox row. With a caller session it only flushes (caller commits).
+    Tip-like text is replaced with a neutral pair (I03 backstop for direct writers)."""
+    ticker = action_url[len(_ANALYZE_PREFIX):] if action_url and action_url.startswith(_ANALYZE_PREFIX) else None
+    safe_title, safe_body, changed = neutralize_push(title, body, ticker or None)
+    if changed:
+        logger.warning("push_advisory_blocked", extra={
+            "category": type, "term": first_advisory_term(title) or first_advisory_term(body)})
+    title, body = safe_title, safe_body
     notif = InAppNotification(
         user_id=user_id, type=type, title=title[:200], body=body, action_url=action_url
     )

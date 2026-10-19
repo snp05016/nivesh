@@ -8,6 +8,7 @@ only once a SEBI-registered entity operates the app. It re-enables report price 
 non-zero targets, the personalised /portfolio/timeframe-conflicts text (IA-type advice).
 """
 import os
+import re
 
 NON_ADVISORY_RULES = (
     "You are not a SEBI-registered adviser or research analyst. Do not recommend buying, "
@@ -53,3 +54,37 @@ def strip_advisory_fields(result: dict) -> dict:
     if TARGETS_WITHHELD_NOTE not in disclaimer:
         result["disclaimer"] = f"{disclaimer} {TARGETS_WITHHELD_NOTE}".strip()
     return result
+
+
+# Push and inbox text (I03). Narrower than the research lexicon (lx-1) on purpose: price-alert
+# texts legitimately say "your", "above" and rupee amounts, so only tip vocabulary is matched.
+ADVISORY_TEXT_RE = re.compile(
+    r"(?<!\w)(?:"
+    r"buy|sell(?![-\s]?off)|accumulate|book\s+profits?|exit|avoid|trim|switch\s+to"
+    r"|bullish|bearish|outperform|underperform|top\s+pick|multibagger|signal"
+    r"|upside|downside|stop[-\s]?loss|fair\s+value|price\s+target|target\s+price"
+    r"|guarantee\w*|assured|risk-free|sure-shot|recommend\w*"
+    r"|kharid\w*|khareed\w*|bech\w*|pakka\w*|munafa\w*"
+    r")(?!\w)",
+    re.IGNORECASE,
+)
+NEUTRAL_PUSH_TITLE = "Nivesh update"
+
+
+def first_advisory_term(text: str) -> str | None:
+    """The first tip-like term in `text`, lower-cased, or None."""
+    m = ADVISORY_TEXT_RE.search(text or "")
+    return m.group(0).lower() if m else None
+
+
+def is_advisory_text(text: str) -> bool:
+    return first_advisory_term(text) is not None
+
+
+def neutralize_push(title: str, body: str, ticker: str | None = None) -> tuple[str, str, bool]:
+    """Replace tip-like push/inbox text with a neutral pair; returns (title, body, changed).
+    The caller keeps its data payload, so tap routing still works."""
+    if not (is_advisory_text(title) or is_advisory_text(body)):
+        return title, body, False
+    neutral = f"Open Nivesh for the latest on {ticker}." if ticker else "Open Nivesh for details."
+    return NEUTRAL_PUSH_TITLE, neutral, True
