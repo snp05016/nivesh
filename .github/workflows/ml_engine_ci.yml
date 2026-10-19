@@ -2,16 +2,20 @@ name: ML Engine CI
 
 # ML-17 / TEST-18: the ml-engine test suite (anti-lookahead, walk-forward
 # protocol, model contract, import smoke) gates every change to ml-engine/.
+# ML-25: the research engine suite and the ResearchReport contract snapshot
+# (docs/research/contract, consumed by backend and iOS) gate it too.
 on:
   push:
     branches: [ "main" ]
     paths:
       - "ml-engine/**"
+      - "docs/research/contract/**"
       - ".github/workflows/ml_engine_ci.yml"
   pull_request:
     branches: [ "main" ]
     paths:
       - "ml-engine/**"
+      - "docs/research/contract/**"
       - ".github/workflows/ml_engine_ci.yml"
 
 # TEST-16: read-only token by default; no job here needs write access.
@@ -43,4 +47,19 @@ jobs:
 
     - name: Test with pytest
       working-directory: ml-engine
-      run: python -m pytest -q -p no:cacheprovider
+      run: python -m pytest -q -p no:cacheprovider --ignore=tests/research
+
+    # Synthetic fixtures only; tests needing RESEARCH_LOCAL_CSV (git-ignored) skip.
+    - name: Research engine tests
+      working-directory: ml-engine
+      env:
+        RESEARCH_DATA_DIR: ${{ runner.temp }}/research-data
+      run: python -m pytest -q -p no:cacheprovider --import-mode=importlib tests/research
+
+    # Fails on any byte difference between the generated schema/fixtures and
+    # the committed docs/research/contract files.
+    - name: Check ResearchReport contract is current
+      working-directory: ml-engine
+      env:
+        RESEARCH_DATA_DIR: ${{ runner.temp }}/research-data
+      run: python -m research.export_contract --check

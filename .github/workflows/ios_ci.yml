@@ -4,6 +4,8 @@ on:
   push:
     paths:
       - 'ios/**'
+      # ResearchReportDecodingTests reads the contract fixtures from here.
+      - 'docs/research/contract/**'
       - 'scripts/find_unreferenced_swift.py'
       - 'scripts/ios_lint_gates.sh'
       - 'scripts/ios_release_checks.sh'
@@ -46,7 +48,7 @@ jobs:
         ios=true
         if [ "$EVENT" = "pull_request" ]; then
           files=$(git -c core.quotePath=false diff --no-renames --name-only "origin/$BASE_REF...HEAD")
-          if ! printf '%s\n' "$files" | grep -E '^(ios/|scripts/find_unreferenced_swift\.py|scripts/ios_lint_gates\.sh|scripts/ios_release_checks\.sh|scripts/ios_static_checks\.sh|scripts/lint_ios_release_config\.py|scripts/lint_ios_networking\.sh|\.github/workflows/ios_ci\.yml)' >/dev/null; then
+          if ! printf '%s\n' "$files" | grep -E '^(ios/|docs/research/contract/|scripts/find_unreferenced_swift\.py|scripts/ios_lint_gates\.sh|scripts/ios_release_checks\.sh|scripts/ios_static_checks\.sh|scripts/lint_ios_release_config\.py|scripts/lint_ios_networking\.sh|\.github/workflows/ios_ci\.yml)' >/dev/null; then
             ios=false
           fi
         fi
@@ -91,8 +93,16 @@ jobs:
         xcodebuild -project stockme.xcodeproj -scheme stockme -destination 'generic/platform=iOS Simulator' build 2>&1 | tail -20
 
     # The stockme scheme's TestAction lists stockmeTests (unit) and skips the UI tests.
+    # ML-25: the ResearchReport contract (fixture decoding, banned-copy lexicon) runs
+    # as its own step so a contract break is named; the rest of stockmeTests skips it.
+    - name: Research contract tests
+      run: |
+        cd ios/StockApp/stockme || exit 1
+        set -o pipefail
+        xcodebuild test -project stockme.xcodeproj -scheme stockme -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:stockmeTests/ResearchReportDecodingTests -only-testing:stockmeTests/ResearchCopyLexiconTests 2>&1 | tail -80
+
     - name: Unit tests
       run: |
         cd ios/StockApp/stockme || exit 1
         set -o pipefail
-        xcodebuild test -project stockme.xcodeproj -scheme stockme -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:stockmeTests 2>&1 | tail -80
+        xcodebuild test -project stockme.xcodeproj -scheme stockme -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:stockmeTests -skip-testing:stockmeTests/ResearchReportDecodingTests -skip-testing:stockmeTests/ResearchCopyLexiconTests 2>&1 | tail -80

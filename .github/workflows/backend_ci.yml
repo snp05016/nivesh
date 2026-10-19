@@ -62,6 +62,9 @@ jobs:
       # TEST-06: run the whole backend suite. The old hand-picked file list (AUTH-25,
       # FINSEC-27 suites included) left ~120 files never running in CI. Collect first
       # so an import or collection error fails loudly instead of skipping a file.
+      # ML-25: that includes the Research Engine suites (backend/tests/test_research_*.py:
+      # contract fixtures, grounding validator, ledger, jobs, serve API, cutover, wiring),
+      # which are hermetic: fake ml-engine, no LLM.
       run: |
         python -m pytest backend/tests --collect-only -q -p no:cacheprovider
         python -m pytest backend/tests -q -p no:cacheprovider -rfE
