@@ -149,7 +149,8 @@ private struct LabScenarioSections: View {
                 GuillocheDivider()
             }
             LabCardTitle(title: "Curated scenarios", icon: "books.vertical")
-            ForEach(scenarios) { sc in
+            // Playable first, then the ones whose data is not loaded yet.
+            ForEach(scenarios.filter { $0.dataAvailable != false } + scenarios.filter { $0.dataAvailable == false }) { sc in
                 LabScenarioCard(scenario: sc, busy: startingId == sc.id,
                                 enabled: canStart && sc.dataAvailable != false, onStart: { onStart(sc) })
             }
@@ -206,6 +207,12 @@ private struct LabScenarioCard: View {
                 .foregroundStyle(Theme.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)
             if let goals = scenario.learningGoals, !goals.isEmpty { LabGoalList(goals: goals) }
+            if let missing = scenario.missingSymbols, !missing.isEmpty, scenario.dataAvailable != false {
+                Text("Not in this dataset, so left out: \(missing.joined(separator: ", ")).")
+                    .font(Theme.engravedSerif(size: 11, relativeTo: .caption))
+                    .foregroundStyle(Theme.holdAmber)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             Button { onStart() } label: { LabPrimaryLabel(title: "Start this scenario", icon: "play.fill", busy: busy, enabled: enabled) }
                 .buttonStyle(EKPressStyle())
                 .disabled(!enabled)

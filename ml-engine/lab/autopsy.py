@@ -21,6 +21,11 @@ MAX_WEIGHT = 0.25
 
 
 # ---------------------------------------------------------------- knowable at entry
+
+def _has_thesis(order) -> bool:
+    """A one-word placeholder ("test", "x") is not a reason; ask for at least two words."""
+    return len(order.thesis.split()) >= 2
+
 def entry_context(data: MarketData, symbol: str, asof: date, benchmark: str | None) -> dict:
     """Facts a trader could have seen at the close of `asof`."""
     v = PITView(data, asof)
@@ -82,7 +87,7 @@ def trade_autopsy(sim: Sim, t: Trade) -> dict:
 
     # Process checks: each uses only knowable facts and the player's own plan.
     checks = [
-        _check("thesis_written", bool(entry_order.thesis.strip()), "A written reason for the trade was recorded."),
+        _check("thesis_written", _has_thesis(entry_order), "A written reason for the trade (two words or more) was recorded."),
         _check("exit_plan", entry_order.planned_stop is not None, "A planned stop level was set before entry."),
         _check("size_within_budget", (risk is not None and risk <= RISK_BUDGET) or (risk is None and weight <= MAX_WEIGHT / 2),
                f"Risk per trade at most {RISK_BUDGET:.0%} of equity (or, without a stop, position under {MAX_WEIGHT / 2:.1%})."),
@@ -221,8 +226,8 @@ def behaviour(sim: Sim) -> list[dict]:
     chased = [o for o in buys if (entry_context(sim.data, o.symbol, o.placed or sim.clock, None).get("ret_5d_z") or 0) >= 2]
     if buys and len(chased) / len(buys) > 0.5:
         flags.append(_flag("chasing_momentum", "low", {"share_after_2sigma_run": round(len(chased) / len(buys), 2)}, "Most buys followed an unusually large 5-day run."))
-    if buys and sum(not o.thesis.strip() for o in buys) / len(buys) > 0.5:
-        flags.append(_flag("no_thesis", "low", {"share_without_thesis": round(sum(not o.thesis.strip() for o in buys) / len(buys), 2)}, "Most entries had no written reason."))
+    if buys and sum(not _has_thesis(o) for o in buys) / len(buys) > 0.5:
+        flags.append(_flag("no_thesis", "low", {"share_without_thesis": round(sum(not _has_thesis(o) for o in buys) / len(buys), 2)}, "Most entries had no written reason."))
     breaches = [t for t in sim.trades if (o := _order(sim, t.entry_order_id)).planned_stop and _breached_without_exit(sim.data, t, o.planned_stop)]
     if breaches:
         flags.append(_flag("stop_discipline", "medium", {"trades_held_through_own_stop": len(breaches)}, "Positions were held after price traded through the stop you planned."))

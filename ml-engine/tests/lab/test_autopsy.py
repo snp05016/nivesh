@@ -49,6 +49,8 @@ def test_autopsy_separates_process_from_outcome():
     assert a["hindsight"]["pnl_net"] > 0
     assert a["process"]["score"] >= 60 and a["verdict"]["quadrant"] == "earned"
     assert a["knowable"]["position_weight"] < 0.05
+    checks = {c["id"]: c["passed"] for c in a["process"]["checks"]}
+    assert checks["thesis_written"] is False  # a one-word placeholder is not a reason
     # Same trade without a thesis or plan and with an oversized position: profitable but "lucky".
     cfg, data, sim2 = run([{"type": "advance", "days": 30}, {"type": "order", "symbol": "AAA", "side": "BUY", "qty": 7000},
                            {"type": "advance", "days": 10}, {"type": "order", "symbol": "AAA", "side": "SELL", "qty": 7000}, {"type": "advance", "days": 2}])

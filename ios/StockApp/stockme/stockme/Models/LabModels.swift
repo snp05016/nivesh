@@ -163,6 +163,8 @@ nonisolated struct LabScenario: Decodable, Identifiable, Hashable {
     let learningGoals: [String]?
     let relatedConcepts: [String]?
     let dataAvailable: Bool?
+    /// Hinted stocks the dataset lacks for this window (e.g. delisted names); left out of the universe.
+    let missingSymbols: [String]?
 }
 
 nonisolated struct LabTimelineEvent: Decodable, Hashable {
@@ -357,6 +359,12 @@ nonisolated struct LabWatchRow: Decodable, Identifiable, Hashable {
     let chg20d: Double?
     let stale: Bool?
     var id: String { symbol }
+
+    // .convertFromSnakeCase turns "chg_1d" into "chg1D" (String.capitalized upper-cases the "d").
+    enum CodingKeys: String, CodingKey {
+        case symbol, listed, date, close, volume, stale
+        case chg1d = "chg1D", chg20d = "chg20D"
+    }
 }
 
 nonisolated struct LabProvenance: Decodable, Hashable {
@@ -426,6 +434,13 @@ nonisolated struct LabKnowable: Decodable, Hashable {
     let positionWeight: Double?
     let riskPerTrade: Double?
     let baseRate: LabBaseRate?
+
+    // Raw values are what .convertFromSnakeCase produces: "ret_5d" -> "ret5D" (see LabWatchRow).
+    enum CodingKeys: String, CodingKey {
+        case asof, barsAvailable, newsVisible, positionWeight, riskPerTrade, baseRate
+        case ret5d = "ret5D", ret20d = "ret20D", ret60d = "ret60D", vol20dAnn = "vol20DAnn", ret5dZ = "ret5DZ"
+        case distFrom52wHigh = "distFrom52WHigh", volumeVs20dAvg = "volumeVs20DAvg", benchmarkRet20d = "benchmarkRet20D"
+    }
 }
 
 nonisolated struct LabBaseRate: Decodable, Hashable {

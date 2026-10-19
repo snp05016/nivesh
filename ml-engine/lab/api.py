@@ -203,14 +203,21 @@ def scenarios() -> dict:
         return {"version": None, "scenarios": []}
     doc = json.loads(SCENARIOS.read_text())
     try:
-        _, prov = _panel(_source())
+        panel, prov = _panel(_source())
         first, last = prov["first"], prov["last"]
     except HTTPException:
-        first = last = None
+        panel, first, last = None, None, None
     newest = (date.today() - timedelta(days=min_data_age_days())).isoformat()
     for sc in doc.get("scenarios", []):
         covered = bool(first and last and first <= sc["start"] and sc["end"] <= last)
-        sc["data_available"] = covered and sc["end"] <= newest
+        hint = sc.get("universe_hint") or []
+        if covered and panel is not None and hint:
+            # Keep only the hinted stocks the dataset has in this window (e.g. delisted DHFL is often missing).
+            w = panel[(panel["date"] >= sc["start"]) & (panel["date"] <= sc["end"])]
+            have = set(w.sort_values("date", kind="stable").groupby("entity_id")["symbol"].last())
+            sc["universe_hint"] = [s for s in hint if s in have]
+            sc["missing_symbols"] = [s for s in hint if s not in have]
+        sc["data_available"] = covered and sc["end"] <= newest and (not hint or len(sc["universe_hint"]) >= 2)
     doc["data_window"] = [first, last]
     return doc
 

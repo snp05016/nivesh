@@ -96,10 +96,19 @@ def test_recent_data_embargo(client, monkeypatch):
 
 def test_scenarios_marked_by_data_coverage(client, monkeypatch):
     c, _ = client
-    monkeypatch.setattr(api, "_panel", lambda src: (None, {"first": "2018-01-01", "last": "2026-06-23"}))
+    import pandas as pd
+
+    syms = ("HDFCBANK", "ICICIBANK", "SBIN", "INFY")
+    rows = [{"date": d, "entity_id": s, "symbol": s} for d in pd.bdate_range("2018-01-01", "2026-06-23") for s in syms]
+    monkeypatch.setattr(api, "_panel", lambda src: (pd.DataFrame(rows), {"first": "2018-01-01", "last": "2026-06-23"}))
     j = c.get("/lab/v1/scenarios", headers=KEY).json()
-    by = {s["id"]: s["data_available"] for s in j["scenarios"]}
-    assert by and by.get("covid-crash-2020") is True and by.get("gfc-jan-2008-crash") is False
+    by = {s["id"]: s for s in j["scenarios"]}
+    assert by["gfc-jan-2008-crash"]["data_available"] is False
+    ilfs = by["ilfs-nbfc-crisis-2018"]
+    assert "DHFL" in ilfs["missing_symbols"] and set(ilfs["universe_hint"]) == {"HDFCBANK", "ICICIBANK", "SBIN"}
+    assert ilfs["data_available"] is True
+    # A covered window whose hinted stocks are all absent is not playable.
+    assert all(s["data_available"] is False for s in j["scenarios"] if s.get("missing_symbols") and len(s["universe_hint"]) < 2)
 
 
 def test_event_timeline_flags_shock_without_cause(client, monkeypatch):

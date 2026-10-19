@@ -220,8 +220,9 @@ and a smaller drawdown.
 
 `ml-engine/lab/scenarios.json` (version 2026-10-19) holds curated historical episodes. Each comes with
 a briefing, a debrief, a timeline, learning goals, related concepts, sources and a verification status.
-`GET /lab/v1/scenarios` adds `data_available`, which is true only when the loaded panel covers the
-whole window **and** the end date is outside the data-age embargo.
+`GET /lab/v1/scenarios` filters each `universe_hint` down to the stocks the loaded panel has in that
+window, lists the rest in `missing_symbols`, and adds `data_available`. That flag is true only when the panel
+covers the whole window, the end date is outside the data-age embargo, **and** at least two hinted stocks remain.
 
 | Scenario | Period | Category | Difficulty | Verification |
 |---|---|---|---|---|
@@ -243,6 +244,10 @@ whole window **and** the end date is outside the data-age embargo.
 !!! info "Coverage on the dev dataset"
     The dev CSV starts in 2018, so the scenarios from 2008–2016 show `data_available: false`
     until the curated bhavcopy panel has been loaded.
+
+    The dev CSV is also survivorship-biased, so some scenarios lose the very stock they are about:
+    `yes-bank-moratorium-2020` has no `YESBANK`, `ilfs-nbfc-crisis-2018` has no `DHFL`, and
+    `adani-hindenburg-2023` keeps only 3 of its 9 names. The app shows the missing stocks on each card.
 
 ## Event Explorer
 

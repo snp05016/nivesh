@@ -26,7 +26,7 @@ description: An honest list of what the Lab does not do, does approximately, or 
 - [ ] **No delivery data, sectors, fundamentals or earnings revisions** in the lab panel yet.
 - [ ] **Point-in-time index constituents** are not available from an official source. Universes are rebuilt from trailing liquidity instead.
 - [ ] **Some charge rows are UNVERIFIED** (pre-2021 exchange charges, the pre-2015 SEBI fee, pre-2020 state stamp duty, service-tax applicability). See [Costs](costs.md#effective-dated-schedule).
-- [ ] **Charge lookup on the last day of a rate range** currently raises an error (inclusive vs. exclusive `effective_to`). See [Costs: known gaps](costs.md#known-gaps).
+- [x] ~~**Charge lookup on the last day of a rate range** raised an error.~~ Fixed: `effective_to` is inclusive, and a test resolves every day from 2010. See [Costs: known gaps](costs.md#known-gaps).
 
 ## Statistics
 
@@ -39,6 +39,7 @@ description: An honest list of what the Lab does not do, does approximately, or 
 
 - [ ] **Legal review is pending** on the NSE data policy (§7.4 simulation clause) and on the SEBI 30-day rule. The `research_lab` flag stays off until then. See [Data](data.md#legal-position).
 - [ ] **Backend tests cannot be run locally** in this environment. Backend changes have not been verified by a local test run.
-- [ ] **The iOS Lab screens are in progress.** See [iOS screens](ios.md).
+- [ ] **The iOS Lab screens have been driven only against a local dev gateway**, not the real backend. See [Status](status.md#ios-verification).
+- [ ] **Some scenario write-ups mention a market-wide halt** (for example January 2008). The simulator does not model halts yet, so that lesson cannot happen in the replay.
 - [ ] **The mentor's LLM mode** depends on the global LLM switch, the user's consent and budget. It falls back to rules.
 - [ ] **Behaviour flags are heuristics** with fixed thresholds. They are observations, not diagnoses.

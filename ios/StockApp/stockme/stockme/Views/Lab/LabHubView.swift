@@ -1,7 +1,8 @@
 import SwiftUI
 
-/// Every push inside the Lab. Registered once, by LabHubView.
+/// Every push inside the Lab. Registered once, at the Markets stack root (ContentView).
 enum LabRoute: Hashable {
+    case hub
     case timeMachine
     case session(id: String)
     case chart(sessionId: String, symbol: String)
@@ -21,7 +22,7 @@ struct LabEntryCard: View {
 
     var body: some View {
         if flags.isOn(.researchLab) || NetworkManager.labDevURL != nil {
-            NavigationLink { LabHubView() } label: { LabEntryCardLabel() }
+            NavigationLink(value: LabRoute.hub) { LabEntryCardLabel() }
                 .buttonStyle(EKPressStyle())
                 .simultaneousGesture(TapGesture().onEnded { HapticManager.selection() })
                 .padding(.horizontal, Theme.screenPadding)
@@ -98,7 +99,6 @@ struct LabHubView: View {
                 }
             }
         }
-        .navigationDestination(for: LabRoute.self) { route in LabRouteDestination(route: route) }
     }
 }
 
@@ -134,6 +134,7 @@ struct LabRouteDestination: View {
 
     var body: some View {
         switch route {
+        case .hub: LabHubView()
         case .timeMachine: ScenarioPickerView()
         case .session(let id): TimeMachineSessionView(sessionId: id)
         case .chart(let sid, let symbol): SimChartView(sessionId: sid, symbol: symbol)

@@ -57,6 +57,9 @@ private struct LabMentorComposer: View {
             .accessibilityLabel("Send question")
         }
         .padding(.horizontal, Theme.screenPadding)
+        // Keep the send button clear of the app-wide AI button (CopilotFloatingButtonModifier), which
+        // floats bottom-right over every screen: its icon (20) + padding (2 x card) + its inset (standard).
+        .padding(.trailing, 20 + 2 * Theme.Spacing.card + Theme.Spacing.standard)
         .padding(.vertical, Theme.Spacing.medium)
         .background(Theme.canvas)
     }
