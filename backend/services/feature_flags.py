@@ -5,11 +5,18 @@ NIVESH_FLAG_<KEY>, then FLAG_DEFAULTS. A key registered nowhere is off.
 iOS sees only client=True keys, via client_flags().
 
 Gate a route with Depends(require_flag("key")): 404 FEATURE_DISABLED while off.
+
+Keys registered in core/feature_flags.py (money, habit) resolve there, so this
+module is also the habit-cluster import path (mode, TRI_STATE, public_flags).
 """
 import logging
 import os
 
 from fastapi import HTTPException
+
+from core import feature_flags as _core
+from core.feature_flags import FLAGS, TRI_STATE, mode  # noqa: F401  (habit-cluster import path)
+from core.feature_flags import client_flags as public_flags  # noqa: F401
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +65,8 @@ def _env_value(key: str):
 
 def is_enabled(key: str) -> bool:
     """Current value of `key`; fails closed for an unregistered key."""
+    if key in _core.FLAGS:
+        return _core.is_enabled(key)
     # ponytail: no DB layer yet; platform-flags adds the feature_flags table lookup
     # (with its 30 s cache) in front of the env read.
     env = _env_value(key)
@@ -88,6 +97,8 @@ def require_flag(key: str):
     An unregistered key raises KeyError at route definition, so a typo fails app
     import instead of shipping an ungated route.
     """
+    if key in _core.FLAGS:
+        return _core.require_flag(key)
     if key not in FLAG_DEFAULTS:
         raise KeyError(f"unknown feature flag: {key!r}")
 

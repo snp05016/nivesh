@@ -10,4 +10,4 @@ router = APIRouter(prefix="/api/v1", tags=["Features"])
 def get_features(response: Response):
     # SecurityHeadersMiddleware keeps an explicit route Cache-Control.
     response.headers["Cache-Control"] = "private, max-age=300"
-    return {"flags": client_flags(), "version": 1}
+    return {"flags": client_flags(), "version": 1, "ttl_seconds": 300}
