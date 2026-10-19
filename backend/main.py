@@ -85,6 +85,9 @@ app.add_middleware(CorrelationIDMiddleware)
 # text/event-stream, so the SSE dashboard stream is unaffected.
 from starlette.middleware.gzip import GZipMiddleware
 app.add_middleware(GZipMiddleware, minimum_size=1024)
+# I11: registered last so it runs outermost; old iOS builds get 426 before the 410 gate and rate limiter.
+from core.version_gate import version_gate
+app.middleware("http")(version_gate)
 
 # ---------------------------------------------------------------------------
 # Financial Error Boundary Handlers
