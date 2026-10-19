@@ -24,6 +24,7 @@ from datetime import date, datetime, timedelta, timezone
 from typing import Any, Optional
 
 from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from models.db_models import (  # pyright: ignore[reportMissingImports]  (checker resolves `models` to ml-engine/models)
@@ -298,7 +299,15 @@ def insert_on_demand_report(
     if existing is not None:
         return existing
     session.add(row)
-    session.commit()
+    try:
+        session.commit()
+    except IntegrityError:
+        # A concurrent compute for the same key won the race: return its row.
+        session.rollback()
+        existing = _existing_report(session, row)
+        if existing is None:
+            raise
+        return existing
     return row
 
 
