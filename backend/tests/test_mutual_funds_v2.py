@@ -5,6 +5,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from core.security import require_auth
 from core.timeutil import ist_today
 from models.db_models import DailyPrice, Instrument, MutualFund
 from routers import mutual_funds as mf_router
@@ -25,6 +26,7 @@ def db(monkeypatch):
 def api(db):
     app = FastAPI()
     app.include_router(mf_router.router, prefix="/api/mutual-funds")
+    app.dependency_overrides[require_auth] = lambda: 1
     return TestClient(app)
 
 

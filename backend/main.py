@@ -145,7 +145,7 @@ async def _global_exception_handler(_req: Request, exc: Exception):
 # ---------------------------------------------------------------------------
 # Import and register routers
 # ---------------------------------------------------------------------------
-from routers import auth, portfolio, market, analysis, portfolio_analytics, morning_brief, advisor_consensus, portfolio_exports, trade_journal, earnings, institutional, ideas, admin_errors, alerts, user, dashboard, notifications, brainstorming, strategy, copilot, anomalies, correlation, nl_screener, stress_test, sector_rotation, earnings_surprise, options_strategy, predictions, fundamentals, backtests, ml_signal, preferences, notifications_inbox, search, ipo, mutual_funds, forum, finance, compliance, subscription, kyc, fixed_deposits, account, research
+from routers import auth, portfolio, market, analysis, portfolio_analytics, morning_brief, advisor_consensus, portfolio_exports, trade_journal, earnings, institutional, ideas, admin_errors, alerts, user, dashboard, notifications, brainstorming, strategy, copilot, anomalies, correlation, nl_screener, stress_test, sector_rotation, earnings_surprise, options_strategy, predictions, fundamentals, backtests, ml_signal, preferences, notifications_inbox, search, ipo, mutual_funds, forum, finance, compliance, subscription, kyc, fixed_deposits, account, research, corporate_actions, results_digest
 from routers import harvester as harvester_router
 from routers.health import router as health_router  # Task 56
 from routers import youtube_summary as youtube_summary_router
@@ -160,6 +160,10 @@ app.include_router(correlation.router)
 # BEFORE portfolio: GET /portfolio/benchmark and /portfolio/signal-warnings would otherwise be
 # captured by GET /portfolio/{user_id}.
 app.include_router(portfolio_analytics.router)
+# Data cluster routers (/api/v1/portfolio/corporate-actions, /api/v1/stocks/{symbol}/results-digest) are
+# mounted before portfolio and any stocks router so no path parameter there can capture them.
+app.include_router(corporate_actions.router)
+app.include_router(results_digest.router)
 app.include_router(portfolio.router)
 app.include_router(morning_brief.router)
 app.include_router(advisor_consensus.router)

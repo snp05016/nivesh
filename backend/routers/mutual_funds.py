@@ -5,9 +5,10 @@ logic live in services/mutual_fund_service.py (Controller-Service-Repository).
 """
 from typing import List, Literal, Optional, Any
 
-from fastapi import APIRouter, HTTPException, Query, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel, model_validator
 
+from core.security import require_auth
 from models.db_models import MutualFund
 from services.mutual_fund_service import (
     SAMPLE_SCHEME_CODES,
@@ -108,7 +109,7 @@ def get_mutual_funds(
 
 
 @router.get("/filters")
-def get_mutual_fund_filters():
+def get_mutual_fund_filters(user_id: int = Depends(require_auth)):
     """Category -> sub-categories and the AMC list, for the filter pickers."""
     return list_filters()
 

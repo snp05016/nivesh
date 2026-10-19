@@ -232,7 +232,6 @@ for _mod, _stubs in (
         "get_price_history": lambda *_a, **_k: None,
         "get_fundamentals": lambda *_a, **_k: {},
         "fetch_info": lambda *_a, **_k: {},
-        "download_bhavcopy": lambda *_a, **_k: {},
         "get_delivery_data": lambda *_a, **_k: {},
     }),
     (_options, {"fetch_option_chain": lambda *_a, **_k: None}),

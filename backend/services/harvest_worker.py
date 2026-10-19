@@ -154,7 +154,6 @@ def start_scheduler() -> bool:
     from services.youtube_harvester import harvest_youtube_metadata, harvest_portfolio_videos
     from services.portfolio_snapshot import snapshot_all_users, pregen_morning_briefs_all_users
     from services.pkscreener_runner import run_nightly_screen
-    from services.nse_data_provider import download_bhavcopy
     from services.piotroski import batch_refresh_piotroski
     from services.error_telemetry import generate_daily_digest
 
@@ -202,17 +201,6 @@ def start_scheduler() -> bool:
 
     # No cache-purge job: Redis TTLs and the in-process TTLCache fallback expire
     # entries on their own (ARCH-09).
-
-    # ── NEW JOB 2: Bhavcopy download — 7:00 PM IST (13:30 UTC) ──────────────
-    def _run_bhavcopy_download():
-        _dash_update_harvest("bhavcopy", "running")
-        try:
-            result = download_bhavcopy()
-            _dash_update_harvest("bhavcopy", "idle", result)
-            logging.info(f"[bhavcopy] Downloaded {result.get('rows', 0)} EQ rows (source={result.get('source')})")
-        except Exception as e:
-            _dash_update_harvest("bhavcopy", "error", {"error": str(e)})
-            logger.exception("[bhavcopy] Download error")
 
     # ── NEW JOB 3: Morning brief pre-generation — 6:30 AM IST (1:00 UTC) ────
     def _run_pregen_morning_briefs():
@@ -350,7 +338,6 @@ def start_scheduler() -> bool:
                        id="process_deletion_requests", replace_existing=True)  # 3:30 AM IST
 
     # ── NEW jobs ──────────────────────────────────────────────────────────────
-    _scheduler.add_job(_run_bhavcopy_download,    "cron", hour=13, minute=30)             # 7:00 PM IST
     _scheduler.add_job(_run_pregen_morning_briefs,"cron", hour=1,  minute=0)              # 6:30 AM IST
     _scheduler.add_job(_run_piotroski_batch,      "cron", day_of_week="sun", hour=17, minute=30)  # Sun 11 PM IST
     _scheduler.add_job(_run_error_digest,         "cron", hour=1,  minute=30)             # 7:00 AM IST
@@ -397,11 +384,18 @@ def start_scheduler() -> bool:
     except Exception:
         logging.critical("research job registration failed; research jobs NOT scheduled", exc_info=True)
 
+    # Data feeds (EOD mirror, AMFI, equity master, results digest): a failure here must not stop the others.
+    try:
+        from services.data_jobs import register_data_jobs
+        register_data_jobs(_scheduler)
+    except Exception:
+        logging.critical("data job registration failed; data jobs NOT scheduled", exc_info=True)
+
     _scheduler.start()
     logging.info(
         "All schedulers started — existing: (advisor 1:30, news 12:30, yt-channel 1:00, "
         "yt-portfolio 1:15, snapshot 4:30 PM + retry 5:30 PM, pkscreener 4:45 PM, outcome-eval 2:00 AM) | "
-        "new: (bhavcopy 7:00 PM, morning-brief-pregen 6:30 AM, prediction-outcomes 2:40 AM, "
+        "new: (morning-brief-pregen 6:30 AM, prediction-outcomes 2:40 AM, "
         "corporate-actions 7:30 AM, "
         "piotroski-weekly Sun 11 PM, error-digest 7:00 AM, db-backup 2:30 AM, retention 3:20 AM) | "
         "harvesters: (expert 120min, sebi 120min, yt-expert 120min) [all IST]"
