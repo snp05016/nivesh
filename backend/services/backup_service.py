@@ -27,7 +27,8 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
-BACKUP_DIR = Path(os.getenv("BACKUP_DIR", "~/nivesh-backups")).expanduser()
+DEFAULT_BACKUP_DIR = "~/nivesh-backups"
+BACKUP_DIR = Path(os.getenv("BACKUP_DIR", DEFAULT_BACKUP_DIR)).expanduser()
 KEEP = max(1, int(os.getenv("BACKUP_KEEP", "14")))  # never 0: pruning must keep the copy just made
 PG_DUMP_TIMEOUT_SEC = 30 * 60
 
@@ -55,17 +56,27 @@ def _sqlite_targets() -> dict[str, Path]:
     return targets
 
 
+def libpq_dsn(url: str) -> tuple[str, str | None]:
+    """SQLAlchemy URL -> (libpq DSN without the password, password).
+
+    libpq rejects driver suffixes such as postgresql+psycopg2://, and the password must
+    travel in PGPASSWORD, never argv.
+    """
+    from sqlalchemy.engine import make_url
+
+    u = make_url(url)
+    dsn = u._replace(password=None).set(drivername="postgresql").render_as_string(hide_password=False)
+    return dsn, u.password
+
+
 def _pg_targets() -> dict[str, tuple[list[str], str | None]]:
     """name -> (pg_dump connection args without the password, password)."""
     import database
-    from sqlalchemy.engine import make_url
 
     targets: dict[str, tuple[list[str], str | None]] = {}
     if database.DATABASE_URL.startswith("postgresql"):
-        url = make_url(database.DATABASE_URL)
-        # libpq rejects driver suffixes such as postgresql+psycopg2://
-        dsn = url._replace(password=None).set(drivername="postgresql").render_as_string(hide_password=False)
-        targets["stockapp"] = (["--dbname", dsn], url.password)
+        dsn, password = libpq_dsn(database.DATABASE_URL)
+        targets["stockapp"] = (["--dbname", dsn], password)
     rag_password = os.getenv("RAG_DB_PASS")
     if rag_password:  # same settings and defaults as services/vector_store.py
         targets["rag"] = ([
@@ -134,7 +145,9 @@ def run_backup() -> dict[str, Path]:
     Targets are independent: one failure does not stop the others. Raises BackupError
     naming every failed target (or when no datastore was found) after trying them all.
     """
-    BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+    # Backups hold PII: owner-only directory and files. chmod also fixes a pre-existing dir.
+    BACKUP_DIR.mkdir(parents=True, exist_ok=True, mode=0o700)
+    os.chmod(BACKUP_DIR, 0o700)
     stamp = _timestamp()
     jobs = [(name, ".db", partial(_backup_sqlite, src)) for name, src in _sqlite_targets().items()]
     jobs += [(name, ".dump", partial(_backup_pg, conn_args=args, password=pw))
@@ -145,6 +158,7 @@ def run_backup() -> dict[str, Path]:
         dest = BACKUP_DIR / f"{name}-{stamp}{suffix}"
         try:
             backup(dest)
+            os.chmod(dest, 0o600)
             _prune(name)
             written[name] = dest
             logger.info("[db_backup] %s -> %s", name, dest)

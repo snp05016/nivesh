@@ -4,6 +4,8 @@ Hermetic: temp SQLite files only, Postgres targets disabled, heartbeat HTTP mock
 """
 import io
 import sqlite3
+import stat
+import sys
 from unittest.mock import MagicMock
 
 import pytest
@@ -112,3 +114,14 @@ def test_scheduler_registers_nightly_backup(monkeypatch):
     monkeypatch.setattr(bs, "run_backup", run)
     job.args[0]()  # sync job: APScheduler runs it in a worker thread (REL-03)
     run.assert_called_once()
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX permission bits")
+def test_backup_dir_and_files_are_owner_only(backup_env):
+    written = bs.run_backup()
+    assert stat.S_IMODE((backup_env / "bk").stat().st_mode) == 0o700
+    assert stat.S_IMODE(written["stockapp"].stat().st_mode) == 0o600
+
+
+def test_libpq_dsn_strips_driver_and_password():
+    assert bs.libpq_dsn("postgresql+psycopg2://u:secret@h:5432/db") == ("postgresql://u@h:5432/db", "secret")
