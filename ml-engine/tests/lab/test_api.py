@@ -101,3 +101,31 @@ def test_scenarios_marked_by_data_coverage(client, monkeypatch):
     j = c.get("/lab/v1/scenarios", headers=KEY).json()
     by = {s["id"]: s["data_available"] for s in j["scenarios"]}
     assert by and by.get("covid-crash-2020") is True and by.get("gfc-jan-2008-crash") is False
+
+
+def test_event_timeline_flags_shock_without_cause(client, monkeypatch):
+    from datetime import date as _d
+    from lab.data import Bar
+    from tests.lab.synth import make_data, weekdays
+
+    days = weekdays(_d(2021, 1, 4), 120)
+    px = [Bar(d, 100, 101, 99, 100 * (1.001 if i % 2 else 0.999), 1e6) for i, d in enumerate(days)]
+    px[100] = Bar(days[100], 100, 100, 80, 80, 6e6)
+    data = make_data(n=120, SHK=px)
+    monkeypatch.setattr(api, "_market", lambda *a, **k: data)
+    c, _ = client
+    j = c.post("/lab/v1/events/timeline", json={"symbol": "SHK", "start": days[70].isoformat(), "end": days[-1].isoformat()}, headers=KEY).json()
+    kinds = {(i["date"], i["kind"]) for i in j["items"]}
+    assert (days[100].isoformat(), "price_anomaly") in kinds and (days[100].isoformat(), "volume_anomaly") in kinds
+    assert "not inferred" in j["note"]
+
+
+def test_news_only_up_to_clock(client):
+    from lab.data import NewsItem
+
+    c, data = client
+    cal = data.calendar()
+    data.news = [NewsItem(None, cal[1], "early", "t"), NewsItem(None, cal[10], "late", "t")]
+    data.__post_init__()
+    j = c.post("/lab/v1/sim/state", json=body(data, [{"type": "advance", "days": 2}]), headers=KEY).json()
+    assert [n["title"] for n in j["news"]] == ["early"]

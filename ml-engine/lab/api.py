@@ -19,6 +19,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from research.api import require_key
 
 from . import autopsy as ap
+from . import events as evs
 from . import hypothesis as hy
 from .featurelang import FDLError, compile_program, panel_schema
 from .data import MarketData, PITView
@@ -151,6 +152,8 @@ def _session_payload(body: SessionIn, md: MarketData, sim: Sim) -> dict:
     out = {
         "state": sim.state(), "performance": performance(sim), "watchlist": _watchlist(sim),
         "provenance": md.provenance, "benchmark": md.benchmark,
+        "news": [{"date": n.published.isoformat(), "symbol": n.symbol, "title": n.title, "source": n.source, "url": n.url}
+                 for n in reversed(sim.view().news(limit=20))],
     }
     return _alias_json(body.config, out)
 
@@ -310,3 +313,21 @@ def features_compile(body: ProgramIn) -> dict:
         return {"ok": False, "error": str(e), "line": e.line, "col": e.col}
     return {"ok": True, "fingerprint": prog.fingerprint, "nodes": len(prog.nodes),
             "outputs": [{"name": n, "lineage": sorted(prog.lineage(n)), "warmup_bars": prog.warmup(n), "availability": prog.availability(n)} for n in prog.outputs]}
+
+
+class TimelineIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    symbol: str = Field(max_length=32)
+    start: date
+    end: date
+
+
+@router.post("/events/timeline")
+def events_timeline(body: TimelineIn) -> dict:
+    """Price/volume anomalies, corporate actions and sourced events for one stock, labelled by evidence type."""
+    if body.end <= body.start or (body.end - body.start).days > 366 * 3:
+        raise HTTPException(422, "window must be positive and at most three years")
+    md = _market(body.start, body.end, (body.symbol,), _source())
+    if body.symbol not in md.bars:
+        raise HTTPException(404, "no data for that symbol in this window")
+    return {**evs.timeline(md, body.symbol, body.start, body.end), "provenance": md.provenance}

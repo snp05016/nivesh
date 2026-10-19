@@ -15,7 +15,12 @@ import pandas as pd
 
 from research.marketdata import store
 
-from .data import Bar, CorporateAction, MarketData
+import json
+from pathlib import Path
+
+from .data import Bar, CorporateAction, MarketData, NewsItem
+
+SCENARIOS = Path(__file__).with_name("scenarios.json")
 
 SPLIT_LIKE = 0.8  # factor below this is treated as a share-count change rather than a cash payout
 
@@ -84,6 +89,7 @@ def load_market(start: date, end: date, symbols: list[str] | None = None, source
     md = panel_to_market(panel, symbols, index, used)
     if used == "local_csv":
         md.actions = {}  # prices are already adjusted; applying events again would double count
+    md.news = scenario_news(lo.date(), end, set(md.bars))
     md.provenance = {
         "source": used,
         "warnings": list(DEV_WARNINGS) if used == "local_csv" else [],
@@ -109,3 +115,18 @@ def liquid_universe(md: MarketData, asof: date, n: int = 30, lookback: int = 60)
             vals = sorted(b.close * b.volume for b in h)
             scores.append((vals[len(vals) // 2], s))
     return [s for _, s in sorted(scores, reverse=True)[:n]]
+
+
+def scenario_news(start: date, end: date, symbols: set[str]) -> list[NewsItem]:
+    """Dated, sourced events from the curated scenarios, as news items. Market-wide when not tied to a symbol."""
+    if not SCENARIOS.exists():
+        return []
+    out = []
+    for sc in json.loads(SCENARIOS.read_text()).get("scenarios", []):
+        hint = [s for s in sc.get("universe_hint", []) if s in symbols]
+        for ev in sc.get("timeline", []):
+            d = date.fromisoformat(ev["date"])
+            if start <= d <= end:
+                sym = hint[0] if len(hint) == 1 and hint[0] in ev.get("event", "") else None
+                out.append(NewsItem(sym, d, ev.get("event", ""), "curated timeline", ev.get("source_url", "")))
+    return out
