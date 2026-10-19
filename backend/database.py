@@ -22,7 +22,7 @@ from sqlalchemy import (
     create_engine, event, text,
 )
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session, sessionmaker, with_loader_criteria
 
 # ---------------------------------------------------------------------------
 # Environment-aware engine — SQLite locally, PostgreSQL on DigitalOcean
@@ -125,6 +125,27 @@ from models.db_models import (  # noqa: E402
     NotificationErrorLog, AdvisorBiography,
     TextAdvisoryInsight, IdeasErrorLog, PortfolioTransaction,
 )
+
+@event.listens_for(Session, "do_orm_execute")
+def _portfolio_eq_only(state) -> None:
+    """Hide mutual-fund rows from ORM reads of Portfolio.
+
+    MF rows (ticker = ISIN) are invisible to ORM SELECTs unless the statement opts
+    in with execution_options(include_mf=True). Only the allowlisted money/ledger
+    modules may opt in (tests/test_mf_isolation.py enforces it). Core table selects,
+    text() and bulk UPDATE/DELETE are unaffected, so erasure and the privacy export
+    still see every row.
+    """
+    if (
+        state.is_select
+        and not state.is_column_load
+        and not state.is_relationship_load
+        and not state.execution_options.get("include_mf", False)
+    ):
+        state.statement = state.statement.options(
+            with_loader_criteria(Portfolio, Portfolio.asset_class == "EQ", include_aliases=True)
+        )
+
 
 # ---------------------------------------------------------------------------
 # Telemetry error-log helpers (GH-610: moved here from models/db_models.py)

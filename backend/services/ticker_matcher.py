@@ -59,7 +59,8 @@ def _load_db_tickers(db_path: str) -> dict[str, str]:
         # portfolio has both ticker and company_name
         cur.execute(
             "SELECT DISTINCT ticker, company_name FROM portfolio "
-            "WHERE ticker IS NOT NULL AND ticker != ''"
+            "WHERE ticker IS NOT NULL AND ticker != '' "
+            "AND COALESCE(asset_class, 'EQ') = 'EQ'"
         )
         for ticker, company_name in cur.fetchall():
             ticker = ticker.strip().upper()
