@@ -529,7 +529,7 @@ struct VideoCard: View {
         }
         .buttonStyle(EKPressStyle())
         .sheet(isPresented: $showPlayer) {
-            if let url = URL(string: video.videoUrl) {
+            if let url = SafeURL.web(video.videoUrl) {
                 SafariSheetView(url: url)
             }
         }
@@ -660,7 +660,7 @@ struct EditorialRow: View {
                 .padding(.top, Theme.Spacing.standard)
                 .transition(.opacity.combined(with: .move(edge: .top)))
                 .sheet(isPresented: $showSafari) {
-                    if let url = URL(string: article.articleUrl) {
+                    if let url = SafeURL.web(article.articleUrl) {
                         SafariSheetView(url: url)
                     }
                 }

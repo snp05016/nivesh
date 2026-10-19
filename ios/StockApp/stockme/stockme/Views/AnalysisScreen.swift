@@ -1373,7 +1373,7 @@ struct NewsReaderView: View {
                         }
 
                         Group {
-                            if let url = URL(string: item.link) {
+                            if let url = SafeURL.web(item.link) {
                                 Link(destination: url) {
                                     HStack {
                                         Text("READ FULL STORY ON \(item.publisher.uppercased())")

@@ -128,7 +128,7 @@ struct YTSErrorView: View {
                 .multilineTextAlignment(.center)
             Button("Open on YouTube") {
                 HapticManager.selection()
-                if let url = URL(string: video.videoUrl) { UIApplication.shared.open(url) }
+                SafeURL.open(video.videoUrl)
             }
             .font(Theme.officialStampFont(size: 11, relativeTo: .caption))
             .foregroundStyle(Theme.securityGold)
@@ -374,7 +374,7 @@ struct YTSWatchButton: View {
     var body: some View {
         Button(action: {
             HapticManager.selection()
-            if let url = URL(string: video.videoUrl) { UIApplication.shared.open(url) }
+            SafeURL.open(video.videoUrl)
         }) {
             HStack(spacing: Theme.Spacing.small) {
                 Image(systemName: "play.fill")

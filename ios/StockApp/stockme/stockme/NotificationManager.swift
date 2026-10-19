@@ -101,7 +101,7 @@ final class NotificationManager: NSObject, ObservableObject, UNUserNotificationC
     func handleDeviceToken(_ token: Data) {
         let tokenString = token.map { String(format: "%02x", $0) }.joined()
         self.deviceToken = tokenString
-        os_log(.info, "[Nivesh/APNs] Token received (...%{public}@)", String(tokenString.suffix(6)))
+        os_log(.info, "[Nivesh/APNs] Token received")
 
         // Kept so a sign-in after launch can still bind it (AuthManager -> syncTokenIfLoggedIn).
         UserDefaults.standard.set(tokenString, forKey: "apns_device_token")

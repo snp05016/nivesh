@@ -34,7 +34,7 @@ struct SPNewsCardView: View {
     let article: NewsItem
 
     var body: some View {
-        Link(destination: URL(string: article.link) ?? URL(string: "https://www.google.com")!) {
+        Button(action: { HapticManager.selection(); SafeURL.open(article.link) }) {
             HStack(alignment: .top, spacing: Theme.Spacing.card) {
                 if let urlStr = article.imageUrl, let url = URL(string: urlStr) {
                     AsyncImage(url: url) { image in
@@ -75,6 +75,5 @@ struct SPNewsCardView: View {
             .banknoteCard()
         }
         .buttonStyle(EKPressStyle())
-        .simultaneousGesture(TapGesture().onEnded { HapticManager.selection() })
     }
 }

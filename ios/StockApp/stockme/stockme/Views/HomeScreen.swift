@@ -2103,7 +2103,7 @@ struct NewsDetailSheet: View {
             }
         }
         .sheet(isPresented: $showSafari) {
-            if let url = URL(string: article.articleUrl) {
+            if let url = SafeURL.web(article.articleUrl) {
                 SafariSheetView(url: url)
             }
         }

@@ -74,7 +74,7 @@ final class GlobalErrorDiagnoser: ObservableObject {
         ║ Raw: \(rawError.prefix(500))
         ╚══════════════════════════════════════════════════════════
         """
-        os_log(.error, "%{public}@", log)
+        os_log(.error, "%{private}@", log)
         print(log)
         // SILENT-12: operators see client failures too (anonymised, capped per session).
         NetworkManager.shared.reportClientError(

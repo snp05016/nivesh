@@ -252,14 +252,9 @@ class NetworkManager: ObservableObject {
 
     /// Generates a unique correlation ID for every outgoing request.
     /// Format: ``nivesh_ios_{subsystem}_{uuid_short}``
-    /// Logged to both os_log and print() for Xcode console visibility.
     func generateCorrelationID(subsystem: String) -> String {
         let short = UUID().uuidString.prefix(8)
-        let corrId = "nivesh_ios_\(subsystem)_\(short)"
-        let logMsg = "[Nivesh] CorrelationID: \(corrId)"
-        os_log(.info, "%{public}@", logMsg)
-        print(logMsg)
-        return corrId
+        return "nivesh_ios_\(subsystem)_\(short)"
     }
 
     /// SILENT-12: retries a GET once, after 0.5 s, on a transient transport error

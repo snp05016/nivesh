@@ -37,6 +37,12 @@ gate user-id-fallback 'userId \?\? 1([^0-9.]|$)'
 # status check); URLSession.shared skips all of that (IOSCORE-27).
 gate raw-urlsession 'URLSession\.shared' '^[^:]*/NetworkManager[^/:]*\.swift:'
 
+# Response bodies, JSON fragments and push tokens never go to the device log as public (IOSCORE-34).
+gate public-log-payload 'JSON prefix|Device token: \\\(|%\{public\}@.*[Tt]oken|%\{public\}@", *(raw|body|json|log)'
+
+# Backend-supplied links open only through SafeURL (https only), never directly (IOSCORE-33).
+gate raw-url-open 'UIApplication\.shared\.open\(' '/Utilities/SafeURL\.swift:'
+
 # Back-to-back selection haptics (same line or adjacent lines) left by a non-idempotent codemod (IOSUI-31).
 haptic_dups=$(find "$SRC" -name '*.swift' -exec perl -0777 -ne \
   'print "$ARGV\n" if /HapticManager\.selection\(\);?[ \t]*(\n[ \t]*)?HapticManager\.selection\(\)/' {} +)

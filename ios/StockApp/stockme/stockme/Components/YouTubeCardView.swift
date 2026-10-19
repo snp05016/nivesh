@@ -10,9 +10,7 @@ struct YouTubeCardView: View {
 
     var body: some View {
         Button(action: { HapticManager.selection()
-            if let url = URL(string: video.videoUrl) {
-                UIApplication.shared.open(url)
-            }
+            SafeURL.open(video.videoUrl)
         }) {
             let thumbW = UIScreen.main.bounds.width * 0.38
             let thumbH = thumbW * 9.0 / 16.0
@@ -164,9 +162,7 @@ struct YouTubeCompactCard: View {
 
     var body: some View {
         Button(action: { HapticManager.selection()
-            if let url = URL(string: video.videoUrl) {
-                UIApplication.shared.open(url)
-            }
+            SafeURL.open(video.videoUrl)
         }) {
             VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                 // Thumbnail

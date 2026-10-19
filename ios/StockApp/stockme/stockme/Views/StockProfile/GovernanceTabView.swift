@@ -500,9 +500,7 @@ struct GovernanceCompactCardView: View {
         .banknoteCard()
         .ekPress()
         .onTapGesture {
-            if let url = URL(string: card.sourceUrl) {
-                UIApplication.shared.open(url)
-            }
+            SafeURL.open(card.sourceUrl)
         }
     }
 
