@@ -136,7 +136,7 @@ struct ContentView: View {
                 .tag(1)
 
             ExpertNetworkView()
-                .tabItem { Label("Ideas", systemImage: "lightbulb.fill") }
+                .tabItem { Label("Experts", systemImage: "person.2.fill") }
                 .tag(2)
 
             NewsMultimediaView()
@@ -402,7 +402,7 @@ enum MarketSection: String, Hashable, CaseIterable {
         switch self {
         case .earnings:  return "YoY growth tracking, earnings calendar, beat/miss analysis and post-result movers"
         case .technical: return "Moving-average crossover signals, sector moves, top gainers/losers and most-active stocks"
-        case .screener:  return "Search any NSE or BSE stock by name or ticker, preset screens, quick compare"
+        case .screener:  return "Search any NSE or BSE stock by name or ticker, preset screens"
         case .alerts:    return "Target price triggers and surveillance flags for your entire watchlist"
         case .strategy:  return "Backtest pre-built and custom trading strategies against historical data"
         case .nl_screener: return "Search stocks using natural language queries powered by AI"

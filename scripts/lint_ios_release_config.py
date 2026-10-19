@@ -111,7 +111,33 @@ def check_export_compliance(info, sources):
     return []
 
 
-CHECKS = [check_purpose_strings, check_push_entitlement, check_privacy_manifest, check_export_compliance]
+def check_iphone_portrait_only(info, sources):
+    """Layouts size from UIScreen.main.bounds, which is only the window size on a
+    full-screen iPhone in portrait (UX-26). Re-adding iPad, Vision or landscape
+    needs adaptive layouts first."""
+    problems = []
+    rel = INFO_PLIST.relative_to(ROOT)
+    if info.get("UISupportedInterfaceOrientations~iphone") != ["UIInterfaceOrientationPortrait"]:
+        problems.append(f"{rel}: UISupportedInterfaceOrientations~iphone must be portrait only")
+    if "UISupportedInterfaceOrientations~ipad" in info:
+        problems.append(f"{rel}: the app is iPhone-only; remove UISupportedInterfaceOrientations~ipad")
+    blocks = re.findall(r"buildSettings = \{(.*?)\n\t\t\t\};", PBXPROJ.read_text(encoding="utf-8"), re.S)
+    for block in blocks:
+        if not re.search(rf"PRODUCT_BUNDLE_IDENTIFIER = {re.escape(APP_BUNDLE_ID)}(?:Tests|UITests)?;", block):
+            continue
+        if not re.search(r"TARGETED_DEVICE_FAMILY = 1;", block):
+            problems.append(f"{PBXPROJ.relative_to(ROOT)}: a stockme build configuration "
+                            "sets TARGETED_DEVICE_FAMILY other than 1 (iPhone only)")
+            break
+        if re.search(r"SUPPORTED_PLATFORMS = [^;]*xros", block):
+            problems.append(f"{PBXPROJ.relative_to(ROOT)}: a stockme build configuration lists visionOS "
+                            "in SUPPORTED_PLATFORMS, but UIScreen.main does not exist there")
+            break
+    return problems
+
+
+CHECKS = [check_purpose_strings, check_push_entitlement, check_privacy_manifest, check_export_compliance,
+          check_iphone_portrait_only]
 
 
 def main():

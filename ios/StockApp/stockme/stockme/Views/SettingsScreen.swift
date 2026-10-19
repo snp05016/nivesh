@@ -84,11 +84,11 @@ struct SettingsScreen: View {
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.large)
             .banknoteDialog(
-                "Void All Records?",
+                "Delete all saved reports?",
                 isPresented: $showClearHistoryAlert,
-                message: "This permanently clears all saved analysis reports.",
+                message: "This removes all \(reportManager.savedReports.count) saved analysis reports from this device. This can't be undone.",
                 buttons: [
-                    .init("Void", role: .destructive) { reportManager.savedReports.removeAll() },
+                    .init("Delete", role: .destructive) { reportManager.savedReports.removeAll() },
                     .cancel()
                 ]
             )
@@ -252,14 +252,14 @@ struct SettingsScreen: View {
             }
             .buttonStyle(EKPressStyle())
             Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(height: 0.5)
-            Button {
-                HapticManager.selection()
-                reportManager.savedReports.removeAll()
-            } label: {
-                RowLabel(icon: "brain.head.profile", color: Theme.bearRed, title: "CLEAR ANALYSIS CACHE")
+            // UX-30: saved reports are user data, so deleting them always goes through the confirmation.
+            if !reportManager.savedReports.isEmpty {
+                Button(role: .destructive) { HapticManager.selection(); showClearHistoryAlert = true } label: {
+                    RowLabel(icon: "trash", color: Theme.bearRed, title: "DELETE SAVED REPORTS", tint: Theme.bearRed)
+                }
+                .buttonStyle(EKPressStyle())
+                Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(height: 0.5)
             }
-            .buttonStyle(EKPressStyle())
-            Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(height: 0.5)
             PickerRow(icon: "lock.shield", color: Theme.securityGold, title: "Biometric Lock", selection: $biometricTimeoutRaw, options: BiometricTimeout.allCases.map(\.rawValue),
                       labels: Dictionary(uniqueKeysWithValues: BiometricTimeout.allCases.map { ($0.rawValue, $0.label) }))
             ToggleRow(icon: "eye.slash", color: Theme.inkSecondary, title: "Hide Portfolio Values", isOn: $hidePortfolioValues)
@@ -278,11 +278,6 @@ struct SettingsScreen: View {
             PickerRow(icon: "indianrupeesign", color: Theme.securityGold, title: "Currency Format", selection: $currencyDisplay, options: ["Lakhs/Crores", "Absolute"])
             PickerRow(icon: "arrow.triangle.2.circlepath", color: Theme.inkSecondary, title: "Home Auto-refresh", selection: $homeAutoRefreshSeconds, options: ["0", "30", "60", "120"],
                       labels: ["0": "Off", "30": "30 sec", "60": "1 min", "120": "2 min"])
-            Button(role: .destructive) { HapticManager.selection();  showClearHistoryAlert = true } label: {
-                RowLabel(icon: "trash", color: Theme.bearRed, title: "VOID ALL RECORDS", tint: Theme.bearRed)
-            }
-            .buttonStyle(EKPressStyle())
-            Rectangle().fill(Theme.inkPrimary.opacity(0.06)).frame(height: 0.5)
             Button(role: .destructive) { HapticManager.selection();  authManager.logout() } label: {
                 RowLabel(icon: "door.right.hand.open", color: Theme.bearRed, title: "SIGN OUT", tint: Theme.bearRed)
             }

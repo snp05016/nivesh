@@ -2242,6 +2242,8 @@ extension HomeScreen {
                                 Text("Hi, \(user.displayName)")
                                     .font(.largeTitle.weight(.bold))
                                     .foregroundStyle(Theme.inkPrimary)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.6)
                             }
                             Spacer()
                             if viewModel.morningBriefData != nil {
@@ -2304,6 +2306,17 @@ extension HomeScreen {
                             }
                             .buttonStyle(EKPressStyle())
                             .accessibilityLabel("Glossary")
+                            NavigationLink(destination: AlertsScreen()) {
+                                Image(systemName: "bell.badge")
+                                    .font(.title3.weight(.medium))
+                                    .foregroundStyle(Theme.securityGold)
+                                    .frame(width: 44, height: 44)
+                                    .background(Theme.securityGold.opacity(0.12))
+                                    .clipShape(Circle())
+                                    .overlay(Circle().stroke(Theme.securityGold.opacity(0.3), lineWidth: 0.5))
+                            }
+                            .buttonStyle(EKPressStyle())
+                            .accessibilityLabel("Price alerts")
                             NavigationLink(destination: SettingsScreen()) {
                                 ZStack {
                                     Circle()

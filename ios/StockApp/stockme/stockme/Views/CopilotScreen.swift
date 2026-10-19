@@ -55,7 +55,7 @@ struct CopilotScreen: View {
         Tab 1 - Home: Main dashboard, market indices, morning brief, quick analysis access.
         Tab 2 - Markets: Hub for all analytical tools. Contains sub-sections:
         \(MarketSection.allCases.filter { ReleaseGate.isVisible($0) }.map { "  - \($0.englishTitle): \($0.description)" }.joined(separator: "\n"))
-        Tab 3 - Ideas: Expert stock ideas, curated research, thematic baskets from SEBI-registered advisors.
+        Tab 3 - Experts: Expert stock ideas, curated research, thematic baskets from SEBI-registered advisors.
         Tab 4 - News: Multimedia news feed, articles, real-time financial newswire.
         Tab 5 - Portfolio: Holdings, net worth, daily P&L, transaction history, allocation breakdown, risk analysis, red flags, trade journal, exports (Excel/PDF).
 
@@ -63,7 +63,8 @@ struct CopilotScreen: View {
         - AI Copilot (floating sparkles button): Available everywhere via the gold sparkles icon in bottom-right corner.
         - Stock Analysis: Tap any stock to open its action hub, which runs a Standard, Deep Scan or Extreme Scan AI report, or opens the cached report.
         - Settings (profile avatar in the Home screen header): trading preferences, notifications, AI preferences, theme (dark/light), biometric lock, data & privacy, account.
-        - Calculators (EMI, SIP, Gratuity): Settings > Tools > Calculators.
+        - Calculators (FD, EMI, SIP, Gratuity): Portfolio > Tools card, or Settings > Tools > Calculators.
+        - Price Alerts: bell icon in the Home screen header (also Markets > Alerts); the notification inbox is the tray icon on the Alerts screen and Portfolio > Inbox.
         - Glossary: Tap underlined terms anywhere to see definitions. Full glossary via the book icon in the Home screen header.
         - AI How It Works: Pipeline explainer accessible from the stock action hub info button.
         - Morning Brief: Daily AI-generated portfolio summary card on Home screen.

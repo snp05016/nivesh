@@ -22,11 +22,9 @@ from pathlib import Path
 # File names (not paths) that are intentionally unreferenced. Only shrink this list:
 # a new dead file should be deleted or wired up, not added here.
 ALLOWLIST = {
-    "PortfolioToolsCard.swift",  # host of the calculators, not mounted until WIP-03
     # Unreferenced when this check landed (audit ARCH-20); other audit items decide
     # whether each is wired up or deleted.
     "AppSoundManager.swift",
-    "PremiumUpsellBanner.swift",
     "StockTapActionSheetModifier.swift",
     "UniversalSearchViewModel.swift",
     "UniversalSearchView.swift",

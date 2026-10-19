@@ -222,6 +222,15 @@ struct AlertsScreen: View {
             message: viewModel.actionError,
             buttons: [.init("OK")]
         )
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                NavigationLink(destination: NotificationInboxView()) {
+                    Image(systemName: "tray")
+                        .foregroundStyle(Theme.securityGold)
+                }
+                .accessibilityLabel("Notification inbox")
+            }
+        }
         .sheet(isPresented: $showAddAlert) {
             AddAlertSheet(authManager: authManager) {
                 if let user = authManager.currentUser {
