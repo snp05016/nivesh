@@ -1922,3 +1922,14 @@ class SchedulerJobStatus(Base):
     last_error: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     last_result_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_utcnow)
+
+
+class FeatureFlag(Base):
+    """Admin override of a registered feature flag (services/feature_flags.py)."""
+    __tablename__ = "feature_flags"
+
+    key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
+    # Acting admin's users.id. No FK on purpose, so it needs no erasure-policy entry.
+    updated_by: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_utcnow)
