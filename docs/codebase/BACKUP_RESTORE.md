@@ -84,3 +84,16 @@ Never drill against the live files, and never start a second backend on a restor
 4. Fetch one file back from the off-host copy (`rclone copy remote:nivesh-backups/<file> /tmp/nivesh-drill/`) and repeat step 3 on it.
 5. Confirm the healthchecks.io check shows a ping from the last night.
 6. Delete `/tmp/nivesh-drill` and record the date, file and result in the ops log.
+
+## Monthly restore drill
+
+`services/restore_drill.py` runs on day 1 of every month at 04:00 IST (scheduler job `restore_drill`) and by hand with `../venv/bin/python scripts/restore_drill.py [--backup PATH]`. It takes the newest `stockapp-*` backup in `BACKUP_DIR` and:
+
+- SQLite: copies it to a temp directory, requires `PRAGMA integrity_check` to return `ok`, and counts rows.
+- PostgreSQL: always runs `pg_restore --list`. When `RESTORE_DRILL_PG_URL` is set, it also restores into that scratch database and counts rows. When it is unset the result is `listed_only`.
+- Compares counts with the live database for `users`, `portfolio`, `portfolio_transactions`, `kyc_consents`, `audit_log_entries`, `research_predictions` and `job_runs`. It fails when a live table with at least 100 rows has under 50% of them in the backup, or when `users` or `portfolio_transactions` is empty in the backup but not live.
+
+**Setting up `RESTORE_DRILL_PG_URL`.** Point it only at an empty scratch database, for example `createdb nivesh_restore_drill`, owned by a role that can restore into it. The database name must contain `drill` or `scratch`, and it must not be any database named in `DATABASE_URL` or another `*_DATABASE_URL` (harvester, RAG). The code refuses both cases before it runs any subprocess, and the restore uses `--clean`, so it would overwrite whatever it is pointed at. Install a `postgresql-client` that matches the server's major version.
+
+**Where results appear.** Each run is a `restore_drill` row on the admin Jobs page, and a failure sends an alert through `OPS_ALERT_WEBHOOK_URL`. The quarterly manual drill above still covers fetching a file back from the off-host copy.
+
