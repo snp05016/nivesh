@@ -6,7 +6,7 @@ function authHeaders(){
   return {'Authorization':'Bearer '+t};
 }
 async function adminFetch(url,opts){
-  const r=await fetch(url,{...(opts||{}),headers:authHeaders()});
+  const r=await fetch(url,{...(opts||{}),headers:{...((opts&&opts.headers)||{}),...authHeaders()}});
   if(r.status===401||r.status===403)sessionStorage.removeItem('nivesh_admin_jwt');
   return r;
 }
@@ -45,11 +45,9 @@ function showPage(name){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
   document.getElementById('page-'+name).classList.add('active');
-  document.querySelectorAll('.nav-tab').forEach(t=>{if(t.textContent.toLowerCase().includes(name.substring(0,4)))t.classList.add('active');});
-  // Fix: match nav tab more precisely
-  const navMap={overview:0,users:1,ai:2,harvesters:3,archive:4,requests:5};
-  const tabs=document.querySelectorAll('.nav-tab');
-  if(navMap[name]!==undefined)tabs[navMap[name]].classList.add('active');
+  document.querySelectorAll('.nav-tab').forEach(t=>{if(t.dataset.arg===name)t.classList.add('active');});
+  const loaders={flags:loadFlags,jobs:loadJobs,audit:()=>loadAudit(false),usage:loadUsage};
+  if(loaders[name])loaders[name]();
 }
 function showUserTab(name){
   currentUserTab=name;
@@ -590,8 +588,89 @@ async function cancelAIMonitorJob(jobId){
   }catch(e){console.warn('Cancel error:',e);}
 }
 
+// ─── Ops pages: flags, jobs, audit, usage ─────────────────────
+const OPS_ERR=(what,status)=>`<tr><td colspan="8" class="empty">Could not load ${esc(what)} (${esc(status)})</td></tr>`;
+function opsRows(tableId,html){document.querySelector('#'+tableId+' tbody').innerHTML=html;}
+
+function flagToggle(f){
+  if(f.description==='unregistered')return '';
+  return `<button class="btn-view" data-action="toggleFlag" data-arg="${esc(f.key)}" data-enabled="${f.enabled?'1':'0'}">Turn ${f.enabled?'OFF':'ON'}</button>`;
+}
+async function loadFlags(){
+  try{
+    const r=await adminFetch('/api/v1/admin/flags');
+    if(!r.ok){opsRows('flags-table',OPS_ERR('flags',r.status));return;}
+    const d=await r.json();
+    opsRows('flags-table',d.flags.map(f=>`<tr>
+      <td style="font-weight:700">${esc(f.key)}</td>
+      <td>${esc(f.description)}</td>
+      <td><span class="badge ${f.enabled?'ok':'hold'}">${f.enabled?'ON':'OFF'}</span></td>
+      <td class="ts">${esc(f.source)}</td>
+      <td class="ts">${esc(f.updated_at?dts(f.updated_at):'-')}</td>
+      <td>${flagToggle(f)}</td>
+    </tr>`).join('')||'<tr><td colspan="6" class="empty">No flags</td></tr>');
+  }catch(e){opsRows('flags-table',OPS_ERR('flags','network'));}
+}
+async function toggleFlag(key,el){
+  const turnOn=el.dataset.enabled!=='1';
+  if(!confirm('Turn '+(turnOn?'ON':'OFF')+' '+key+' for all users?'))return;
+  const msg=document.getElementById('flags-msg');
+  try{
+    const r=await adminFetch('/api/v1/admin/flags/'+encodeURIComponent(key),{
+      method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled:turnOn})});
+    msg.textContent=r.ok?'':'Update failed ('+r.status+')';
+  }catch(e){msg.textContent='Update failed (network)';}
+  loadFlags();
+}
+
+async function loadJobs(){
+  try{
+    const [s,f]=await Promise.all([
+      adminFetch('/api/v1/admin/job-runs/summary?days=7'),
+      adminFetch('/api/v1/admin/job-runs?status=failed&limit=20')]);
+    if(!s.ok)opsRows('jobs-summary',OPS_ERR('jobs',s.status));
+    else{
+      const d=await s.json();
+      document.getElementById('jobs-overall').textContent=d.overall_success_pct==null?'no runs yet':d.overall_success_pct+'% success overall';
+      opsRows('jobs-summary',d.jobs.map(j=>`<tr><td style="font-weight:700">${esc(j.job_name)}</td><td>${fmt(j.runs)}</td><td>${fmt(j.failures)}</td><td>${esc(j.success_pct)}%</td><td>${stbadge(j.last_status==='ok'?'completed':j.last_status==='failed'?'error':j.last_status)}</td><td class="ts">${esc(dts(j.last_started_at))}</td><td class="ts">${esc((j.last_error||'').slice(0,120))}</td></tr>`).join('')||'<tr><td colspan="7" class="empty">No finished runs</td></tr>');
+    }
+    if(!f.ok)opsRows('jobs-failures',OPS_ERR('failures',f.status));
+    else{
+      const d=await f.json();
+      opsRows('jobs-failures',d.runs.map(r=>`<tr><td class="ts">${esc(dts(r.started_at))}</td><td style="font-weight:700">${esc(r.job_name)}</td><td class="ts">${r.duration_ms==null?'-':fmt(r.duration_ms)+' ms'}</td><td class="ts">${esc((r.error||'').slice(0,200))}</td></tr>`).join('')||'<tr><td colspan="4" class="empty">No failed runs</td></tr>');
+    }
+  }catch(e){opsRows('jobs-summary',OPS_ERR('jobs','network'));}
+}
+
+let auditNext=null;
+async function loadAudit(older){
+  const url='/api/v1/admin/audit?action_prefix=admin_&limit=50'+(older&&auditNext?'&before_id='+auditNext:'');
+  try{
+    const r=await adminFetch(url);
+    if(!r.ok){opsRows('audit-table',OPS_ERR('audit log',r.status));return;}
+    const d=await r.json();
+    auditNext=d.next_before_id;
+    const rows=d.entries.map(e=>`<tr><td class="ts">${esc(dts(e.created_at))}</td><td class="ts">${esc(e.actor_user_id)}</td><td style="font-weight:700">${esc(e.action)}</td><td class="ts">${esc(JSON.stringify(Object.fromEntries(Object.entries(e.details||{}).filter(([k])=>k!=='_ctx'))))}</td><td class="ts">${esc(e.ip_address||'-')}</td></tr>`).join('');
+    const body=document.querySelector('#audit-table tbody');
+    if(older)body.insertAdjacentHTML('beforeend',rows);
+    else body.innerHTML=rows||'<tr><td colspan="5" class="empty">No entries</td></tr>';
+  }catch(e){opsRows('audit-table',OPS_ERR('audit log','network'));}
+}
+function loadAuditOlder(){loadAudit(true);}
+
+async function loadUsage(){
+  try{
+    const r=await adminFetch('/api/v1/admin/analytics/daily?days=14');
+    if(!r.ok){opsRows('usage-table',OPS_ERR('usage',r.status));return;}
+    const d=await r.json();
+    document.getElementById('usage-active-users').textContent=fmt(d.active_users);
+    opsRows('usage-table',d.rows.map(x=>`<tr><td class="ts">${esc(x.date)}</td><td style="font-weight:700">${esc(x.event_name)}</td><td>${fmt(x.events)}</td><td>${fmt(x.users)}</td></tr>`).join('')||'<tr><td colspan="4" class="empty">No events yet</td></tr>');
+  }catch(e){opsRows('usage-table',OPS_ERR('usage','network'));}
+}
+
 // ─── Event wiring (no inline handlers: the page CSP forbids inline script) ───
-const actions={refreshAll,showPage,showUserTab,triggerHarvest,setAIMode,cancelAIMonitorJob,toggleDetails:id=>toggleDetails(Number(id))};
+const actions={refreshAll,showPage,showUserTab,triggerHarvest,setAIMode,cancelAIMonitorJob,toggleDetails:id=>toggleDetails(Number(id)),
+  toggleFlag,loadAuditOlder};
 document.addEventListener('click',e=>{
   const el=e.target.closest('[data-action]');
   const fn=el&&actions[el.dataset.action];
