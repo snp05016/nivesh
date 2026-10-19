@@ -73,6 +73,9 @@ struct stockmeApp: App {
     // ── Boot sync gate ───────────────────────────────────────────────────
     @State private var bootTasksComplete = false
 
+    // ── Analytics: the first .active of the process is a cold open, later ones are warm ──
+    @State private var didLogColdOpen = false
+
     private var biometricTimeout: BiometricTimeout {
         BiometricTimeout(rawValue: biometricTimeoutRaw) ?? .immediately
     }
@@ -156,6 +159,8 @@ struct stockmeApp: App {
             }
             .task {
                 await performAsyncBoot()
+                // After the session check, so the server computes analytics_consented for this user.
+                await RemoteFlags.shared.refresh(force: true)
             }
             // Flags load beside boot, not before it: the cached values serve until then.
             .task {
@@ -189,6 +194,8 @@ struct stockmeApp: App {
                 if newUserId != nil {
                     Task { await notificationManager.requestAuthorization() }
                 }
+                // Login or logout changes the caller-specific flags (analytics_consented).
+                Task { await RemoteFlags.shared.refresh(force: true) }
             }
             // Item 5 + 28: Scene phase tracking for timeout-based lock.
             // Only .background (not .inactive) counts as "left the app" —
@@ -199,6 +206,7 @@ struct stockmeApp: App {
                 switch newPhase {
                 case .background:
                     showPrivacyCover = true
+                    Task { await EventLogger.shared.flush() }
                     if biometricsEnabled && authManager.isLoggedIn {
                         lastActiveTimestamp = Date().timeIntervalSince1970
                         wentToBackground = true
@@ -208,6 +216,12 @@ struct stockmeApp: App {
                 case .active:
                     showPrivacyCover = false
                     Task { await FeatureFlags.shared.refresh() }  // throttled to once per 600 s
+                    let launch = didLogColdOpen ? "warm" : "cold"
+                    didLogColdOpen = true
+                    Task {
+                        await RemoteFlags.shared.refresh()  // throttled to once per 300 s
+                        EventLogger.shared.log(.appOpen, ["launch": launch])
+                    }
                     let elapsed = Date().timeIntervalSince1970 - lastActiveTimestamp
                     if wentToBackground && !isAuthenticating
                         && AppLockPolicy.shouldRelock(isLoggedIn: authManager.isLoggedIn, timeout: biometricTimeout, elapsed: elapsed) {
