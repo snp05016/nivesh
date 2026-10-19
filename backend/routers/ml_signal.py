@@ -10,6 +10,8 @@ from fastapi import APIRouter, Depends
 
 from helpers import require_auth
 from schemas.ml_signal import MLSignalResponse
+from services.research import config as research_config
+from services.research.legacy_gate import retired_ml_signal
 
 router = APIRouter()
 
@@ -19,7 +21,8 @@ router = APIRouter()
     response_model=MLSignalResponse,
     summary="ML Signal for Stock",
     description="Returns the ML engine prediction signal for a given ticker. "
-    "Proxies to the LightGBM-based ML engine and enriches with reliability metrics.",
+    "Proxies to the LightGBM-based ML engine and enriches with reliability metrics. "
+    "Retired (status 'unavailable') once RESEARCH_LEGACY_RETIRED is set.",
 )
 async def get_stock_ml_signal(symbol: str, user_id: int = Depends(require_auth)):
     """
@@ -32,6 +35,10 @@ async def get_stock_ml_signal(symbol: str, user_id: int = Depends(require_auth))
     Returns:
         Any: The response.
     """
+    if research_config.CONFIG.legacy_retired:
+        # Stage 3 (ML-01): never call ml-engine, never "NEUTRAL".
+        return retired_ml_signal(symbol)
+
     from services.ml_signal_service import get_ml_signal_cached
 
     return await get_ml_signal_cached(symbol)

@@ -1,4 +1,5 @@
 import json
+import logging
 import re
 from typing import List, Dict, Any
 
@@ -8,6 +9,10 @@ from services.llm_utils import deepseek_chat, claude_messages, HAIKU_MODEL
 from services.kyc_consent_service import AI_PROCESSING_CONSENT, has_active_consent
 # Single strip_emoji: the old local copy's U+2000-2BFF range also ate ₹, dashes and bullets.
 from services.harvester_reformatter import strip_emoji
+from repositories import research_repo
+from services.research import config as research_config
+
+logger = logging.getLogger(__name__)
 
 def claude_haiku(messages: List[Dict[str, Any]]) -> str:
     # Anthropic doesn't allow 'system' in the messages array, we have to extract it
@@ -32,7 +37,39 @@ def claude_haiku(messages: List[Dict[str, Any]]) -> str:
     )
     return response.content[0].text
 
-_TICKER_RE = re.compile(r"[A-Z0-9][A-Z0-9&.\-]{0,29}")
+# Research symbol rule (spec 9.1) after normalize_symbol strips .NS/.BO.
+_SYMBOL_RE = re.compile(r"[A-Z0-9&-]{1,20}")
+
+
+def _stock_report_reply(symbol: str) -> str:
+    """DEEP_ANALYSIS reply (spec 9.5, REL-22): a fixed sentence plus the deep link.
+
+    No analysis runs and no LLM is called here. In effective mode ``on`` the
+    stored narrative summary of the latest report (or the ``tf-1`` template
+    summary, rendered locally with the LLM disallowed) is prepended.
+    """
+    reply = f"See the stock report for {symbol} in Nivesh: nivesh://analyze/{symbol}"
+    if research_config.CONFIG.mode != "on":
+        return reply
+    try:
+        with get_session() as db:
+            row = research_repo.latest_report(db, symbol)
+            if row is None:
+                return reply
+            narrative = row.narrative_json
+            report = row.report_json
+        if not narrative:
+            from services.research import formatter  # lazy: keeps the LLM client out of the chat import path
+
+            narrative, _attempts, _failures = formatter.generate_narrative(
+                report, known_symbols=(), company_names=(), allow_llm=False, calls_remaining=0,
+            )
+        summary = str((narrative or {}).get("summary") or "").strip()
+    except Exception:
+        logger.exception("copilot stock report summary failed for %s", symbol)
+        return reply
+    return f"{summary}\n\n{reply}" if summary else reply
+
 
 def _manage_tokens(conversation_history: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Summarize conversation if it gets too long, keeping system prompts and last 3 messages raw."""
@@ -118,16 +155,16 @@ User Message: {user_message}
         ticker_prompt = f"Extract the stock ticker symbol from this message and context. Context: {context_str}. Message: {user_message}. Return ONLY the ticker symbol (e.g. RELIANCE, HDFCBANK). If none found, reply NONE."
         ticker = deepseek_chat([{"role": "user", "content": ticker_prompt}]).strip().upper()
         
-        if ticker == "NONE" or not _TICKER_RE.fullmatch(ticker):
+        symbol = research_repo.normalize_symbol(ticker)
+        if ticker == "NONE" or not _SYMBOL_RE.fullmatch(symbol):
             messages = managed_history + [{"role": "user", "content": user_message}]
             reply = claude_haiku(messages)
         else:
-            # Never run (or relay) an analysis inside chat: point the user at the
-            # analysis screen, which runs as a tracked, capped background job.
-            reply = (f"Open {ticker} from Search and run an analysis there "
-                     f"to see the full report and its progress.")
-            context_cards = [{"type": "open_analysis", "ticker": ticker}]
-                
+            # Never run (or relay) an analysis inside chat: no legacy fork, child
+            # process or report LLM call; point at the stock report screen.
+            reply = _stock_report_reply(symbol)
+            context_cards = [{"type": "open_analysis", "ticker": symbol}]
+
     elif "NAVIGATION" in intent:
         nav_context = current_context.get("app_navigation", "")
         nav_prompt = f"""You are a Nivesh app guide. Use ONLY the following app navigation map to answer the user's question about where to find features. Be concise and specific — tell them which tab, section, and how to reach it. If the feature they ask about is not listed, say so politely and suggest related features.
