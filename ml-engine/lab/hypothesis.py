@@ -33,6 +33,25 @@ base_lowvol_20 = -std(log(px_idx / lag(px_idx, 1)), 20)
 base_liq_60 = mean(turnover_inr, 60)
 """
 BASE_NAMES = ["base_mom_20", "base_rev_5", "base_lowvol_20"]
+
+# Starting points drawn from published anomalies. Each is a hypothesis to test on Indian data,
+# not a claim that it works here.
+TEMPLATES = [
+    {"id": "momentum_12_1", "title": "12-1 month momentum", "score": "mom_12_1", "horizon": 20,
+     "program": "mom_12_1 = lag(px_idx, 21) / lag(px_idx, 252) - 1", "reference": "Jegadeesh & Titman (1993)"},
+    {"id": "short_reversal", "title": "One-week reversal", "score": "rev_5", "horizon": 5,
+     "program": "rev_5 = -(px_idx / lag(px_idx, 5) - 1)", "reference": "Jegadeesh (1990); Lehmann (1990)"},
+    {"id": "low_volatility", "title": "Low volatility", "score": "lowvol_60", "horizon": 20,
+     "program": "lowvol_60 = -std(log(px_idx / lag(px_idx, 1)), 60)", "reference": "Ang, Hodrick, Xing & Zhang (2006)"},
+    {"id": "near_52w_high", "title": "Nearness to 52-week high", "score": "near_high", "horizon": 20,
+     "program": "near_high = px_idx / max(px_idx, 252)", "reference": "George & Hwang (2004)"},
+    {"id": "amihud_illiquidity", "title": "Amihud illiquidity", "score": "illiq_20", "horizon": 20,
+     "program": "illiq_20 = mean(abs(px_idx / lag(px_idx, 1) - 1) / turnover_inr, 20) * 1000000000", "reference": "Amihud (2002)"},
+    {"id": "abnormal_volume", "title": "High-volume return premium", "score": "abn_vol", "horizon": 20,
+     "program": "abn_vol = volume / mean(volume, 60)", "reference": "Gervais, Kaniel & Mingelgrin (2001)"},
+    {"id": "max_effect", "title": "Lottery-like stocks (MAX)", "score": "neg_max", "horizon": 20,
+     "program": "neg_max = -max(px_idx / lag(px_idx, 1) - 1, 20)", "reference": "Bali, Cakici & Whitelaw (2011)"},
+]
 SLIPPAGE_BPS_PER_SIDE = 10.0  # assumption for liquid large caps; shown in the report
 
 
@@ -125,7 +144,9 @@ def _permutation_p(df: pd.DataFrame, spec: Spec, observed: float) -> float:
     groups = [(g["score"].to_numpy() * spec.direction, g["fwd_x"].rank().to_numpy()) for g in groups if len(g) >= spec.min_names]
     if not groups:
         return math.nan
-    ranked = [(st.rankdata(s), y) for s, y in groups]
+    ranked = [(st.rankdata(s), y) for s, y in groups if np.ptp(s) > 0 and np.ptp(y) > 0]
+    if not ranked:
+        return math.nan
     null = np.empty(spec.permutations)
     for i in range(spec.permutations):
         null[i] = np.mean([np.corrcoef(rng.permutation(s), y)[0, 1] for s, y in ranked])
@@ -178,6 +199,8 @@ def run_experiment(spec: Spec, panel: pd.DataFrame, provenance: dict | None = No
         "holdout_window": [str(holdout_from.date()), spec.end.isoformat()],
         "costs": {"round_trip": round(rt_cost, 5), "slippage_bps_per_side": SLIPPAGE_BPS_PER_SIDE, "note": "Statutory charges from the dated schedule plus an assumed slippage."},
         "result": summ, "provenance": provenance,
+        "series": [{"date": str(pd.Timestamp(d).date()), "ic": round(float(i), 4), "top_net": round(float(n), 5)}
+                   for d, i, n in zip(ev.get("date", []), ev.get("ic", []), ev.get("top_net", []))],
     }
     if summ.get("periods", 0) < 12:
         report["status"] = "insufficient_data"
@@ -338,3 +361,41 @@ def _r(x, nd: int = 4):
 
 def _ci(d: dict) -> list:
     return [_r(d.get("lo")), _r(d.get("hi"))]
+
+
+def compare(specs: list[Spec], panel: pd.DataFrame, provenance: dict | None = None) -> dict:
+    """Run several candidate hypotheses on the same window and correct for having tried them all.
+
+    Reports each candidate, Holm-adjusted permutation p-values, Romano-Wolf adjusted p-values on
+    net top-quantile excess returns, and the probability of backtest overfitting (CSCV) of
+    picking the in-sample best. Rejects the "winner" if it does not survive the corrections.
+    """
+    if not 2 <= len(specs) <= 12:
+        raise ValueError("compare between 2 and 12 candidates")
+    names = [s.score for s in specs]
+    if len(set(names)) != len(names):
+        raise ValueError("candidate scores must have distinct names")
+    reports = [run_experiment(s, panel, provenance) for s in specs]
+    bad = [r for r in reports if r["status"] != "ok"]
+    if bad:
+        return {"status": "invalid", "reports": reports}
+    frames = [pd.Series({x["date"]: x["top_net"] for x in r["series"]}, name=n) for r, n in zip(reports, names)]
+    m = pd.concat(frames, axis=1, join="inner").dropna()
+    perm = np.array([r.get("permutation_p") if r.get("permutation_p") is not None else 1.0 for r in reports])
+    holm_p, _ = ls.holm(perm)
+    rw = ls.romano_wolf_stepdown(m.to_numpy(), seed=specs[0].seed) if len(m) >= 10 else np.full(len(names), np.nan)
+    blocks = min(16, (len(m) // 4) * 2)
+    pbo = rm.pbo_cscv(m.to_numpy(), s=blocks) if blocks >= 4 else math.nan
+    best = int(np.argmax(m.mean().to_numpy())) if len(m) else 0
+    survives = reports[best]["verdict"]["label"] == "supported" and holm_p[best] < 0.05 and (np.isnan(rw[best]) or rw[best] < 0.05)
+    rows = [{"name": n, "verdict": r["verdict"]["label"], "mean_ic": r["result"].get("mean_ic"),
+             "net_per_period": r["result"].get("top_excess_net_per_period"), "permutation_p": r.get("permutation_p"),
+             "holm_p": _r(holm_p[i]), "romano_wolf_p": _r(rw[i])} for i, (n, r) in enumerate(zip(names, reports))]
+    return {
+        "status": "ok", "periods": int(len(m)), "candidates": rows, "pbo": _r(pbo),
+        "in_sample_best": names[best], "best_survives_corrections": bool(survives),
+        "text": (f"{names[best]} looked best in-sample" + (" and survives multiple-testing corrections." if survives else
+                 " but does not survive the corrections for having tried several candidates.")
+                 + (f" Probability of backtest overfitting: {pbo:.0%}." if not math.isnan(pbo) else "")),
+        "reports": reports,
+    }

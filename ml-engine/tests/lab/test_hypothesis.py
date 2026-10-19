@@ -15,11 +15,12 @@ def panel(edge: float, n_sym: int = 60, n_days: int = 700, seed: int = 0) -> pd.
     eps = rng.standard_normal((n_days, n_sym)) * 0.015
     r = np.vstack([np.zeros((2, n_sym)), edge * z[:-2] + eps[2:]])  # z at t moves returns from t+2 (after the entry close)
     px = 100 * np.exp(np.cumsum(r, axis=0))
+    vol = 1e6 * np.exp(0.3 * rng.standard_normal((n_days, n_sym)))
     rows = []
     for j in range(n_sym):
         for i, d in enumerate(dates):
             c = px[i, j]
-            rows.append((d, f"S{j}", f"S{j}", c, c * 1.01, c * 0.99, c, np.nan, 1e6 * (1 + j % 7), c * 1e6, z[i, j], c))
+            rows.append((d, f"S{j}", f"S{j}", c, c * 1.01, c * 0.99, c, np.nan, vol[i, j] * (1 + j % 7), c * vol[i, j], z[i, j], c))
     cols = ["date", "entity_id", "symbol", "open", "high", "low", "close", "prev_close", "volume", "turnover_inr", "trades", "px_idx"]
     return pd.DataFrame(rows, columns=cols)
 
@@ -69,3 +70,23 @@ def test_holdout_untouched_unless_requested():
     assert "holdout" not in run_experiment(spec(), p)
     r = run_experiment(spec(use_holdout=True), p)
     assert r["holdout"]["result"]["periods"] > 0
+
+
+def test_compare_rejects_noise_winner_and_reports_pbo():
+    from lab.hypothesis import compare
+
+    p = panel(edge=0.0, seed=11)
+    cands = [spec(program=f"s{i} = mean(volume, {5 + i}) / mean(volume, 60)", score=f"s{i}") for i in range(4)]
+    r = compare(cands, p)
+    assert r["status"] == "ok" and r["pbo"] is not None
+    assert not r["best_survives_corrections"]
+    assert all(c["holm_p"] >= c["permutation_p"] for c in r["candidates"])
+
+
+def test_templates_compile():
+    from lab.featurelang import compile_program, panel_schema
+    from lab.hypothesis import TEMPLATES
+
+    for t in TEMPLATES:
+        prog = compile_program(t["program"], panel_schema())
+        assert t["score"] in prog.outputs

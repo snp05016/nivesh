@@ -8,7 +8,7 @@ from __future__ import annotations
 import json
 import os
 import string
-from datetime import date
+from datetime import date, timedelta
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Literal
@@ -19,8 +19,10 @@ from pydantic import BaseModel, ConfigDict, Field
 from research.api import require_key
 
 from . import autopsy as ap
+from . import hypothesis as hy
+from .featurelang import FDLError, compile_program, panel_schema
 from .data import MarketData, PITView
-from .loaders import liquid_universe, load_market
+from .loaders import DEV_WARNINGS, liquid_universe, load_market
 from .metrics import performance
 from .sim import ActionError, Sim, SimConfig, replay
 
@@ -46,6 +48,9 @@ class SimConfigIn(BaseModel):
             raise HTTPException(422, "end must be after start")
         if (self.end - self.start).days > 366 * 5:
             raise HTTPException(422, "a simulation can span at most five years")
+        newest = date.today() - timedelta(days=min_data_age_days())
+        if self.end > newest:
+            raise HTTPException(422, f"simulations must end on or before {newest.isoformat()}: price data younger than {min_data_age_days()} days is not used for simulation")
         return SimConfig(**self.model_dump())
 
 
@@ -65,6 +70,14 @@ class HistoryIn(BaseModel):
     asof: date
     symbol: str
     bars: int = Field(250, ge=5, le=1500)
+
+
+def min_data_age_days() -> int:
+    """Embargo on recent prices in simulations (SEBI price-data-for-education lag; see docs/platform/research/verified-facts.md)."""
+    try:
+        return max(0, int(os.environ.get("LAB_MIN_DATA_AGE_DAYS", "30")))
+    except ValueError:
+        return 30
 
 
 def _source() -> Literal["auto", "store", "local_csv"]:
@@ -193,3 +206,96 @@ def universe(start: date, n: int = Query(20, ge=1, le=30)) -> dict:
     """The n most liquid stocks on `start`, chosen with data available on that date."""
     md = _market(start, start, (), _source())
     return {"asof": start.isoformat(), "symbols": liquid_universe(md, start, n), "provenance": md.provenance}
+
+
+# ---------------------------------------------------------------- research lab
+class SpecIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    question: str = Field("", max_length=2000)
+    program: str = Field(max_length=20_000)
+    score: str = Field(max_length=64)
+    start: date
+    end: date
+    horizon: int = 5
+    direction: Literal[1, -1] = 1
+    universe_n: int = Field(50, ge=5, le=500)
+    min_names: int = Field(15, ge=5, le=500)
+    n_quantiles: int = Field(5, ge=2, le=10)
+    filter: str | None = None
+    holdout_months: int = Field(12, ge=0, le=36)
+    use_holdout: bool = False
+    trials_so_far: int = Field(1, ge=1, le=100_000)
+    permutations: int = Field(300, ge=50, le=2000)
+
+    def to_spec(self) -> hy.Spec:
+        return hy.Spec(**self.model_dump())
+
+
+class CandidateIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    program: str = Field(max_length=20_000)
+    score: str = Field(max_length=64)
+
+
+class CompareIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    base: SpecIn
+    candidates: list[CandidateIn] = Field(min_length=2, max_length=12)
+
+
+class ProgramIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    program: str = Field(max_length=20_000)
+
+
+@lru_cache(maxsize=2)
+def _panel(source: str) -> tuple[Any, dict]:
+    from research.marketdata import store
+    import pandas as pd
+
+    p = pd.DataFrame()
+    used = source
+    if source in ("auto", "store"):
+        p, used = store.load_panel(source="store"), "store"
+    if p.empty and source in ("auto", "local_csv"):
+        p, used = store.load_panel(source="local_csv"), "local_csv"
+    if p.empty:
+        raise HTTPException(503, "no market data panel available")
+    return p, {"source": used, "warnings": list(DEV_WARNINGS) if used == "local_csv" else [], "rows": int(len(p)),
+               "first": str(p["date"].min().date()), "last": str(p["date"].max().date())}
+
+
+@router.get("/hypothesis/templates")
+def hypothesis_templates() -> dict:
+    return {"templates": hy.TEMPLATES, "fields": panel_schema(),
+            "unavailable_fields_note": "Delivery quantities, sector labels, fundamentals and earnings revisions are not in the price panel yet; hypotheses that need them cannot be tested until those datasets are ingested."}
+
+
+@router.post("/hypothesis/run")
+def hypothesis_run(body: SpecIn) -> dict:
+    panel, prov = _panel(_source())
+    try:
+        return hy.run_experiment(body.to_spec(), panel, prov)
+    except ValueError as e:
+        raise HTTPException(422, str(e)) from None
+
+
+@router.post("/hypothesis/compare")
+def hypothesis_compare(body: CompareIn) -> dict:
+    panel, prov = _panel(_source())
+    base = body.base.model_dump()
+    specs = [hy.Spec(**{**base, "program": c.program, "score": c.score}) for c in body.candidates]
+    try:
+        return hy.compare(specs, panel, prov)
+    except ValueError as e:
+        raise HTTPException(422, str(e)) from None
+
+
+@router.post("/features/compile")
+def features_compile(body: ProgramIn) -> dict:
+    try:
+        prog = compile_program(body.program, panel_schema())
+    except FDLError as e:
+        return {"ok": False, "error": str(e), "line": e.line, "col": e.col}
+    return {"ok": True, "fingerprint": prog.fingerprint, "nodes": len(prog.nodes),
+            "outputs": [{"name": n, "lineage": sorted(prog.lineage(n)), "warmup_bars": prog.warmup(n), "availability": prog.availability(n)} for n in prog.outputs]}

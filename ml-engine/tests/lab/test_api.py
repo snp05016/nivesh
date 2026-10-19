@@ -66,3 +66,29 @@ def test_autopsy_endpoint(client):
     assert j["trades"][0]["verdict"]["quadrant"] in {"earned", "bad_break", "lucky", "predictable_loss"}
     assert {c["variant"] for c in j["counterfactuals"]} >= {"hold_cash", "half_size", "wait_2_sessions"}
     assert c.post("/lab/v1/sim/autopsy", json={**body(data, acts), "order_id": "o9"}, headers=KEY).status_code in (404, 422)
+
+
+def test_feature_compile_route(client):
+    c, _ = client
+    ok = c.post("/lab/v1/features/compile", json={"program": "a = close / lag(close, 5) - 1\nb = rank(a)"}, headers=KEY).json()
+    assert ok["ok"] and [o["name"] for o in ok["outputs"]] == ["a", "b"]
+    bad = c.post("/lab/v1/features/compile", json={"program": "a = lag(close, 0)"}, headers=KEY).json()
+    assert not bad["ok"] and bad["line"] == 1
+
+
+def test_templates_route(client):
+    c, _ = client
+    j = c.get("/lab/v1/hypothesis/templates", headers=KEY).json()
+    assert len(j["templates"]) >= 5 and "close" in j["fields"]
+
+
+def test_recent_data_embargo(client, monkeypatch):
+    from datetime import date, timedelta
+
+    c, data = client
+    b = body(data)
+    b["config"]["end"] = (date.today() - timedelta(days=5)).isoformat()
+    r = c.post("/lab/v1/sim/state", json=b, headers=KEY)
+    assert r.status_code == 422 and "30 days" in r.json()["detail"]
+    monkeypatch.setenv("LAB_MIN_DATA_AGE_DAYS", "0")
+    assert c.post("/lab/v1/sim/state", json=body(data), headers=KEY).status_code == 200
