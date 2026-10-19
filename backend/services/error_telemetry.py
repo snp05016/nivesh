@@ -180,6 +180,23 @@ def log_diagnostic_error(
 # ---------------------------------------------------------------------------
 
 
+def _scheduled_jobs_block() -> list[str]:
+    """'Scheduled jobs (last 24h)' lines for the digest; UNKNOWN when job_runs cannot be read."""
+    try:
+        from services import job_runs
+
+        summ = job_runs.summary(days=1)
+    except Exception:
+        logging.getLogger("nivesh.telemetry").warning("[DIGEST] job_runs query failed", exc_info=True)
+        return ["", "  Scheduled jobs: UNKNOWN - query failed"]
+    runs = sum(j["runs"] for j in summ["jobs"])
+    failing = sorted((j for j in summ["jobs"] if j["failures"]), key=lambda j: -j["failures"])
+    lines = ["", "  ── Scheduled jobs (last 24h) ──", f"    runs: {runs}, failures: {sum(j['failures'] for j in failing)}"]
+    for j in failing[:10]:
+        lines.append(f"    {j['job_name']}: {j['failures']} failed of {j['runs']}")
+    return lines
+
+
 def generate_daily_digest() -> str:
     """
     Summarize all errors logged in the last 24 hours from market_error_logs.
@@ -273,6 +290,8 @@ def generate_daily_digest() -> str:
             digest_lines.append(f"    {ts}  {r.component}{ticker}: {msg_preview}")
     elif query_ok:
         digest_lines.append("  ✅ No errors logged — clean run!")
+
+    digest_lines.extend(_scheduled_jobs_block())
 
     digest_lines.append("╚══════════════════════════════════════════╝")
 

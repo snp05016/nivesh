@@ -10,12 +10,14 @@ from datetime import datetime, timedelta, timezone
 from core import dashboard_state
 from database import get_session
 from models.db_models import AnalysisJob, NewsArticle, PriceTarget
+from services import job_runs
 
 logger = logging.getLogger(__name__)
 
 NEWS_DAYS = 90
 JOB_PAYLOAD_DAYS = 30
 TRIGGERED_ALERT_DAYS = 90
+JOB_RUNS_DAYS = 90
 TOKEN_LOG_MAX_BYTES = 20 * 1024 * 1024
 _TERMINAL = ("SUCCEEDED", "FAILED", "CANCELLED", "TIMEOUT")
 
@@ -74,6 +76,11 @@ def run_retention() -> dict:
             s.commit()
     except Exception:
         logger.exception("[retention] triggered alert prune failed")
+
+    try:
+        counts["job_runs_deleted"] = job_runs.purge_older_than(JOB_RUNS_DAYS)
+    except Exception:
+        logger.exception("[retention] job_runs prune failed")
 
     try:
         counts["token_log_rotated"] = _rotate_token_log()

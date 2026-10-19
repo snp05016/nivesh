@@ -1910,18 +1910,25 @@ class LlmUsage(Base):
     )
 
 
-class SchedulerJobStatus(Base):
-    """Last run of each scheduled job (SILENT-13). Written by the scheduler worker via
-    core.dashboard_state._dash_update_harvest so every worker's dashboard can read it."""
-    __tablename__ = "scheduler_job_status"
+class JobRun(Base):
+    """One execution of a scheduled job (services/job_runs.tracked). Naive UTC datetimes."""
+    __tablename__ = "job_runs"
 
-    job_name: Mapped[str] = mapped_column(String(64), primary_key=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    job_name: Mapped[str] = mapped_column(String(64), nullable=False)
     status: Mapped[str] = mapped_column(String(16), nullable=False)
-    last_started_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    last_finished_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    last_error: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    last_result_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_utcnow)
+    started_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_utcnow)
+    finished_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    duration_ms: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    rows_written: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    error: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    meta: Mapped[Optional[dict]] = mapped_column(JSON(none_as_null=True), nullable=True)
+
+    __table_args__ = (
+        CheckConstraint("status IN ('running','ok','failed')", name="ck_job_runs_status"),
+        Index("ix_job_runs_job_started", "job_name", "started_at"),
+        Index("ix_job_runs_status_started", "status", "started_at"),
+    )
 
 
 class FeatureFlag(Base):

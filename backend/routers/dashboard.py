@@ -8,7 +8,7 @@ from helpers import (
     _dash_lock, _active_analyses, _completed_analyses,
     _harvest_status, _token_stats, _request_log, require_admin
 )
-from core.dashboard_state import persisted_harvest_status
+from services import job_runs
 from services.ai_engine_monitor import build_ai_engine_monitor, get_ai_engine_job_detail
 
 router = APIRouter(tags=["Dashboard"])
@@ -59,8 +59,10 @@ def get_dashboard_snapshot():
     # Built outside _dash_lock: it runs its own DB query and must not stall
     # writers of the in-memory dashboard state.
     ai_engine = build_ai_engine_monitor(mode="running")
-    # DB rows hold the scheduler worker's runs, so any worker shows them (SILENT-13).
-    persisted_harvests = persisted_harvest_status()
+    # job_runs holds scheduler runs from any worker, so every worker shows them (also a DB read).
+    with _dash_lock:
+        in_memory_harvests = dict(_harvest_status)
+    harvest_status = job_runs.merge_harvest_status(in_memory_harvests)
 
     with _dash_lock:
         merged = {**dict(_active_analyses), **db_jobs}
@@ -69,7 +71,7 @@ def get_dashboard_snapshot():
             "active_analyses": merged,
             "recent_analyses": list(_completed_analyses)[:10],
             "ai_engine": ai_engine,
-            "harvest_status": {**dict(_harvest_status), **persisted_harvests},
+            "harvest_status": harvest_status,
             "token_stats": {
                 "total_input": _token_stats["total_input"],
                 "total_output": _token_stats["total_output"],

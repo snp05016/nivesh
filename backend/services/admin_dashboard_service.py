@@ -19,6 +19,7 @@ from models.db_models import (
     AnalysisHistory, DeviceToken, NetWorthLedger, NewsArticle, Portfolio,
     PortfolioValuationHistory, PriceTarget, SignalEvent, TradeJournal, User, YouTubeVideo,
 )
+from services import job_runs
 from services.ai_engine_monitor import build_ai_engine_monitor
 
 
@@ -149,12 +150,11 @@ def build_dashboard_data() -> dict:
         "Sector Performance":   ["/sector-performance"],
     }
     feature_errors = {}
-    persisted_harvests = _ds.persisted_harvest_status()  # scheduler runs from any worker (SILENT-13)
     with _ds._dash_lock:
         all_reqs = list(_ds._request_log)
         current_harvests = {k: v.copy() for k, v in _ds._harvest_status.items()}
         h_logs = list(_ds._dash_logs)
-    current_harvests.update(persisted_harvests)
+    current_harvests = job_runs.merge_harvest_status(current_harvests)  # scheduler runs from any worker
 
     for feature, prefixes in feature_routes.items():
         errs = []
