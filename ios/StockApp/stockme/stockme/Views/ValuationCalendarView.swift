@@ -21,8 +21,6 @@ struct ValuationCalendarView: View {
                 .overlay(PaperTexture().opacity(0.6))
                 .overlay(RoundedRectangle(cornerRadius: Theme.CornerRadius.card).stroke(Theme.borderFine, lineWidth: 0.5))
 
-            RBISealBackground().opacity(0.04)
-
             HStack(spacing: Theme.Spacing.none) {
                 SecurityThread()
 

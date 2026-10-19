@@ -43,7 +43,7 @@ struct LoginScreen: View {
                             Text("निवेश / NIVESH")
                                 .font(Theme.engravedSerif(size: 34, weight: .bold, relativeTo: .largeTitle))
                                 .foregroundStyle(Theme.inkPrimary)
-                            Text(isRegistering ? "CREATE ACCOUNT" : "SIGN IN")
+                            Text(isRegistering ? "Create your account" : "Sign in to Nivesh")
                                 .font(Theme.labelStyle)
                                 .foregroundStyle(Theme.inkSecondary)
                         }
@@ -66,7 +66,7 @@ struct LoginScreen: View {
                                         Image(systemName: "person.text.rectangle.fill")
                                             .font(.callout)
                                             .foregroundStyle(Theme.inkSecondary.opacity(0.5))
-                                        TextField("display name...", text: $displayName)
+                                        TextField("Your name", text: $displayName)
                                             .textContentType(.name)
                                             .accessibilityLabel("Full name")
                                             .foregroundStyle(Theme.inkPrimary)
@@ -177,7 +177,7 @@ struct LoginScreen: View {
                                 if authManager.isLoggingIn {
                                     ProgressView().tint(Theme.inkPrimary)
                                 } else {
-                                    Text(isRegistering ? "CREATE ACCOUNT" : "SIGN IN")
+                                    Text(isRegistering ? "Create account" : "Sign in")
                                         .font(Theme.labelStyle)
                                         .tracking(1)
                                 }

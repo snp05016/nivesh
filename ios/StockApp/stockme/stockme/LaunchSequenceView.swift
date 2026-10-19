@@ -100,8 +100,8 @@ struct LaunchSequenceView: View {
                 .opacity(hindiOpacity)
                 .padding(.top, Theme.Spacing.medium)
 
-            // "RESERVE BANK OF INTELLIGENCE"
-            Text("RESERVE BANK OF INTELLIGENCE")
+            // Brand name
+            Text("NIVESH")
                 .font(Theme.officialStampFont(size: 8, relativeTo: .caption2))
                 .foregroundStyle(Theme.inkTertiary)
                 .opacity(subtitleOpacity)
