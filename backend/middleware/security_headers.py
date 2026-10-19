@@ -9,6 +9,8 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from core import rate_limiter as _rate_limiter
 
 _MAX_BODY_BYTES = int(os.getenv("MAX_REQUEST_BODY_BYTES", str(1_048_576)))
+# Routes that accept larger bodies enforce their own (streamed) cap; keep in sync with the route.
+_PATH_BODY_LIMITS = {"/api/v1/me/imports/cas/preview": 15_000_000}
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -22,7 +24,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         # REL-23: reject oversized bodies before any route parses them.
         # ponytail: Content-Length only; chunked bodies need a proxy limit
         cl = request.headers.get("content-length")
-        if cl and cl.isdigit() and int(cl) > _MAX_BODY_BYTES:
+        if cl and cl.isdigit() and int(cl) > _PATH_BODY_LIMITS.get(endpoint, _MAX_BODY_BYTES):
             return JSONResponse(status_code=413, content={"detail": "Request body too large"})
 
         try:
