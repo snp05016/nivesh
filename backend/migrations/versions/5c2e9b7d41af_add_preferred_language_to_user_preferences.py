@@ -8,7 +8,7 @@ server default.
 downgrade: drops the constraint and the column when present.
 
 Revision ID: 5c2e9b7d41af
-Revises: ea2f610ceb51
+Revises: c4e81f2a9b07
 Create Date: 2026-10-19
 """
 from typing import Sequence, Union
@@ -19,7 +19,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = "5c2e9b7d41af"
-down_revision: Union[str, Sequence[str], None] = "ea2f610ceb51"
+down_revision: Union[str, Sequence[str], None] = "c4e81f2a9b07"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
